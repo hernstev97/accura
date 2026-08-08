@@ -1,0 +1,120 @@
+@import '@fontsource-variable/roboto-flex';
+
+:root {
+  color-scheme: light dark;
+  font-family: 'Roboto Flex', Roboto, 'Segoe UI', system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --color-page: #f7f9fe;
+  --color-container-low: #f0f3f9;
+  --color-container: #e8edf5;
+  --color-container-high: #dee5ef;
+  --color-surface-bright: #ffffff;
+  --color-on-surface: #1b1c20;
+  --color-on-surface-variant: #45474e;
+  --color-primary: #2f667a;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #c5eaf6;
+  --color-on-primary-container: #0b3543;
+  --color-secondary-container: #dee4f2;
+  --color-on-secondary-container: #283141;
+  --color-tertiary: #705882;
+  --color-tertiary-container: #eadff6;
+  --color-on-tertiary-container: #392846;
+  --color-positive-container: #d8ebcf;
+  --color-on-positive-container: #264221;
+  --color-attention-container: #ffd9e2;
+  --color-on-attention-container: #5b2635;
+  --color-outline: #74777f;
+  --color-outline-variant: #c4c8d0;
+  --color-scrim: #000000;
+
+  --chart-essential: #2f667a;
+  --chart-necessary: #71899a;
+  --chart-worthwhile: #826994;
+  --chart-optional: #9b829f;
+  --chart-free: #58784c;
+
+  --shape-status: 32px 32px 32px 12px;
+  --shape-section: 24px;
+  --shape-nested: 18px;
+  --shape-group-inner: 8px;
+  --shape-segment-shell: 26px;
+  --shape-segment-selected: 22px;
+  --shape-contextual: 16px 16px 6px 16px;
+  --shape-selected-card: 26px 26px 18px 26px;
+  --shape-expanded: 32px 32px 20px 32px;
+  --shape-full: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --motion-fast: 120ms;
+  --motion-short: 180ms;
+  --motion-medium: 280ms;
+  --motion-long: 360ms;
+  --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Material Web remains mapped to the same design source. */
+  --md-ref-typeface-brand: 'Roboto Flex', Roboto, sans-serif;
+  --md-ref-typeface-plain: 'Roboto Flex', Roboto, sans-serif;
+  --md-sys-color-primary: var(--color-primary);
+  --md-sys-color-on-primary: var(--color-on-primary);
+  --md-sys-color-primary-container: var(--color-primary-container);
+  --md-sys-color-on-primary-container: var(--color-on-primary-container);
+  --md-sys-color-secondary-container: var(--color-secondary-container);
+  --md-sys-color-on-secondary-container: var(--color-on-secondary-container);
+  --md-sys-color-tertiary: var(--color-tertiary);
+  --md-sys-color-tertiary-container: var(--color-tertiary-container);
+  --md-sys-color-on-tertiary-container: var(--color-on-tertiary-container);
+  --md-sys-color-surface: var(--color-page);
+  --md-sys-color-on-surface: var(--color-on-surface);
+  --md-sys-color-on-surface-variant: var(--color-on-surface-variant);
+  --md-sys-color-surface-container-lowest: var(--color-surface-bright);
+  --md-sys-color-surface-container-low: var(--color-container-low);
+  --md-sys-color-surface-container: var(--color-container);
+  --md-sys-color-surface-container-high: var(--color-container-high);
+  --md-sys-color-surface-container-highest: var(--color-container-high);
+  --md-sys-color-outline: var(--color-outline);
+  --md-sys-color-outline-variant: var(--color-outline-variant);
+  --md-sys-color-scrim: var(--color-scrim);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: #111418;
+    --color-container-low: #181c21;
+    --color-container: #20262c;
+    --color-container-high: #293139;
+    --color-surface-bright: #303840;
+    --color-on-surface: #e2e5e9;
+    --color-on-surface-variant: #c2c7ce;
+    --color-primary: #92ccdf;
+    --color-on-primary: #073542;
+    --color-primary-container: #214e5d;
+    --color-on-primary-container: #c5eaf6;
+    --color-secondary-container: #343e4d;
+    --color-on-secondary-container: #dce5f4;
+    --color-tertiary: #d8bde9;
+    --color-tertiary-container: #4b3b57;
+    --color-on-tertiary-container: #eddff6;
+    --color-positive-container: #30452c;
+    --color-on-positive-container: #d8ebcf;
+    --color-attention-container: #57313b;
+    --color-on-attention-container: #ffd9e2;
+    --color-outline: #8c929a;
+    --color-outline-variant: #414850;
+    --chart-essential: #92ccdf;
+    --chart-necessary: #9eb5c5;
+    --chart-worthwhile: #d8bde9;
+    --chart-optional: #c7afcb;
+    --chart-free: #afd09f;
+  }
+}
