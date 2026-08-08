@@ -19,11 +19,11 @@ const first = (value: string | string[] | undefined) => Array.isArray(value) ? v
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['GET'])) return;
+  response.setHeader('Cache-Control', 'no-store');
   let config;
   try {
     config = getServerConfig();
   } catch {
-    response.setHeader('Cache-Control', 'no-store');
     response.status(500).json({ error: { code: 'server_configuration_error', message: 'Serverkonfiguration ist unvollständig.' } });
     return;
   }
@@ -58,7 +58,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
     response.setHeader('Set-Cookie', [clearCookie(OAUTH_COOKIE, config.production), sessionCookie(token, config.production)]);
     response.redirect(302, config.appOrigin);
   } catch (error) {
-    response.setHeader('Cache-Control', 'no-store');
     response.setHeader('Set-Cookie', clearCookie(OAUTH_COOKIE, config.production));
     const code = error instanceof AppError ? error.code : 'oauth_callback_failed';
     const safeCode = ['user_not_allowed', 'missing_required_scope', 'refresh_token_missing', 'invalid_oauth_state', 'oauth_callback_failed', 'oauth_exchange_failed', 'invalid_google_identity'].includes(code)
