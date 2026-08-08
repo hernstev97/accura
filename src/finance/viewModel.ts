@@ -1,17 +1,20 @@
 import {
   selectCurrentAccountTotalCents,
   selectCurrentPayoffCents,
-  selectDebtReliefGainCents,
   selectFreeMoneyCents,
   selectFreePercentageBasisPoints,
+  selectFutureDebtReliefMilestones,
   selectFutureDebtCostCents,
   selectLatestAccountSnapshot,
   selectLatestDebtSnapshot,
   selectLatestPocketSnapshot,
   selectNecessityTotalsCents,
+  selectNextDebtReliefMilestone,
+  selectNextFreeMoneyCents,
   selectPlannedAmountCents,
   selectPlannedReserveCents,
-  selectRemainingDebtPaymentsCents,
+  selectRemainingPaymentCount,
+  selectRemainingScheduledTotalCents,
 } from './selectors';
 import type { FinanceDataV1, NecessityId } from './types';
 
@@ -29,6 +32,7 @@ const dateForFormatting = (value: string) => new Date(`${value.length === 7 ? `$
 const longMonth = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const shortMonth = new Intl.DateTimeFormat('de-DE', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 const fullDate = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+const eventList = new Intl.ListFormat('de-DE', { style: 'long', type: 'conjunction' });
 
 export type FinanceViewModel = ReturnType<typeof createFinanceViewModel>;
 
@@ -69,13 +73,40 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     shortLabel: shortMonth.format(dateForFormatting(date)),
     balance: centsToEuros(balanceCents),
   }));
-  const debtReliefMilestones = [...data.reliefMilestones].sort((a, b) => a.date.localeCompare(b.date)).map((milestone, index) => ({
-    date: milestone.date,
-    label: index === 0 ? 'Aktuell' : `Ab ${longMonth.format(dateForFormatting(milestone.date))}`,
-    freeAmount: centsToEuros(milestone.freeAmountCents),
-    event: milestone.event,
-    eventDetail: milestone.eventDetail,
-  }));
+  let projectedFreeCents = selectFreeMoneyCents(data);
+  const futureReliefMilestones = selectFutureDebtReliefMilestones(data);
+  const debtReliefMilestones = [
+    {
+      date: data.asOf,
+      label: 'Aktuell',
+      monthLabel: longMonth.format(dateForFormatting(data.asOf)),
+      freeAmount: centsToEuros(projectedFreeCents),
+      event: null,
+      eventDetail: null,
+    },
+    ...futureReliefMilestones.map((milestone) => {
+      projectedFreeCents += milestone.monthlyReliefCents;
+      const monthLabel = longMonth.format(dateForFormatting(milestone.date));
+      return {
+        date: milestone.date,
+        label: `Nach ${monthLabel}`,
+        monthLabel,
+        freeAmount: centsToEuros(projectedFreeCents),
+        event: eventList.format(milestone.events.map(({ event }) => event)),
+        eventDetail: milestone.events.map(({ eventDetail }) => eventDetail).filter((detail) => detail !== null).join(' · ') || null,
+      };
+    }),
+  ];
+  const nextReliefMilestone = selectNextDebtReliefMilestone(data);
+  const nextFreeMoneyCents = selectNextFreeMoneyCents(data);
+  const nextDebtRelief = nextReliefMilestone && nextFreeMoneyCents !== null ? {
+    date: nextReliefMilestone.date,
+    monthLabel: longMonth.format(dateForFormatting(nextReliefMilestone.date)),
+    eventLabel: eventList.format(nextReliefMilestone.events.map(({ event }) => event)),
+    eventCount: nextReliefMilestone.events.length,
+    monthlyRelief: centsToEuros(nextReliefMilestone.monthlyReliefCents),
+    freeAfter: centsToEuros(nextFreeMoneyCents),
+  } : null;
 
   return {
     meta: {
@@ -83,7 +114,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       asOfLabel: fullDate.format(dateForFormatting(data.asOf)),
       monthLabel: longMonth.format(dateForFormatting(data.asOf)),
       monthlyIncome: centsToEuros(data.monthlyIncomeCents),
-      remainingDebtPayments: centsToEuros(selectRemainingDebtPaymentsCents(data)),
+      remainingPaymentCount: selectRemainingPaymentCount(data),
     },
     accounts,
     pockets,
@@ -96,6 +127,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     debts,
     debtBalanceMilestones,
     debtReliefMilestones,
+    nextDebtRelief,
     totals: {
       currentCash: centsToEuros(selectCurrentAccountTotalCents(data)),
       plannedAmount: centsToEuros(selectPlannedAmountCents(data)),
@@ -103,8 +135,8 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       freeMoney: centsToEuros(selectFreeMoneyCents(data)),
       freePercentage: selectFreePercentageBasisPoints(data) / 100,
       payoffToday: centsToEuros(selectCurrentPayoffCents(data)),
+      remainingScheduledTotal: centsToEuros(selectRemainingScheduledTotalCents(data)),
       futureDebtCost: centsToEuros(selectFutureDebtCostCents(data)),
-      debtReliefGain: centsToEuros(selectDebtReliefGainCents(data)),
     },
   };
 }

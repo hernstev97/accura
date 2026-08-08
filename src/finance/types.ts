@@ -72,7 +72,8 @@ export type DebtSnapshotV1 = {
   debtId: string;
   asOf: string;
   payoffBalanceCents: number;
-  remainingPaymentsCents: number;
+  remainingPaymentCount: number;
+  remainingScheduledTotalCents: number;
 };
 
 export type DebtMilestoneV1 = {
@@ -83,7 +84,7 @@ export type DebtMilestoneV1 = {
 
 export type ReliefMilestoneV1 = {
   date: string;
-  freeAmountCents: number;
+  monthlyReliefCents: number;
   event: string;
   eventDetail: string | null;
 };

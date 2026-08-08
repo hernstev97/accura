@@ -25,7 +25,8 @@ export function DebtScreen() {
   const currentDebt = data.debtBalanceMilestones[0];
   const payoffMilestone = data.debtBalanceMilestones.at(-1);
   const targetLabel = payoffMilestone ? `Planmäßig schuldenfrei im ${payoffMilestone.label}` : 'Aktuelle Schuldenübersicht';
-  const reliefTargetLabel = data.debtReliefMilestones.at(-1)?.label.replace(/^Ab /, '') ?? 'später';
+  const reliefTargetLabel = data.debtReliefMilestones.at(-1)?.monthLabel ?? 'später';
+  const remainingPaymentLabel = `${data.meta.remainingPaymentCount} ${data.meta.remainingPaymentCount === 1 ? 'verbleibende Rate' : 'verbleibende Raten'}`;
 
   return (
     <div className="screen debt-screen" aria-labelledby="debt-title">
@@ -41,7 +42,11 @@ export function DebtScreen() {
           <p>Summe der dargestellten Gläubiger</p>
         </div>
         <div className="payoff-group__metrics">
-          <MetricCard label="Verbleibende Zahlungen" value={formatCurrency(data.meta.remainingDebtPayments)} />
+          <MetricCard
+            label="Noch planmäßig zu zahlen"
+            supporting={remainingPaymentLabel}
+            value={formatCurrency(data.totals.remainingScheduledTotal)}
+          />
           <MetricCard label="Zukünftige Mehrkosten" tone="attention" value={formatCurrency(data.totals.futureDebtCost)} />
         </div>
       </section>

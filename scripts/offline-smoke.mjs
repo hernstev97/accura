@@ -24,8 +24,11 @@ try {
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  assert.match(await page.locator('body').innerText(), /550,00\s*€\s*frei/);
-  assert.match(await page.locator('body').innerText(), /Offline · gespeicherter Stand/);
+  const offlineText = await page.locator('body').innerText();
+  assert.match(offlineText, /141,32\s*€\s*frei/);
+  assert.match(offlineText, /Coolblue endet im September 2026/);
+  assert.match(offlineText, /Danach voraussichtlich 305,32\s*€ frei/);
+  assert.match(offlineText, /Offline · gespeicherter Stand/);
   const unexpectedErrors = errors.filter((error) => {
     const expectedOfflineSessionFailure = new URL(error.url || baseUrl).pathname === '/api/session'
       && /ERR_(?:FAILED|INTERNET_DISCONNECTED)/.test(error.message);

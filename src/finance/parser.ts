@@ -136,6 +136,7 @@ function readMoney(tab: FinanceTabName, record: LocatedRecord, column: string, i
 const requiredText = z.string().trim().min(1);
 const idSchema = z.string().regex(kebabCase);
 const integerSchema = z.number().int().safe();
+const nonNegativeIntegerSchema = integerSchema.nonnegative();
 const booleanSchema = z.boolean();
 const isoDateSchema = z.string().refine(isActualDate);
 const milestoneDateSchema = z.string().refine(isActualMonthOrDate);
@@ -237,9 +238,22 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
     const debtId = read('_DebtSnapshots', record, 'debt_id', idSchema, 'lowercase-kebab-case Debt-ID', issues);
     const snapshotAsOf = read('_DebtSnapshots', record, 'as_of', isoDateSchema, 'ISO-Datum YYYY-MM-DD', issues);
     const payoffBalanceCents = readMoney('_DebtSnapshots', record, 'payoff_balance', issues);
-    const remainingPaymentsCents = readMoney('_DebtSnapshots', record, 'remaining_payments', issues);
-    return debtId !== undefined && snapshotAsOf !== undefined && payoffBalanceCents !== undefined && remainingPaymentsCents !== undefined
-      ? [{ debtId, asOf: snapshotAsOf, payoffBalanceCents, remainingPaymentsCents }] : [];
+    const remainingPaymentCount = read(
+      '_DebtSnapshots',
+      record,
+      'remaining_payments',
+      nonNegativeIntegerSchema,
+      'nicht negative Ganzzahl (Anzahl verbleibender Raten)',
+      issues,
+    );
+    const remainingScheduledTotalCents = readMoney('_DebtSnapshots', record, 'remaining_scheduled_total', issues);
+    return debtId !== undefined
+      && snapshotAsOf !== undefined
+      && payoffBalanceCents !== undefined
+      && remainingPaymentCount !== undefined
+      && remainingScheduledTotalCents !== undefined
+      ? [{ debtId, asOf: snapshotAsOf, payoffBalanceCents, remainingPaymentCount, remainingScheduledTotalCents }]
+      : [];
   });
 
   const debtMilestones = records._DebtMilestones.flatMap((record) => {
@@ -251,10 +265,10 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
 
   const reliefMilestones = records._ReliefMilestones.flatMap((record) => {
     const date = read('_ReliefMilestones', record, 'date', milestoneDateSchema, 'Datum YYYY-MM oder YYYY-MM-DD', issues);
-    const freeAmountCents = readMoney('_ReliefMilestones', record, 'free_amount', issues);
+    const monthlyReliefCents = readMoney('_ReliefMilestones', record, 'free_amount', issues);
     const event = read('_ReliefMilestones', record, 'event', requiredText, 'nicht leerer Text', issues);
     const eventDetail = readOptionalText('_ReliefMilestones', record, 'event_detail', issues);
-    return date !== undefined && freeAmountCents !== undefined && event !== undefined ? [{ date, freeAmountCents, event, eventDetail }] : [];
+    return date !== undefined && monthlyReliefCents !== undefined && event !== undefined ? [{ date, monthlyReliefCents, event, eventDetail }] : [];
   });
 
   duplicateIssues(accounts, (entry) => entry.id, records._Accounts, '_Accounts', 'id', issues);
@@ -265,7 +279,6 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
   duplicateIssues(pocketSnapshots, (entry) => `${entry.pocketId}|${entry.asOf}`, records._PocketSnapshots, '_PocketSnapshots', 'pocket_id, as_of', issues);
   duplicateIssues(debtSnapshots, (entry) => `${entry.debtId}|${entry.asOf}`, records._DebtSnapshots, '_DebtSnapshots', 'debt_id, as_of', issues);
   duplicateIssues(debtMilestones, (entry) => `${entry.debtId}|${entry.date}`, records._DebtMilestones, '_DebtMilestones', 'debt_id, date', issues);
-  duplicateIssues(reliefMilestones, (entry) => entry.date, records._ReliefMilestones, '_ReliefMilestones', 'date', issues);
 
   const accountIds = new Set(accounts.map(({ id }) => id));
   const pocketIds = new Set(pockets.map(({ id }) => id));
