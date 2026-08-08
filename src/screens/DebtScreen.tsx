@@ -100,7 +100,7 @@ export function DebtScreen() {
           <AreaChart
             accessibilityLayer
             data={data.debtBalanceMilestones}
-            margin={progressExpanded ? { top: 14, right: 8, bottom: 8, left: -12 } : { top: 8, right: 4, bottom: 0, left: 4 }}
+            margin={progressExpanded ? { top: 14, right: 8, bottom: 8, left: 0 } : { top: 8, right: 4, bottom: 0, left: 4 }}
             responsive
             style={{ width: '100%', maxWidth: '100%', height: '100%' }}
           >
@@ -115,7 +115,7 @@ export function DebtScreen() {
               <XAxis axisLine={false} dataKey="shortLabel" interval="preserveStartEnd" minTickGap={18} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 10 }} tickLine={false} />
             ) : <XAxis dataKey="shortLabel" hide />}
             {progressExpanded ? (
-              <YAxis axisLine={false} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 10 }} tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tickLine={false} width={58} />
+              <YAxis axisLine={false} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 10 }} tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tickLine={false} width={66} />
             ) : <YAxis hide />}
             <Tooltip
               contentStyle={tooltipStyle}
@@ -186,6 +186,7 @@ export function DebtScreen() {
               <p><strong>{formatCurrency(milestone.freeAmount)}</strong><span>frei · {milestone.label}</span></p>
             </article>
           ))}
+          <Squiggle className="milestone-flow__squiggle" direction="vertical" />
         </div>
       </section>
 

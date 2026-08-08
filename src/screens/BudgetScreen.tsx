@@ -2,13 +2,13 @@ import { useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartFrame } from '../components/ChartFrame';
-import { CircularAllocation } from '../components/CircularAllocation';
+import { LayeredAllocationRing } from '../components/LayeredAllocationRing';
 import { Icon } from '../components/Icon';
 import { MorphingSegmentedControl } from '../components/MorphingSegmentedControl';
 import { SectionHeading } from '../components/SectionHeading';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
-import type { CircularAllocationSegment } from '../design/circularAllocation';
+import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { formatCurrency } from '../lib/format';
 
 type ChartView = 'categories' | 'necessity';
@@ -36,7 +36,7 @@ export function BudgetScreen() {
     ...data.necessityGroups,
     { id: 'free', label: 'Frei', amount: freeMoney, amountCents: data.allocations.budget.freeCents, colorToken: '--chart-free' },
   ];
-  const ringSegments: CircularAllocationSegment[] = stackedSegments.map((segment) => ({
+  const ringSegments: AllocationRingSegment[] = stackedSegments.map((segment) => ({
     amountCents: segment.amountCents,
     color: `var(${segment.colorToken})`,
     id: segment.id,
@@ -58,7 +58,7 @@ export function BudgetScreen() {
       <section className="allocation-group" aria-label="Aufteilung des Monatseinkommens">
         <SectionHeading compact subtitle="im Monat" title="Einkommen" />
         <div className="budget-allocation-composition">
-          <CircularAllocation
+          <LayeredAllocationRing
             centerLabel="Einkommen"
             centerValue={formatCurrency(data.meta.monthlyIncome)}
             detailed
