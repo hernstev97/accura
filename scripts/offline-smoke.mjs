@@ -25,6 +25,23 @@ try {
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await page.waitForFunction(() => document.fonts.check('16px "Google Sans Flex Variable"'));
+  const offlineFont = await page.evaluate(async () => {
+    const cacheNames = await caches.keys();
+    const cachedRequests = (await Promise.all(cacheNames.map(async (name) => {
+      const cache = await caches.open(name);
+      return cache.keys();
+    }))).flat();
+    const style = getComputedStyle(document.documentElement);
+    return {
+      cachedFontCount: cachedRequests.filter(({ url }) => /google-sans-flex.*\.woff2/.test(url)).length,
+      family: style.fontFamily,
+      variation: style.fontVariationSettings,
+    };
+  });
+  assert.match(offlineFont.family, /Google Sans Flex Variable/, 'Offline-Ansicht verwendet nicht Google Sans Flex');
+  assert.match(offlineFont.variation, /"ROND" 100/, 'Offline-Ansicht verlor die ROND-Achse');
+  assert.ok(offlineFont.cachedFontCount >= 1, 'Google Sans Flex ist nicht im Service-Worker-App-Shell-Cache');
   const offlineOverview = page.locator('[data-destination="overview"]');
   assert.equal(await offlineOverview.getAttribute('data-entrance'), 'visited', 'Service-Worker-Reload spielte den Eingang erneut ab');
   assert.equal(await offlineOverview.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
@@ -44,7 +61,7 @@ try {
     return !expectedOfflineSessionFailure;
   });
   assert.deepEqual(unexpectedErrors, [], unexpectedErrors.map(({ message, url }) => `${message} (${url})`).join('\n'));
-  console.log('Offline-Smoke-Test bestanden: App-Shell und letzter gültiger normalisierter Datenstand laden offline aus Service Worker und IndexedDB.');
+  console.log('Offline-Smoke-Test bestanden: App-Shell, lokales Google Sans Flex und letzter gültiger normalisierter Datenstand laden offline aus Service Worker und IndexedDB.');
 } finally {
   await context.setOffline(false);
   await context.close();

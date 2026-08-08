@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircularAllocation } from '../components/CircularAllocation';
+import { LayeredAllocationRing } from '../components/LayeredAllocationRing';
 import { ExpandableSurface } from '../components/ExpandableSurface';
 import { Icon } from '../components/Icon';
 import { MetricCard } from '../components/MetricCard';
@@ -8,7 +8,7 @@ import { ScreenEntrance } from '../components/ScreenEntrance';
 import { SectionHeading } from '../components/SectionHeading';
 import { Squiggle } from '../components/Squiggle';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
-import type { CircularAllocationSegment } from '../design/circularAllocation';
+import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { formatCurrency, percentFormatter } from '../lib/format';
 
 export function OverviewScreen() {
@@ -18,7 +18,7 @@ export function OverviewScreen() {
   const freeMoney = data.totals.freeMoney;
   const freePercentage = data.totals.freePercentage;
   const allocation = data.allocations.overview;
-  const segments: CircularAllocationSegment[] = [
+  const segments: AllocationRingSegment[] = [
     { id: 'expenses', label: 'Ausgaben', amountCents: allocation.expensesCents, color: 'var(--color-system-accent)' },
     { id: 'reserves', label: 'Rücklagen', amountCents: allocation.reservesCents, color: 'var(--color-tertiary)' },
     { id: 'free', label: 'Frei', amountCents: allocation.freeCents, color: 'var(--chart-free)' },
@@ -39,7 +39,7 @@ export function OverviewScreen() {
           <span className="status-card__action">{allocationDetailed ? 'Drei Bereiche' : 'Geplant & frei'}</span>
         </div>
         <div className="status-card__composition">
-          <CircularAllocation
+          <LayeredAllocationRing
             centerLabel="Frei"
             centerSupporting={`${percentFormatter.format(freePercentage)} %`}
             centerValue={formatCurrency(freeMoney)}
@@ -116,19 +116,20 @@ export function OverviewScreen() {
       </ExpandableSurface>
 
       <aside className="forecast-callout" aria-labelledby="forecast-title">
-        <Squiggle className="forecast-callout__squiggle" />
         <span className="forecast-callout__mark"><Icon name="trend" size={22} /></span>
-        <div>
+        <div className="forecast-callout__content">
           <p>Dein nächster Spielraum</p>
           {data.nextDebtRelief ? (
             <>
               <span>{data.nextDebtRelief.eventLabel} {data.nextDebtRelief.eventCount === 1 ? 'endet' : 'enden'} im {data.nextDebtRelief.monthLabel}</span>
+              <Squiggle className="forecast-callout__squiggle" />
               <h2 id="forecast-title">Danach voraussichtlich {formatCurrency(data.nextDebtRelief.freeAfter)} frei</h2>
               <span>{formatCurrency(data.nextDebtRelief.monthlyRelief)} mehr pro Monat</span>
             </>
           ) : (
             <>
               <span>Keine weitere Entlastung geplant</span>
+              <Squiggle className="forecast-callout__squiggle" />
               <h2 id="forecast-title">Aktuell {formatCurrency(freeMoney)} frei</h2>
               <span>Im Datenstand gibt es keine zukünftigen Ratenenden.</span>
             </>

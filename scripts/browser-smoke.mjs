@@ -97,8 +97,126 @@ async function assertChartsHaveLayout(page, label) {
   assert.equal(chartLayouts.every(({ height, width }) => height > 0 && width > 0), true, `${label}: Diagramm ohne Layoutfläche`);
 }
 
-async function statePage(state, viewport = { width: 412, height: 915 }) {
-  const context = await browser.newContext({ viewport, locale: 'de-DE', serviceWorkers: 'block' });
+async function assertGoogleSansFlex(page, label) {
+  await page.waitForFunction(() => document.fonts.check('16px "Google Sans Flex Variable"'));
+  const typography = await page.evaluate(() => {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const previousFontElements = [...document.querySelectorAll('body *')].filter((element) => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.width > 0 && bounds.height > 0 && /Roboto Flex/i.test(getComputedStyle(element).fontFamily);
+    });
+    return {
+      family: rootStyle.fontFamily,
+      opticalSizing: rootStyle.fontOpticalSizing,
+      previousFontCount: previousFontElements.length,
+      variation: rootStyle.fontVariationSettings,
+    };
+  });
+  assert.match(typography.family, /Google Sans Flex Variable/, `${label}: falsche Schriftfamilie`);
+  assert.equal(typography.opticalSizing, 'auto', `${label}: optische Größenachse ist nicht automatisch`);
+  assert.match(typography.variation, /"ROND" 100/, `${label}: ROND 100 fehlt: ${typography.variation}`);
+  assert.match(typography.variation, /"wdth" 100/, `${label}: normale Breite fehlt: ${typography.variation}`);
+  assert.equal(typography.previousFontCount, 0, `${label}: sichtbarer Text verwendet noch Roboto Flex`);
+}
+
+async function assertRingCenterFits(page, ringSelector, label) {
+  const geometry = await page.locator(ringSelector).evaluate((ring) => {
+    const value = ring.querySelector('[data-testid="allocation-center-value"]');
+    const ringBounds = ring.getBoundingClientRect();
+    const valueBounds = value.getBoundingClientRect();
+    const strokeWidth = Number(ring.getAttribute('data-stroke-width'));
+    const radius = Number(ring.getAttribute('data-path-radius'));
+    const innerRadius = (radius - strokeWidth / 2) * (ringBounds.width / 132);
+    const centerX = ringBounds.left + ringBounds.width / 2;
+    const centerY = ringBounds.top + ringBounds.height / 2;
+    const style = getComputedStyle(value);
+    return {
+      innerBottom: centerY + innerRadius,
+      innerLeft: centerX - innerRadius,
+      innerRight: centerX + innerRadius,
+      innerTop: centerY - innerRadius,
+      text: value.textContent,
+      textOverflow: style.textOverflow,
+      valueBottom: valueBounds.bottom,
+      valueLeft: valueBounds.left,
+      valueRight: valueBounds.right,
+      valueTop: valueBounds.top,
+      whiteSpace: style.whiteSpace,
+    };
+  });
+  assert.match(geometry.text, /\d[\d.]*,\d{2}\s*€/, `${label}: Betrag ist nicht vollständig deutsch formatiert`);
+  assert.equal(geometry.text.includes('…'), false, `${label}: Betrag enthält Ellipsis`);
+  assert.notEqual(geometry.textOverflow, 'ellipsis', `${label}: Betrag verwendet text-overflow: ellipsis`);
+  assert.equal(geometry.whiteSpace, 'nowrap', `${label}: Betrag ist nicht gegen Umbruch geschützt`);
+  assert.equal(geometry.valueLeft >= geometry.innerLeft + 2, true, `${label}: Betrag berührt den Ring links`);
+  assert.equal(geometry.valueRight <= geometry.innerRight - 2, true, `${label}: Betrag berührt den Ring rechts`);
+  assert.equal(geometry.valueTop >= geometry.innerTop + 2, true, `${label}: Betrag berührt den Ring oben`);
+  assert.equal(geometry.valueBottom <= geometry.innerBottom - 2, true, `${label}: Betrag berührt den Ring unten`);
+}
+
+async function assertLayeredRing(page, ringSelector, label) {
+  const geometry = await page.locator(ringSelector).evaluate((ring) => ({
+    arcs: [...ring.querySelectorAll('[data-allocation-id]')].map((arc) => ({
+      cap: Number(arc.getAttribute('data-cap-extension')),
+      dash: Number(arc.getAttribute('data-dash-length')),
+      dasharray: arc.getAttribute('stroke-dasharray'),
+      order: Number(arc.getAttribute('data-draw-order')),
+      overlapAfter: Number(arc.getAttribute('data-overlap-after')),
+      overlapBefore: Number(arc.getAttribute('data-overlap-before')),
+      tiny: arc.getAttribute('data-tiny') === 'true',
+      visible: Number(arc.getAttribute('data-visible-span')),
+    })),
+    markup: ring.innerHTML,
+    mode: ring.getAttribute('data-geometry'),
+  }));
+  assert.equal(geometry.mode, 'layered-overlap', `${label}: falscher Geometriemodus`);
+  assert.equal(/NaN|Infinity|undefined/.test(geometry.markup), false, `${label}: ungültiges SVG-Attribut`);
+  assert.deepEqual(geometry.arcs.map(({ order }) => order), geometry.arcs.map((_, index) => index), `${label}: Zeichenreihenfolge ist instabil`);
+  assert.equal(geometry.arcs.every(({ cap, dash, visible }) => Number.isFinite(cap) && Number.isFinite(dash) && Number.isFinite(visible) && dash >= 0 && visible > 0 && visible <= 100), true, `${label}: ungültige Bogenlänge`);
+  assert.equal(geometry.arcs.every(({ cap, dash, visible }) => approximately(dash + cap * 2, visible, 0.02)), true, `${label}: Rundkappen wurden nicht aus der sichtbaren Länge korrigiert`);
+  assert.equal(geometry.arcs.every(({ overlapAfter, overlapBefore }) => overlapAfter > 0 && overlapBefore > 0), true, `${label}: Layer-Überlappung fehlt`);
+  assert.equal(geometry.arcs.every(({ dasharray }) => dasharray && !dasharray.includes('-')), true, `${label}: ungültiges stroke-dasharray`);
+}
+
+async function accentSnapshot(page) {
+  return page.evaluate(() => {
+    const style = (selector) => getComputedStyle(document.querySelector(selector));
+    const root = getComputedStyle(document.documentElement);
+    return {
+      expense: style('.overview-screen [data-allocation-id="expenses"]').stroke,
+      focus: style('.circular-allocation__button').outlineColor,
+      free: style('.overview-screen [data-allocation-id="free"]').stroke,
+      navigation: style('[data-testid="navigation-indicator"]').backgroundColor,
+      reserve: style('.overview-screen [data-allocation-id="reserves"]').stroke,
+      resolved: root.getPropertyValue('--color-system-accent').trim(),
+    };
+  });
+}
+
+async function assertDecorativeSquiggle(page, selector, label) {
+  const geometry = await page.locator(selector).evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const container = element.closest('aside, .milestone-flow, .debt-progress__arrow');
+    const containerBounds = container?.getBoundingClientRect();
+    const path = element.querySelector('path');
+    return {
+      ariaHidden: element.getAttribute('aria-hidden'),
+      clipped: containerBounds ? bounds.left < containerBounds.left - 1 || bounds.right > containerBounds.right + 1 || bounds.top < containerBounds.top - 1 || bounds.bottom > containerBounds.bottom + 1 : false,
+      height: bounds.height,
+      opacity: Number(getComputedStyle(element).opacity),
+      pathStrokeWidth: Number.parseFloat(getComputedStyle(path).strokeWidth),
+      width: bounds.width,
+    };
+  });
+  assert.equal(geometry.ariaHidden, 'true', `${label}: Squiggle ist nicht dekorativ verborgen`);
+  assert.equal(geometry.width > 0 && geometry.height > 0, true, `${label}: Squiggle hat keine sichtbare Fläche`);
+  assert.equal(geometry.clipped, false, `${label}: Squiggle ist am Container abgeschnitten`);
+  assert.equal(geometry.opacity >= 0.45, true, `${label}: Squiggle ist wieder nahezu unsichtbar`);
+  assert.equal(geometry.pathStrokeWidth >= 3, true, `${label}: Squiggle ist zu dünn`);
+}
+
+async function statePage(state, viewport = { width: 412, height: 915 }, contextOptions = {}) {
+  const context = await browser.newContext({ viewport, locale: 'de-DE', serviceWorkers: 'block', ...contextOptions });
   const page = await context.newPage();
   const errors = collectErrors(page);
   await installFinanceApiMocks(page, state);
@@ -118,6 +236,15 @@ try {
     await test.page.getByRole('heading', { name: expected }).waitFor();
     await assertNoOverflow(test.page, state);
     await assertTouchTargets(test.page, state);
+    await assertGoogleSansFlex(test.page, state);
+    if (state === 'signed-out') {
+      const primaryAction = test.page.locator('.primary-action');
+      const before = await primaryAction.evaluate((element) => getComputedStyle(element).backgroundColor);
+      await test.page.evaluate(() => document.documentElement.style.setProperty('--color-system-accent-source', 'rgb(188, 38, 164)'));
+      const after = await primaryAction.evaluate((element) => getComputedStyle(element).backgroundColor);
+      assert.notEqual(after, before, 'Injizierter Akzent änderte die primäre Aktion nicht');
+      await test.page.evaluate(() => document.documentElement.style.removeProperty('--color-system-accent-source'));
+    }
     const expectedStatus = state === 'validation-error' ? '422' : state === 'reconnect' ? '401' : null;
     const unexpectedErrors = expectedStatus ? test.errors.filter((error) => !error.includes(`status of ${expectedStatus}`)) : test.errors;
     assert.deepEqual(unexpectedErrors, [], unexpectedErrors.join('\n'));
@@ -150,6 +277,7 @@ try {
   const mobile = await statePage('connected');
   await mobile.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await mobile.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await assertGoogleSansFlex(mobile.page, 'Mobile Übersicht');
   const overviewScreen = mobile.page.locator('[data-destination="overview"]');
   assert.equal(await overviewScreen.getAttribute('data-entrance'), 'first');
   const overviewText = await mobile.page.locator('body').innerText();
@@ -165,6 +293,8 @@ try {
 
   const overviewRing = mobile.page.locator('.overview-screen .circular-allocation');
   const statusTrigger = overviewRing.getByRole('button');
+  await assertRingCenterFits(mobile.page, '.overview-screen .circular-allocation', 'Übersichtsring 412px');
+  await assertLayeredRing(mobile.page, '.overview-screen .circular-allocation', 'Übersichtsring');
   const ringSegments = await overviewRing.locator('[data-allocation-id]').evaluateAll((elements) => elements.map((element) => ({
     amountCents: Number(element.getAttribute('data-amount-cents')),
     id: element.getAttribute('data-allocation-id'),
@@ -189,6 +319,35 @@ try {
   await mobile.page.screenshot({ path: '/tmp/finance-overview-detailed.png', fullPage: true });
   await statusTrigger.press('Enter');
   assert.equal(await statusTrigger.getAttribute('aria-pressed'), 'false');
+  await statusTrigger.focus();
+  await mobile.page.keyboard.press('Tab');
+  await mobile.page.keyboard.press('Shift+Tab');
+
+  const fallbackAccent = await accentSnapshot(mobile.page);
+  await mobile.page.evaluate(() => {
+    document.documentElement.style.setProperty('--color-system-accent-source', 'rgb(188, 38, 164)');
+    document.documentElement.style.setProperty('--color-on-system-accent-source', 'rgb(255, 255, 255)');
+  });
+  await mobile.page.waitForTimeout(240);
+  const injectedAccent = await accentSnapshot(mobile.page);
+  assert.notEqual(injectedAccent.navigation, fallbackAccent.navigation, 'Injizierter Akzent änderte den Navigationsindikator nicht');
+  assert.notEqual(injectedAccent.expense, fallbackAccent.expense, 'Injizierter Akzent änderte die ausgewählte Ringrolle nicht');
+  assert.notEqual(injectedAccent.focus, fallbackAccent.focus, 'Injizierter Akzent änderte den Fokusrahmen nicht');
+  assert.equal(injectedAccent.reserve, fallbackAccent.reserve, 'Systemakzent veränderte die semantische Rücklagenfarbe');
+  assert.equal(injectedAccent.free, fallbackAccent.free, 'Systemakzent veränderte die semantische Frei-Farbe');
+  await mobile.page.evaluate(() => {
+    document.documentElement.style.removeProperty('--color-system-accent-source');
+    document.documentElement.style.removeProperty('--color-on-system-accent-source');
+  });
+  await mobile.page.waitForTimeout(240);
+  assert.equal((await accentSnapshot(mobile.page)).navigation, fallbackAccent.navigation, 'Akzent-Fallback wurde nach dem Test nicht wiederhergestellt');
+
+  await assertDecorativeSquiggle(mobile.page, '.forecast-callout__squiggle', 'Spielraum-Callout');
+  const forecastRadii = await mobile.page.locator('.forecast-callout').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { bottomLeft: Number.parseFloat(style.borderBottomLeftRadius), topLeft: Number.parseFloat(style.borderTopLeftRadius) };
+  });
+  assert.equal(forecastRadii.topLeft > forecastRadii.bottomLeft, true, `Spielraum-Callout hat keine absichtsvolle Kontextform: ${JSON.stringify(forecastRadii)}`);
 
   await overviewScreen.evaluate((element) => {
     element.dataset.persistenceProbe = 'same-screen';
@@ -246,6 +405,26 @@ try {
   const budgetRingAmounts = await budgetRing.locator('[data-allocation-id]').evaluateAll((elements) => elements.map((element) => Number(element.getAttribute('data-amount-cents'))));
   assert.equal(budgetRingAmounts.reduce((sum, amount) => sum + amount, 0), Number(await budgetRing.getAttribute('data-total-cents')));
   assert.equal(await budgetRing.getAttribute('data-detailed'), 'true');
+  await assertGoogleSansFlex(mobile.page, 'Budget');
+  await assertRingCenterFits(mobile.page, '.budget-screen .circular-allocation', 'Budgetring 412px');
+  await assertLayeredRing(mobile.page, '.budget-screen .circular-allocation', 'Budgetring');
+  const budgetAccentBefore = await mobile.page.evaluate(() => ({
+    essential: getComputedStyle(document.querySelector('.budget-screen [data-allocation-id="essential"]')).stroke,
+    free: getComputedStyle(document.querySelector('.budget-screen [data-allocation-id="free"]')).stroke,
+    segmented: getComputedStyle(document.querySelector('.segmented-control__indicator-slot')).backgroundColor,
+  }));
+  await mobile.page.evaluate(() => document.documentElement.style.setProperty('--color-system-accent-source', 'rgb(188, 38, 164)'));
+  await mobile.page.waitForTimeout(240);
+  const budgetAccentAfter = await mobile.page.evaluate(() => ({
+    essential: getComputedStyle(document.querySelector('.budget-screen [data-allocation-id="essential"]')).stroke,
+    free: getComputedStyle(document.querySelector('.budget-screen [data-allocation-id="free"]')).stroke,
+    segmented: getComputedStyle(document.querySelector('.segmented-control__indicator-slot')).backgroundColor,
+  }));
+  assert.notEqual(budgetAccentAfter.segmented, budgetAccentBefore.segmented, 'Injizierter Akzent änderte die segmentierte Auswahl nicht');
+  assert.equal(budgetAccentAfter.essential, budgetAccentBefore.essential, 'Systemakzent veränderte eine Budget-Kategoriefarbe');
+  assert.equal(budgetAccentAfter.free, budgetAccentBefore.free, 'Systemakzent veränderte die Frei-Farbe im Budgetring');
+  await mobile.page.evaluate(() => document.documentElement.style.removeProperty('--color-system-accent-source'));
+  await mobile.page.waitForTimeout(240);
   await assertConcentric(mobile.page, '.allocation-group', '.reserve-row', 'Budget-Einkommen');
   await mobile.page.locator('.budget-chart .recharts-bar-rectangle').first().waitFor();
   assert.equal(await mobile.page.locator('.budget-chart .recharts-bar-rectangle').count(), 10);
@@ -268,12 +447,15 @@ try {
   assert.doesNotMatch(debtText, /-14\.223,93\s*€/);
   assert.doesNotMatch(debtText, /debt-payment-ends|Raw English DKB spreadsheet note/);
   assert.match(debtText, /DKB[\s\S]*Kredit mit monatlicher Rate/);
+  await assertGoogleSansFlex(mobile.page, 'Schulden');
+  await assertConcentric(mobile.page, '.creditor-list', '.creditor-list .creditor-row', 'Gläubigerliste');
   await assertChartsHaveLayout(mobile.page, 'Schulden');
   const debtAction = mobile.page.locator('.debt-progress .extended-action');
   await debtAction.click();
   assert.match(await mobile.page.locator('.debt-progress').innerText(), /September 2033[\s\S]*0,00\s*€/);
   await assertConcentric(mobile.page, '.debt-progress', '.debt-milestones', 'Schuldenverlauf');
   await assertConcentric(mobile.page, '.milestone-flow', '.milestone-flow .milestone-row', 'Entlastungsstufen');
+  await assertDecorativeSquiggle(mobile.page, '.milestone-flow__squiggle', 'Vertikaler Schuldenweg');
   await assertNoOverflow(mobile.page, 'Mobile Schuldenansicht');
   await mobile.page.waitForTimeout(550);
   await mobile.page.evaluate(() => window.scrollTo({ top: 0, behavior: 'auto' }));
@@ -339,30 +521,72 @@ try {
     const test = await statePage('connected', viewport);
     await test.page.goto(baseUrl, { waitUntil: 'networkidle' });
     await test.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-    await assertNoOverflow(test.page, viewport.name);
+    await test.page.waitForTimeout(360);
+    await assertGoogleSansFlex(test.page, `Light ${viewport.name}`);
+    await assertRingCenterFits(test.page, '.overview-screen .circular-allocation', `Übersichtsring ${viewport.name}`);
+    await assertNoOverflow(test.page, `Light Übersicht ${viewport.name}`);
     assert.equal(await test.page.locator('.bottom-navigation').isVisible(), true);
     await test.page.screenshot({ path: `/tmp/finance-${viewport.name}.png`, fullPage: true });
+    await test.page.screenshot({ path: `/tmp/finance-light-${viewport.name}-overview.png`, fullPage: true });
     if (viewport.width === 1440) {
       const appBounds = await bounds(test.page.locator('.app-content'));
       assert.equal(appBounds.width <= 840, true);
       assert.equal(Math.abs(appBounds.left - (1440 - appBounds.width) / 2) < 2, true);
     }
+    await test.page.getByRole('button', { name: 'Budget', exact: true }).click();
+    await test.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
+    await test.page.waitForTimeout(360);
+    await assertRingCenterFits(test.page, '.budget-screen .circular-allocation', `Budgetring ${viewport.name}`);
+    await assertNoOverflow(test.page, `Light Budget ${viewport.name}`);
+    await test.page.screenshot({ path: `/tmp/finance-light-${viewport.name}-budget.png`, fullPage: true });
+    await test.page.getByRole('button', { name: 'Schulden', exact: true }).click();
+    await test.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
+    await test.page.locator('.debt-progress .extended-action').click();
+    await test.page.waitForTimeout(560);
+    await assertNoOverflow(test.page, `Light Schulden ${viewport.name}`);
+    await assertChartsHaveLayout(test.page, `Light Schulden ${viewport.name}`);
+    await test.page.screenshot({ path: `/tmp/finance-light-${viewport.name}-debt.png`, fullPage: true });
     assert.deepEqual(test.errors, [], test.errors.join('\n'));
     await test.context.close();
   }
 
-  const darkContext = await browser.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', locale: 'de-DE', serviceWorkers: 'block' });
-  const dark = await darkContext.newPage();
-  const darkErrors = collectErrors(dark);
-  await installFinanceApiMocks(dark);
-  await dark.goto(baseUrl, { waitUntil: 'networkidle' });
-  await dark.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  assert.equal(await dark.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-page').trim()), '#111418');
-  await dark.screenshot({ path: '/tmp/finance-connected-dark.png', fullPage: true });
-  await assertNoOverflow(dark, 'Dark Mode');
-  await assertConcentric(dark, '.status-card', '.allocation-metric', 'Dark-Mode-Hero');
-  assert.deepEqual(darkErrors, [], darkErrors.join('\n'));
-  await darkContext.close();
+  for (const viewport of [
+    { width: 360, height: 800, name: '360x800' },
+    { width: 412, height: 915, name: '412x915' },
+    { width: 768, height: 1024, name: '768x1024' },
+    { width: 1440, height: 1000, name: '1440x1000' },
+  ]) {
+    const dark = await statePage('connected', viewport, { colorScheme: 'dark' });
+    await dark.page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await dark.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+    await dark.page.waitForTimeout(360);
+    assert.equal(await dark.page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-page').trim()), '#111418');
+    await assertGoogleSansFlex(dark.page, `Dark ${viewport.name}`);
+    await assertRingCenterFits(dark.page, '.overview-screen .circular-allocation', `Dark Übersichtsring ${viewport.name}`);
+    await assertNoOverflow(dark.page, `Dark Übersicht ${viewport.name}`);
+    await assertConcentric(dark.page, '.status-card', '.allocation-metric', `Dark-Mode-Hero ${viewport.name}`);
+    await dark.page.screenshot({ path: `/tmp/finance-dark-${viewport.name}-overview.png`, fullPage: true });
+    if (viewport.width === 412) {
+      await dark.page.screenshot({ path: '/tmp/finance-connected-dark.png', fullPage: true });
+      await dark.page.locator('.overview-screen .circular-allocation__button').click();
+      await dark.page.screenshot({ path: '/tmp/finance-dark-412x915-overview-detailed.png', fullPage: true });
+    }
+    await dark.page.getByRole('button', { name: 'Budget', exact: true }).click();
+    await dark.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
+    await dark.page.waitForTimeout(360);
+    await assertRingCenterFits(dark.page, '.budget-screen .circular-allocation', `Dark Budgetring ${viewport.name}`);
+    await assertNoOverflow(dark.page, `Dark Budget ${viewport.name}`);
+    await dark.page.screenshot({ path: `/tmp/finance-dark-${viewport.name}-budget.png`, fullPage: true });
+    await dark.page.getByRole('button', { name: 'Schulden', exact: true }).click();
+    await dark.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
+    await dark.page.locator('.debt-progress .extended-action').click();
+    await dark.page.waitForTimeout(560);
+    await assertNoOverflow(dark.page, `Dark Schulden ${viewport.name}`);
+    await assertChartsHaveLayout(dark.page, `Dark Schulden ${viewport.name}`);
+    await dark.page.screenshot({ path: `/tmp/finance-dark-${viewport.name}-debt.png`, fullPage: true });
+    assert.deepEqual(dark.errors, [], dark.errors.join('\n'));
+    await dark.context.close();
+  }
 
   const reducedContext = await browser.newContext({ viewport: { width: 412, height: 915 }, reducedMotion: 'reduce', locale: 'de-DE', serviceWorkers: 'block' });
   const reduced = await reducedContext.newPage();
@@ -380,6 +604,7 @@ try {
   assert.equal(await reduced.locator('[data-destination="budget"]').getAttribute('data-entrance'), 'reduced');
   await reduced.getByRole('tab', { name: 'Notwendigkeit' }).click();
   assert.equal(await reduced.locator('.budget-chart .recharts-bar-rectangle').count(), 5);
+  await reduced.screenshot({ path: '/tmp/finance-reduced-motion.png', fullPage: true });
   assert.deepEqual(reducedErrors, [], reducedErrors.join('\n'));
   await reducedContext.close();
 

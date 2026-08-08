@@ -1,10 +1,28 @@
-@import '@fontsource-variable/roboto-flex';
+@import './googleSansFlex.css';
 
 :root {
   color-scheme: light dark;
-  font-family: 'Roboto Flex', Roboto, 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Google Sans Flex Variable', 'Segoe UI', system-ui, sans-serif;
+  font-optical-sizing: auto;
+  font-stretch: normal;
+  font-variation-settings: 'ROND' 100, 'wdth' 100, 'GRAD' 0, 'slnt' 0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+  /* Centralized type roles keep rounded expression deliberate, not uniformly loud. */
+  --type-family: 'Google Sans Flex Variable', 'Segoe UI', system-ui, sans-serif;
+  --type-screen-size: clamp(30px, 7.4vw, 34px);
+  --type-screen-line: 1.08;
+  --type-screen-weight: 740;
+  --type-section-size: 21px;
+  --type-section-line: 1.22;
+  --type-section-weight: 690;
+  --type-primary-value-size: clamp(34px, 9vw, 42px);
+  --type-primary-value-line: 1.05;
+  --type-primary-value-weight: 680;
+  --type-financial-value-weight: 660;
+  --type-label-weight: 620;
+  --type-supporting-weight: 430;
 
   --color-page: #f7f9fe;
   --color-container-low: #f0f3f9;
@@ -30,11 +48,20 @@
   --color-outline-variant: #c4c8d0;
   --color-scrim: #000000;
 
-  /* Android/OS accent roles keep deterministic petrol fallbacks. */
-  --color-system-accent: #2f667a;
-  --color-on-system-accent: #ffffff;
-  --color-system-accent-container: #c5eaf6;
-  --color-system-accent-container-subtle: #e4f3f8;
+  /*
+   * Android/OS accent roles resolve through injectable sources. Fallbacks are
+   * declared first so unsupported browsers never inherit an accidental teal
+   * from a global accent-color declaration.
+   */
+  --color-system-accent-fallback: #2f667a;
+  --color-on-system-accent-fallback: #ffffff;
+  --color-system-accent-source: var(--color-system-accent-fallback);
+  --color-on-system-accent-source: var(--color-on-system-accent-fallback);
+  --color-system-accent: var(--color-system-accent-source);
+  --color-on-system-accent: var(--color-on-system-accent-source);
+  --color-system-accent-container: color-mix(in srgb, var(--color-system-accent) 24%, var(--color-page));
+  --color-system-accent-container-subtle: color-mix(in srgb, var(--color-system-accent) 12%, var(--color-page));
+  --color-system-accent-state: color-mix(in srgb, var(--color-system-accent) 10%, transparent);
   --color-selected-indicator: var(--color-system-accent-container);
   --color-focus-ring: var(--color-system-accent);
 
@@ -46,23 +73,23 @@
   --chart-free: #58784c;
 
   /* Concentric geometry: inner radius = max(0px, outer radius - real inset). */
-  --shape-role-outer: 32px;
-  --shape-section-outer: 24px;
+  --shape-role-outer: 36px;
+  --shape-section-outer: 28px;
   --shape-nested-inset: 8px;
   --shape-role-inner: max(0px, calc(var(--shape-role-outer) - var(--shape-nested-inset)));
   --shape-section-inner: max(0px, calc(var(--shape-section-outer) - var(--shape-nested-inset)));
   --shape-current-outer: var(--shape-section-outer);
   --shape-current-inset: var(--shape-nested-inset);
   --shape-calculated-inner: max(0px, calc(var(--shape-current-outer) - var(--shape-current-inset)));
-  --shape-grouped-list-outer: 24px;
+  --shape-grouped-list-outer: 26px;
   --shape-grouped-list-inset: 2px;
   --shape-grouped-list-inner: max(0px, calc(var(--shape-grouped-list-outer) - var(--shape-grouped-list-inset)));
-  --shape-grouped-list-shared-inner: 6px;
+  --shape-grouped-list-shared-inner: 7px;
   --shape-nested: var(--shape-section-inner);
   --shape-group-inner: var(--shape-grouped-list-shared-inner);
-  --shape-segment-shell: 26px;
-  --shape-segment-selected: 22px;
-  --shape-contextual: 16px 16px 16px 16px;
+  --shape-segment-shell: 28px;
+  --shape-segment-selected: max(0px, calc(var(--shape-segment-shell) - 4px));
+  --shape-contextual: 22px 22px 22px 8px;
   --shape-pill: 999px;
   --shape-full: var(--shape-pill);
 
@@ -80,8 +107,8 @@
   --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
 
   /* Material Web remains mapped to the same design source. */
-  --md-ref-typeface-brand: 'Roboto Flex', Roboto, sans-serif;
-  --md-ref-typeface-plain: 'Roboto Flex', Roboto, sans-serif;
+  --md-ref-typeface-brand: var(--type-family);
+  --md-ref-typeface-plain: var(--type-family);
   --md-sys-color-primary: var(--color-primary);
   --md-sys-color-on-primary: var(--color-on-primary);
   --md-sys-color-primary-container: var(--color-primary-container);
@@ -128,10 +155,8 @@
     --color-on-attention-container: #ffd9e2;
     --color-outline: #8c929a;
     --color-outline-variant: #414850;
-    --color-system-accent: #92ccdf;
-    --color-on-system-accent: #073542;
-    --color-system-accent-container: #214e5d;
-    --color-system-accent-container-subtle: #1b343d;
+    --color-system-accent-fallback: #92ccdf;
+    --color-on-system-accent-fallback: #073542;
     --chart-essential: #92ccdf;
     --chart-necessary: #9eb5c5;
     --chart-worthwhile: #d8bde9;
@@ -143,16 +168,16 @@
 
 @supports (color: AccentColor) {
   :root {
-    --color-system-accent: AccentColor;
-    --color-on-system-accent: AccentColorText;
-    --color-focus-ring: AccentColor;
+    --color-system-accent-source: AccentColor;
+    --color-on-system-accent-source: AccentColorText;
   }
 }
 
 @supports (color: AccentColor) and (color: color-mix(in srgb, red 20%, white)) {
   :root {
-    --color-system-accent-container: color-mix(in srgb, AccentColor 24%, var(--color-page));
-    --color-system-accent-container-subtle: color-mix(in srgb, AccentColor 12%, var(--color-page));
+    --color-system-accent-container: color-mix(in srgb, var(--color-system-accent) 24%, var(--color-page));
+    --color-system-accent-container-subtle: color-mix(in srgb, var(--color-system-accent) 12%, var(--color-page));
+    --color-system-accent-state: color-mix(in srgb, var(--color-system-accent) 10%, transparent);
     --color-selected-indicator: var(--color-system-accent-container);
   }
 }

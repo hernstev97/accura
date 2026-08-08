@@ -8,7 +8,7 @@
 - 08.08.2026: Recharts auf native responsive Größenberechnung umgestellt und alle Diagramme im Browser sichtbar verifiziert.
 - 08.08.2026: Vitest, ESLint, TypeScript-/Produktions-Build und Playwright-Smoke-Tests für Mobil und Desktop bestanden.
 - 08.08.2026: Manifest, Icons, Service Worker und echter Offline-Reload des vorgecacheten App-Shells erfolgreich geprüft.
-- 08.08.2026: Oberfläche als kompakte MD3-Expressive-Komposition mit persistenten Indikatoren, reversiblen Containertransformationen, zentralen Rollen-Tokens, lokalem Roboto Flex und absichtsvoller Reduced-Motion-Alternative neu aufgebaut.
+- 08.08.2026: Oberfläche als kompakte MD3-Expressive-Komposition mit persistenten Indikatoren, reversiblen Containertransformationen, zentralen Rollen-Tokens, lokalem Google Sans Flex (`ROND: 100`) und absichtsvoller Reduced-Motion-Alternative verfeinert.
 - 08.08.2026: Browser-Abnahme um Geometrie, ARIA-Zustände, Fokusfalle, Dark Mode, Reduced Motion sowie 360-, 412-, 768- und 1440-Pixel-Viewports erweitert.
 - 08.08.2026: Produktionsdatenquelle auf Google OAuth, Picker, serverseitiges Sheets-`batchGet`, verschlüsselte Refresh-Tokens und Postgres-Verbindung umgestellt.
 - 08.08.2026: Finance Data Schema v1 mit centgenauer Normalisierung, Laufzeitvalidierung, Fremdschlüsseln, Snapshot-Auswahl und versionierter Domänengrenze ergänzt.
