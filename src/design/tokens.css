@@ -36,15 +36,15 @@
   --chart-optional: #9b829f;
   --chart-free: #58784c;
 
-  --shape-status: 32px 32px 32px 12px;
+  --shape-status: 32px 32px 32px 32px;
   --shape-section: 24px;
   --shape-nested: 18px;
   --shape-group-inner: 8px;
   --shape-segment-shell: 26px;
   --shape-segment-selected: 22px;
-  --shape-contextual: 16px 16px 6px 16px;
-  --shape-selected-card: 26px 26px 18px 26px;
-  --shape-expanded: 32px 32px 20px 32px;
+  --shape-contextual: 16px 16px 16px 16px;
+  --shape-selected-card: 26px 26px 26px 26px;
+  --shape-expanded: 32px 32px 32px 32px;
   --shape-full: 999px;
 
   --space-1: 4px;

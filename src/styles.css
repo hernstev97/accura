@@ -355,7 +355,7 @@ main[tabindex]:focus-visible {
 
 .allocation-track {
   display: flex;
-  height: 8px;
+  height: 24px;
   overflow: hidden;
   border-radius: var(--shape-full);
   background: color-mix(in srgb, var(--color-on-primary-container) 10%, transparent);
@@ -367,10 +367,11 @@ main[tabindex]:focus-visible {
 
 .allocation-track span:first-child {
   background: var(--color-primary);
+  border-radius: var(--shape-full);
 }
 
 .allocation-track span:last-child {
-  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+ // background: color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 .status-card__details {
