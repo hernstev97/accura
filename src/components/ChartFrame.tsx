@@ -1,6 +1,4 @@
-import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { spatialSpring } from '../design/motion';
 import { SectionHeading } from './SectionHeading';
 
 type ChartFrameProps = {
@@ -13,9 +11,9 @@ type ChartFrameProps = {
 
 export function ChartFrame({ action, children, className = '', subtitle, title }: ChartFrameProps) {
   return (
-    <motion.section className={`chart-frame ${className}`.trim()} layout transition={{ layout: spatialSpring }}>
+    <section className={`chart-frame ${className}`.trim()}>
       <SectionHeading action={action} subtitle={subtitle} title={title} />
       {children}
-    </motion.section>
+    </section>
   );
 }

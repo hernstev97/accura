@@ -1,13 +1,14 @@
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { Area, AreaChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { ExpandableSurface } from '../components/ExpandableSurface';
 import { Icon } from '../components/Icon';
 import { MetricCard } from '../components/MetricCard';
 import { PressableSurface } from '../components/PressableSurface';
+import { ScreenEntrance } from '../components/ScreenEntrance';
 import { SectionHeading } from '../components/SectionHeading';
+import { Squiggle } from '../components/Squiggle';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
-import { emphasizedTransition, spatialSpring } from '../design/motion';
 import { compactCurrencyFormatter, formatCurrency } from '../lib/format';
 
 const tooltipStyle = {
@@ -29,7 +30,7 @@ export function DebtScreen() {
   const remainingPaymentLabel = `${data.meta.remainingPaymentCount} ${data.meta.remainingPaymentCount === 1 ? 'verbleibende Rate' : 'verbleibende Raten'}`;
 
   return (
-    <div className="screen debt-screen" aria-labelledby="debt-title">
+    <ScreenEntrance className="debt-screen" destination="debt" labelledBy="debt-title">
       <header className="screen-heading">
         <h1 id="debt-title">Dein Weg auf null</h1>
         <p>{targetLabel}</p>
@@ -53,13 +54,13 @@ export function DebtScreen() {
 
       <section className="content-section creditors-section" aria-label="Gläubiger">
         <SectionHeading compact subtitle="Aktuelle Ablösebeträge" title="Gläubiger" />
-        <div className="grouped-list creditor-list">
+        <div className="grouped-list creditor-list entrance-group">
           {data.debts.map((creditor, index) => (
             <article className="grouped-row creditor-row" key={creditor.id}>
               <span className="creditor-sequence" aria-hidden="true">0{index + 1}</span>
               <span className="grouped-row__body">
                 <strong>{creditor.name}</strong>
-                <small>{creditor.note}</small>
+                <small>{creditor.supportingText}</small>
               </span>
               <strong className="money-value">{formatCurrency(creditor.payoffBalance)}</strong>
               <span className="creditor-link" aria-hidden="true" />
@@ -88,15 +89,13 @@ export function DebtScreen() {
         />
         <div className="debt-progress__summary">
           <div><span>Heute</span><strong>{formatCurrency(currentDebt?.balance ?? data.totals.payoffToday)}</strong></div>
-          <span className="debt-progress__arrow" aria-hidden="true" />
+          <span className="debt-progress__arrow"><Squiggle /></span>
           <div><span>Ziel</span><strong>{payoffMilestone?.shortLabel}</strong></div>
         </div>
 
-        <motion.div
-          animate={{ height: progressExpanded ? 292 : 126 }}
+        <div
           className="debt-chart"
-          initial={false}
-          transition={reduceMotion ? { duration: 0 } : spatialSpring}
+          style={{ height: progressExpanded ? 292 : 126 }}
         >
           <AreaChart
             accessibilityLayer
@@ -134,24 +133,15 @@ export function DebtScreen() {
               type="monotone"
             />
           </AreaChart>
-        </motion.div>
+        </div>
 
-        <AnimatePresence initial={false}>
-          {progressExpanded ? (
-            <motion.div
-              animate={{ opacity: 1, y: 0 }}
-              className="debt-milestones"
-              exit={{ opacity: 0, y: reduceMotion ? 0 : -8 }}
-              id="debt-progress-details"
-              initial={{ opacity: 0, y: reduceMotion ? 0 : -8 }}
-              transition={reduceMotion ? { duration: 0.1 } : emphasizedTransition}
-            >
-              {data.debtBalanceMilestones.map((milestone) => (
-                <div key={milestone.date}><span>{milestone.label}</span><strong>{formatCurrency(milestone.balance)}</strong></div>
-              ))}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {progressExpanded ? (
+          <div className="debt-milestones" id="debt-progress-details">
+            {data.debtBalanceMilestones.map((milestone) => (
+              <div key={milestone.date}><span>{milestone.label}</span><strong>{formatCurrency(milestone.balance)}</strong></div>
+            ))}
+          </div>
+        ) : null}
         <p className="sr-only">
           {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrency(milestone.balance)}. `)}
         </p>
@@ -185,7 +175,7 @@ export function DebtScreen() {
         </div>
         <p className="sr-only" id="relief-title">Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}.</p>
 
-        <div className="milestone-flow" aria-label="Auslaufende Raten">
+        <div className="milestone-flow entrance-group" aria-label="Auslaufende Raten">
           {data.debtReliefMilestones.filter((milestone) => milestone.event).map((milestone, index) => (
             <article className="milestone-row" key={milestone.date}>
               <span className="milestone-row__marker"><Icon name="milestone" size={18} /><small>0{index + 1}</small></span>
@@ -203,6 +193,6 @@ export function DebtScreen() {
         <Icon name="calendar" size={22} />
         <p><strong>Planungsannahme</strong><span>Einkommen und alle anderen Ausgaben bleiben unverändert.</span></p>
       </aside>
-    </div>
+    </ScreenEntrance>
   );
 }

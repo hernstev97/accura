@@ -1,12 +1,14 @@
-import { motion, useReducedMotion } from 'motion/react';
+import { useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartFrame } from '../components/ChartFrame';
+import { CircularAllocation } from '../components/CircularAllocation';
 import { Icon } from '../components/Icon';
 import { MorphingSegmentedControl } from '../components/MorphingSegmentedControl';
 import { SectionHeading } from '../components/SectionHeading';
+import { ScreenEntrance } from '../components/ScreenEntrance';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
-import { emphasizedTransition, spatialSpring } from '../design/motion';
+import type { CircularAllocationSegment } from '../design/circularAllocation';
 import { formatCurrency } from '../lib/format';
 
 type ChartView = 'categories' | 'necessity';
@@ -32,8 +34,14 @@ export function BudgetScreen() {
   const plannedReserveAmount = data.totals.plannedReserves;
   const stackedSegments = [
     ...data.necessityGroups,
-    { id: 'free', label: 'Frei', amount: freeMoney, colorToken: '--chart-free' },
+    { id: 'free', label: 'Frei', amount: freeMoney, amountCents: data.allocations.budget.freeCents, colorToken: '--chart-free' },
   ];
+  const ringSegments: CircularAllocationSegment[] = stackedSegments.map((segment) => ({
+    amountCents: segment.amountCents,
+    color: `var(${segment.colorToken})`,
+    id: segment.id,
+    label: segment.label,
+  }));
   const chartData: ChartItem[] = chartView === 'categories'
     ? categoryData.map(({ id, label, amount, kind }) => ({ id, label, amount, kind }))
     : data.necessityGroups.map(({ id, label, amount, colorToken }) => ({ id, label, amount, colorToken }));
@@ -41,7 +49,7 @@ export function BudgetScreen() {
   const chartHeight = chartView === 'categories' ? Math.max(300, categoryData.length * 45 + 20) : 310;
 
   return (
-    <div className="screen budget-screen" aria-labelledby="budget-title">
+    <ScreenEntrance className="budget-screen" destination="budget" labelledBy="budget-title">
       <header className="screen-heading">
         <h1 id="budget-title">Dein Budget</h1>
         <p>{data.meta.monthLabel} · vollständig aufgeteilt</p>
@@ -49,26 +57,23 @@ export function BudgetScreen() {
 
       <section className="allocation-group" aria-label="Aufteilung des Monatseinkommens">
         <SectionHeading compact subtitle="im Monat" title="Einkommen" />
-        <p className="allocation-group__income">{formatCurrency(data.meta.monthlyIncome)}</p>
-        <div className="stacked-bar" role="img" aria-label="Monatseinkommen nach Notwendigkeit und freiem Betrag aufgeteilt">
-          {stackedSegments.map((segment) => (
-            <motion.span
-              key={segment.id}
-              layout
-              style={{ background: `var(${segment.colorToken})`, width: `${(segment.amount / data.meta.monthlyIncome) * 100}%` }}
-              title={`${segment.label}: ${formatCurrency(segment.amount)}`}
-              transition={spatialSpring}
-            />
-          ))}
-        </div>
-        <div className="allocation-legend">
-          {stackedSegments.map((segment) => (
-            <div className="legend-item" key={segment.id}>
-              <span className="legend-item__dot" style={{ background: `var(${segment.colorToken})` }} aria-hidden="true" />
-              <span>{segment.label}</span>
-              <strong>{formatCurrency(segment.amount)}</strong>
-            </div>
-          ))}
+        <div className="budget-allocation-composition">
+          <CircularAllocation
+            centerLabel="Einkommen"
+            centerValue={formatCurrency(data.meta.monthlyIncome)}
+            detailed
+            segments={ringSegments}
+            totalCents={data.allocations.budget.incomeCents}
+          />
+          <div className="allocation-legend entrance-group">
+            {stackedSegments.map((segment) => (
+              <div className="legend-item" data-allocation-id={segment.id} key={segment.id}>
+                <span className="legend-item__dot" style={{ background: `var(${segment.colorToken})` }} aria-hidden="true" />
+                <span>{segment.label}</span>
+                <strong>{formatCurrency(segment.amount)}</strong>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="reserve-row">
           <span className="row-icon"><Icon name="reserve" size={20} /></span>
@@ -89,12 +94,10 @@ export function BudgetScreen() {
           selectedId={chartView}
         />
 
-        <motion.div
-          animate={{ height: chartHeight }}
+        <div
           className="budget-chart"
           data-chart-mode={chartView}
-          initial={false}
-          transition={reduceMotion ? { duration: 0 } : spatialSpring}
+          style={{ height: chartHeight }}
         >
           <BarChart
             accessibilityLayer
@@ -156,18 +159,12 @@ export function BudgetScreen() {
               />
             </Bar>
           </BarChart>
-        </motion.div>
+        </div>
 
-        <motion.div
-          animate={{ opacity: 1 }}
-          className="sr-only"
-          key={chartView}
-          role="list"
-          transition={reduceMotion ? { duration: 0.1 } : emphasizedTransition}
-        >
+        <div className="sr-only" role="list">
           {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrency(item.amount)}. </span>)}
-        </motion.div>
+        </div>
       </ChartFrame>
-    </div>
+    </ScreenEntrance>
   );
 }

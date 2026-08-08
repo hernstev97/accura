@@ -1,4 +1,4 @@
-import { AnimatePresence, LayoutGroup, motion, MotionConfig, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon } from './components/Icon';
 import { SharedBottomNavigation, type Destination } from './components/SharedBottomNavigation';
@@ -10,7 +10,6 @@ const debtScreenModule = import('./screens/DebtScreen');
 const BudgetScreen = lazy(() => budgetScreenModule.then((module) => ({ default: module.BudgetScreen })));
 const DebtScreen = lazy(() => debtScreenModule.then((module) => ({ default: module.DebtScreen })));
 
-const destinationOrder: Destination[] = ['overview', 'budget', 'debt'];
 const screenNames: Record<Destination, string> = { overview: 'Übersicht', budget: 'Budget', debt: 'Schulden' };
 const lastUpdatedFormatter = new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -140,17 +139,17 @@ function InfoDisclosure() {
   const close = () => { setConfirmDisconnect(false); setOpen(false); };
 
   return (
-    <LayoutGroup id="info-disclosure">
+    <>
       {!open ? (
-        <motion.button aria-label="Verbindung und Informationen" className="icon-button icon-button--contextual" key="info-source" layoutId="info-surface" onClick={() => setOpen(true)} type="button">
+        <button aria-label="Verbindung und Informationen" className="icon-button icon-button--contextual" onClick={() => setOpen(true)} type="button">
           <Icon name="info" />
-        </motion.button>
+        </button>
       ) : <span className="info-action-placeholder" aria-hidden="true" />}
 
       <AnimatePresence>
         {open ? (
-          <motion.div animate={{ opacity: 1 }} className="info-scrim" exit={{ opacity: 0 }} initial={{ opacity: 0 }} onPointerDown={(event) => { if (event.currentTarget === event.target) close(); }}>
-            <motion.section aria-labelledby="info-title" aria-modal="true" className="info-surface" layoutId="info-surface" ref={surfaceRef} role="dialog">
+          <motion.div animate={{ opacity: 1 }} className="info-scrim" exit={{ opacity: 0 }} initial={{ opacity: 0 }} onPointerDown={(event) => { if (event.currentTarget === event.target) close(); }} transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}>
+            <section aria-labelledby="info-title" aria-modal="true" className="info-surface" ref={surfaceRef} role="dialog">
               <div className="info-surface__header">
                 <div><p>Sichere Datenquelle</p><h2 id="info-title">Finanzen · v1</h2></div>
                 <button aria-label="Informationen schließen" className="icon-button" onClick={close} ref={closeRef} type="button"><Icon name="close" /></button>
@@ -186,11 +185,11 @@ function InfoDisclosure() {
                   ) : null}
                 </>
               )}
-            </motion.section>
+            </section>
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </LayoutGroup>
+    </>
   );
 }
 
@@ -223,31 +222,24 @@ function DataStatus() {
   );
 }
 
-function Screen({ destination, direction }: { destination: Destination; direction: number }) {
-  const reduceMotion = useReducedMotion();
-  const axisDistance = reduceMotion ? 0 : 20 * direction;
+function Screen({ destination }: { destination: Destination }) {
   return (
-    <motion.div animate={{ opacity: 1, scale: 1, x: 0 }} className="screen-transition" custom={direction} exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.995, x: reduceMotion ? 0 : -12 * direction }} initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.995, x: axisDistance }} transition={{ duration: reduceMotion ? 0.1 : 0.32, ease: [0.2, 0, 0, 1] }}>
-      <Suspense fallback={<ScreenLoading />}>
-        {destination === 'overview' ? <OverviewScreen /> : null}
-        {destination === 'budget' ? <BudgetScreen /> : null}
-        {destination === 'debt' ? <DebtScreen /> : null}
-      </Suspense>
-    </motion.div>
+    <Suspense fallback={<ScreenLoading />}>
+      {destination === 'overview' ? <OverviewScreen /> : null}
+      {destination === 'budget' ? <BudgetScreen /> : null}
+      {destination === 'debt' ? <DebtScreen /> : null}
+    </Suspense>
   );
 }
 
 function App() {
   const finance = useFinanceData();
   const [destination, setDestination] = useState<Destination>('overview');
-  const [direction, setDirection] = useState(1);
   const mainRef = useRef<HTMLElement>(null);
   const hasData = Boolean(finance.data && finance.viewModel);
 
   const selectDestination = (nextDestination: Destination) => {
-    if (nextDestination === destination) return;
-    setDirection(Math.sign(destinationOrder.indexOf(nextDestination) - destinationOrder.indexOf(destination)) || 1);
-    setDestination(nextDestination);
+    setDestination((currentDestination) => nextDestination === currentDestination ? currentDestination : nextDestination);
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
@@ -264,7 +256,7 @@ function App() {
           {hasData ? <DataStatus /> : null}
           <main aria-label={hasData ? screenNames[destination] : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>
             {hasData ? (
-              <AnimatePresence custom={direction} initial={false} mode="popLayout"><Screen destination={destination} direction={direction} key={destination} /></AnimatePresence>
+              <Screen destination={destination} />
             ) : <ConnectionStateScreen />}
           </main>
           {hasData ? <SharedBottomNavigation onSelect={selectDestination} selectedId={destination} /> : null}

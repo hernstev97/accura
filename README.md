@@ -22,6 +22,8 @@ The browser never receives a refresh token, OAuth client secret, database URL, t
 
 Detailed design: [security and data flow](docs/security-and-data-flow.md).
 
+Interface contracts: [motion, concentric shapes, circular allocation, and system accent](docs/design-system.md).
+
 ## Stack
 
 - React 19 and TypeScript with Vite
