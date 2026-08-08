@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { revokeGoogleToken } from '../_lib/google';
-import { authenticated, handle, json, method } from '../_lib/http';
-import { clearCookie, decryptRefreshToken, SESSION_COOKIE } from '../_lib/security';
+import { revokeGoogleToken } from '../_lib/google.js';
+import { authenticated, handle, json, method } from '../_lib/http.js';
+import { clearCookie, decryptRefreshToken, SESSION_COOKIE } from '../_lib/security.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['POST'])) return;

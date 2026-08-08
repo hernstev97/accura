@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
-import { AppError } from './errors';
+import { AppError } from './errors.js';
 
 export const SESSION_COOKIE = 'finance_session';
 export const OAUTH_COOKIE = 'finance_oauth';

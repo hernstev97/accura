@@ -1,4 +1,4 @@
-import type { FinanceTabName } from './types';
+import type { FinanceTabName } from './types.js';
 
 export const FINANCE_TAB_HEADERS: Record<FinanceTabName, readonly string[]> = {
   _Meta: ['schema_version', 'as_of', 'currency', 'monthly_income'],

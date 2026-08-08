@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getServerConfig } from './_lib/config';
-import { handle, json, method } from './_lib/http';
-import { getConnectionRepository } from './_lib/repository';
-import { clearCookie, parseCookies, SESSION_COOKIE, verifySession } from './_lib/security';
+import { getServerConfig } from './_lib/config.js';
+import { handle, json, method } from './_lib/http.js';
+import { getConnectionRepository } from './_lib/repository.js';
+import { clearCookie, parseCookies, SESSION_COOKIE, verifySession } from './_lib/security.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['GET'])) return;

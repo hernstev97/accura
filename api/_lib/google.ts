@@ -1,8 +1,8 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { GOOGLE_SHEETS_RANGES } from '../../src/finance/schema';
-import type { RawSheetsBatchResponse } from '../../src/finance/types';
-import type { ServerConfig } from './config';
-import { AppError, ReconnectRequiredError } from './errors';
+import { GOOGLE_SHEETS_RANGES } from '../../src/finance/schema.js';
+import type { RawSheetsBatchResponse } from '../../src/finance/types.js';
+import type { ServerConfig } from './config.js';
+import { AppError, ReconnectRequiredError } from './errors.js';
 
 export const REQUIRED_GOOGLE_SCOPES = [
   'openid',

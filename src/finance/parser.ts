@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FINANCE_TAB_HEADERS } from './schema';
+import { FINANCE_TAB_HEADERS } from './schema.js';
 import {
   FINANCE_SCHEMA_VERSION,
   FINANCE_TAB_NAMES,
@@ -8,7 +8,7 @@ import {
   type FinanceValidationResult,
   type RawSheetsBatchResponse,
   type TabularWorkbook,
-} from './types';
+} from './types.js';
 
 const kebabCase = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;

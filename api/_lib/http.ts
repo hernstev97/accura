@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { ServerConfig } from './config';
-import { getServerConfig } from './config';
-import { AppError, publicError } from './errors';
-import { getConnectionRepository, type ConnectionRepository } from './repository';
-import { assertCsrf, parseCookies, SESSION_COOKIE, verifySession, type AppSession } from './security';
+import type { ServerConfig } from './config.js';
+import { getServerConfig } from './config.js';
+import { AppError, publicError } from './errors.js';
+import { getConnectionRepository, type ConnectionRepository } from './repository.js';
+import { assertCsrf, parseCookies, SESSION_COOKIE, verifySession, type AppSession } from './security.js';
 
 export type HandlerContext = {
   config: ServerConfig;

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getServerConfig } from '../../_lib/config';
-import { AppError } from '../../_lib/errors';
-import { exchangeAuthorizationCode, verifyGoogleIdentity } from '../../_lib/google';
-import { method } from '../../_lib/http';
-import { getConnectionRepository } from '../../_lib/repository';
+import { getServerConfig } from '../../_lib/config.js';
+import { AppError } from '../../_lib/errors.js';
+import { exchangeAuthorizationCode, verifyGoogleIdentity } from '../../_lib/google.js';
+import { method } from '../../_lib/http.js';
+import { getConnectionRepository } from '../../_lib/repository.js';
 import {
   clearCookie,
   createSession,
@@ -13,7 +13,7 @@ import {
   parseCookies,
   sessionCookie,
   verifyOAuthTransaction,
-} from '../../_lib/security';
+} from '../../_lib/security.js';
 
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
 

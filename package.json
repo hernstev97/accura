@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "smoke:offline": "node scripts/offline-smoke.mjs",
-    "test": "vitest run",
+    "test": "npm run test:server-esm && vitest run",
+    "test:server-esm": "node --test scripts/server-esm.test.mjs",
     "test:watch": "vitest",
     "lint": "eslint ."
   },
