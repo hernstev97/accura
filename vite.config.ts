@@ -29,6 +29,13 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api(?:\/|$)/],
+        runtimeCaching: [
+          {
+            urlPattern: ({ sameOrigin, url }) => sameOrigin && /^\/api(?:\/|$)/.test(url.pathname),
+            handler: 'NetworkOnly',
+          },
+        ],
         clientsClaim: true,
         skipWaiting: true,
         cleanupOutdatedCaches: true,

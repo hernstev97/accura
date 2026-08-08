@@ -8,6 +8,7 @@
     "dev:mock": "VITE_USE_MOCK_API=true vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "smoke:auth-sw": "node scripts/auth-sw-smoke.mjs",
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "smoke:offline": "node scripts/offline-smoke.mjs",
     "test": "npm run test:server-esm && vitest run",

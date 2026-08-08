@@ -88,6 +88,7 @@ npm run preview
 # terminal 2
 SMOKE_URL=http://127.0.0.1:4173 npm run smoke:browser
 SMOKE_URL=http://127.0.0.1:4173 npm run smoke:offline
+npm run smoke:auth-sw
 ```
 
 The suites cover all schema tabs and failures, cent conversion, latest snapshots, selectors, encryption, allowlisting, OAuth state/CSRF, revoked grants, mocked Picker/Sheets, provider last-good retention, signed-out/setup/loading/stale/offline/validation/reconnect UI states, responsive layouts, dark mode, reduced motion, focus, touch targets, console/runtime errors, charts, overflow, IndexedDB, and service-worker offline reload.

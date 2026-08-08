@@ -35,7 +35,7 @@ async function assertChartsHaveLayout(page, label) {
 }
 
 async function statePage(state, viewport = { width: 412, height: 915 }) {
-  const context = await browser.newContext({ viewport, locale: 'de-DE' });
+  const context = await browser.newContext({ viewport, locale: 'de-DE', serviceWorkers: 'block' });
   const page = await context.newPage();
   const errors = collectErrors(page);
   await installFinanceApiMocks(page, state);
@@ -177,7 +177,7 @@ try {
     await test.context.close();
   }
 
-  const darkContext = await browser.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', locale: 'de-DE' });
+  const darkContext = await browser.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', locale: 'de-DE', serviceWorkers: 'block' });
   const dark = await darkContext.newPage();
   const darkErrors = collectErrors(dark);
   await installFinanceApiMocks(dark);
@@ -187,7 +187,7 @@ try {
   assert.deepEqual(darkErrors, [], darkErrors.join('\n'));
   await darkContext.close();
 
-  const reducedContext = await browser.newContext({ viewport: { width: 412, height: 915 }, reducedMotion: 'reduce', locale: 'de-DE' });
+  const reducedContext = await browser.newContext({ viewport: { width: 412, height: 915 }, reducedMotion: 'reduce', locale: 'de-DE', serviceWorkers: 'block' });
   const reduced = await reducedContext.newPage();
   const reducedErrors = collectErrors(reduced);
   await installFinanceApiMocks(reduced);
