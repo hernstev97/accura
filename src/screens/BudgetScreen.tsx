@@ -5,9 +5,8 @@ import { ChartFrame } from '../components/ChartFrame';
 import { Icon } from '../components/Icon';
 import { MorphingSegmentedControl } from '../components/MorphingSegmentedControl';
 import { SectionHeading } from '../components/SectionHeading';
-import { financeFixture } from '../data/financeFixture';
+import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import { emphasizedTransition, spatialSpring } from '../design/motion';
-import { selectFreeMoney, selectPlannedReserves, selectSortedBudgetCategories } from '../domain/calculations';
 import { formatCurrency } from '../lib/format';
 
 type ChartView = 'categories' | 'necessity';
@@ -19,33 +18,33 @@ type ChartItem = {
   kind?: 'expense' | 'reserve';
 };
 
-const data = financeFixture;
-const categoryData = selectSortedBudgetCategories(data);
-const freeMoney = selectFreeMoney(data);
-const plannedReserveAmount = selectPlannedReserves(data);
-const stackedSegments = [
-  ...data.necessityGroups,
-  { id: 'free', label: 'Frei', amount: freeMoney, colorToken: '--chart-free' },
-];
 const modeOptions = [
   { id: 'categories', label: 'Kategorien' },
   { id: 'necessity', label: 'Notwendigkeit' },
 ];
 
 export function BudgetScreen() {
+  const data = useFinanceViewModel();
   const [chartView, setChartView] = useState<ChartView>('categories');
   const reduceMotion = useReducedMotion();
+  const categoryData = [...data.budgetCategories].sort((a, b) => b.amount - a.amount);
+  const freeMoney = data.totals.freeMoney;
+  const plannedReserveAmount = data.totals.plannedReserves;
+  const stackedSegments = [
+    ...data.necessityGroups,
+    { id: 'free', label: 'Frei', amount: freeMoney, colorToken: '--chart-free' },
+  ];
   const chartData: ChartItem[] = chartView === 'categories'
     ? categoryData.map(({ id, label, amount, kind }) => ({ id, label, amount, kind }))
     : data.necessityGroups.map(({ id, label, amount, colorToken }) => ({ id, label, amount, colorToken }));
   const chartTitle = chartView === 'categories' ? 'Ausgaben nach Kategorie' : 'Budget nach Notwendigkeit';
-  const chartHeight = chartView === 'categories' ? 470 : 264;
+  const chartHeight = chartView === 'categories' ? Math.max(300, categoryData.length * 45 + 20) : 310;
 
   return (
     <div className="screen budget-screen" aria-labelledby="budget-title">
       <header className="screen-heading">
         <h1 id="budget-title">Dein Budget</h1>
-        <p>August 2026 · vollständig aufgeteilt</p>
+        <p>{data.meta.monthLabel} · vollständig aufgeteilt</p>
       </header>
 
       <section className="allocation-group" aria-label="Aufteilung des Monatseinkommens">

@@ -6,12 +6,9 @@ import { Icon } from '../components/Icon';
 import { MetricCard } from '../components/MetricCard';
 import { PressableSurface } from '../components/PressableSurface';
 import { SectionHeading } from '../components/SectionHeading';
-import { financeFixture } from '../data/financeFixture';
+import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import { emphasizedTransition, spatialSpring } from '../design/motion';
-import { selectFutureDebtCost, selectPayoffToday } from '../domain/calculations';
 import { compactCurrencyFormatter, formatCurrency } from '../lib/format';
-
-const data = financeFixture;
 
 const tooltipStyle = {
   background: 'var(--color-surface-bright)',
@@ -22,34 +19,37 @@ const tooltipStyle = {
 };
 
 export function DebtScreen() {
+  const data = useFinanceViewModel();
   const [progressExpanded, setProgressExpanded] = useState(false);
   const reduceMotion = useReducedMotion();
   const currentDebt = data.debtBalanceMilestones[0];
   const payoffMilestone = data.debtBalanceMilestones.at(-1);
+  const targetLabel = payoffMilestone ? `Planmäßig schuldenfrei im ${payoffMilestone.label}` : 'Aktuelle Schuldenübersicht';
+  const reliefTargetLabel = data.debtReliefMilestones.at(-1)?.label.replace(/^Ab /, '') ?? 'später';
 
   return (
     <div className="screen debt-screen" aria-labelledby="debt-title">
       <header className="screen-heading">
         <h1 id="debt-title">Dein Weg auf null</h1>
-        <p>Planmäßig schuldenfrei im September 2033</p>
+        <p>{targetLabel}</p>
       </header>
 
       <section className="payoff-group" aria-label="Schuldenkennzahlen">
         <div className="payoff-group__primary">
           <span>Ablösesumme heute</span>
-          <strong>{formatCurrency(selectPayoffToday(data))}</strong>
+          <strong>{formatCurrency(data.totals.payoffToday)}</strong>
           <p>Summe der dargestellten Gläubiger</p>
         </div>
         <div className="payoff-group__metrics">
           <MetricCard label="Verbleibende Zahlungen" value={formatCurrency(data.meta.remainingDebtPayments)} />
-          <MetricCard label="Zukünftige Mehrkosten" tone="attention" value={formatCurrency(selectFutureDebtCost(data))} />
+          <MetricCard label="Zukünftige Mehrkosten" tone="attention" value={formatCurrency(data.totals.futureDebtCost)} />
         </div>
       </section>
 
       <section className="content-section creditors-section" aria-label="Gläubiger">
         <SectionHeading compact subtitle="Aktuelle Ablösebeträge" title="Gläubiger" />
         <div className="grouped-list creditor-list">
-          {data.debtCreditors.map((creditor, index) => (
+          {data.debts.map((creditor, index) => (
             <article className="grouped-row creditor-row" key={creditor.id}>
               <span className="creditor-sequence" aria-hidden="true">0{index + 1}</span>
               <span className="grouped-row__body">
@@ -61,10 +61,10 @@ export function DebtScreen() {
             </article>
           ))}
         </div>
-        <p className="supporting-note">Einzelne Grover-Verpflichtungen sind in dieser lokalen Übersicht nicht vollständig abgebildet.</p>
+        <p className="supporting-note">Die Beträge entsprechen dem letzten Snapshot bis zum Datenstand.</p>
       </section>
 
-      <ExpandableSurface className="debt-progress" expanded={progressExpanded} label="DKB-Restschuld bis 2033">
+      <ExpandableSurface className="debt-progress" expanded={progressExpanded} label="Projizierte Restschuld">
         <SectionHeading
           action={
             <PressableSurface
@@ -79,10 +79,10 @@ export function DebtScreen() {
           }
           compact
           subtitle="Bei planmäßiger Zahlung"
-          title="DKB-Restschuld"
+          title="Restschuld"
         />
         <div className="debt-progress__summary">
-          <div><span>Heute</span><strong>{formatCurrency(currentDebt.balance)}</strong></div>
+          <div><span>Heute</span><strong>{formatCurrency(currentDebt?.balance ?? data.totals.payoffToday)}</strong></div>
           <span className="debt-progress__arrow" aria-hidden="true" />
           <div><span>Ziel</span><strong>{payoffMilestone?.shortLabel}</strong></div>
         </div>
@@ -153,7 +153,7 @@ export function DebtScreen() {
       </ExpandableSurface>
 
       <section className="relief-flow" aria-labelledby="relief-title">
-        <SectionHeading compact subtitle="Stufenweise bis Februar 2027" title="Mehr frei durch auslaufende Raten" />
+        <SectionHeading compact subtitle={`Stufenweise bis ${reliefTargetLabel}`} title="Mehr frei durch auslaufende Raten" />
         <div className="relief-chart" role="img" aria-labelledby="relief-title">
           <LineChart
             accessibilityLayer
@@ -163,7 +163,7 @@ export function DebtScreen() {
             style={{ width: '100%', maxWidth: '100%', height: '100%' }}
           >
             <CartesianGrid stroke="var(--color-outline-variant)" strokeDasharray="3 6" vertical={false} />
-            <XAxis axisLine={false} dataKey="label" interval="preserveStartEnd" tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 10 }} tickFormatter={(label: string) => label.replace('Ab ', '').replace(' 2026', ' 26').replace(' 2027', ' 27')} tickLine={false} />
+            <XAxis axisLine={false} dataKey="label" interval="preserveStartEnd" tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 10 }} tickFormatter={(label: string) => label.replace('Ab ', '').replace(/ (\d{2})(\d{2})$/, ' $2')} tickLine={false} />
             <YAxis axisLine={false} domain={[100, 400]} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 10 }} tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tickLine={false} width={58} />
             <Tooltip contentStyle={tooltipStyle} formatter={(value) => [formatCurrency(Number(value)), 'Frei pro Monat']} />
             <Line
@@ -178,7 +178,7 @@ export function DebtScreen() {
             />
           </LineChart>
         </div>
-        <p className="sr-only" id="relief-title">Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis Februar 2027.</p>
+        <p className="sr-only" id="relief-title">Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}.</p>
 
         <div className="milestone-flow" aria-label="Auslaufende Raten">
           {data.debtReliefMilestones.filter((milestone) => milestone.event).map((milestone, index) => (

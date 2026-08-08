@@ -1,60 +1,106 @@
 # Finanzen
 
-„Finanzen“ ist eine mobile-first persönliche Finanzübersicht. Die installierbare PWA zeigt auf einen Blick frei verfügbares Geld, Konten, Pockets, das Monatsbudget und den prognostizierten Schuldenverlauf. Alle sichtbaren Texte sind deutsch; die Oberfläche folgt Material Design 3 und passt sich automatisch an helles oder dunkles Systemdesign an.
+“Finanzen” is a mobile-first personal-finance PWA. Its Material Design 3 Expressive interface shows available money, accounts, pockets, monthly planning, and projected debt relief. Visible product copy remains German; light/dark mode, safe areas, reduced motion, responsive charts, keyboard behavior, and the centered Android-derived desktop composition are preserved.
+
+Production contains no hardcoded personal finance fixture. One allowlisted user authenticates with Google, selects one native Google Sheet through Picker, and receives validated, normalized finance data through same-origin Vercel Functions.
+
+## Architecture
+
+```text
+Google OAuth web-server flow (state + nonce + PKCE)
+  → Google Picker (one Sheet, drive.file)
+  → encrypted refresh token + selected Sheet in Postgres
+  → server-only Drive validation and Sheets batchGet
+  → Finance Data Schema v1 parser and integer-cent normalization
+  → versioned FinanceDataV1
+  → cent-based selectors and localized view model
+  → React FinanceDataProvider
+  → Overview / Budget / Debt screens
+```
+
+The browser never receives a refresh token, OAuth client secret, database URL, token-encryption key, or session secret. A short-lived access token is returned only to the authenticated Picker launch and is never persisted. The last valid normalized snapshot is cached in IndexedDB for offline startup.
+
+Detailed design: [security and data flow](docs/security-and-data-flow.md).
 
 ## Stack
 
-- React und TypeScript mit Vite
-- Motion für geteilte Indikatoren, Layout- und Containertransformationen
-- zentralisierte MD3-Expressive-Tokens mit lokal gebündeltem Roboto Flex
-- `@material/web` bleibt als kompatible Komponentenbasis und Token-Ziel erhalten
-- Recharts für responsive Diagramme
-- `vite-plugin-pwa` für Manifest, Service Worker und Offline-App-Shell
-- Vitest für die Finanzberechnungen
-- ESLint für statische Codeprüfung
+- React 19 and TypeScript with Vite
+- root `api/` Node.js Vercel Functions
+- PostgreSQL via the maintained `postgres` client
+- Zod runtime schemas
+- JOSE ID-token verification
+- Motion, Recharts, Material Web compatibility, centralized MD3 tokens
+- `vite-plugin-pwa` service worker and IndexedDB last-good cache
+- Vitest, ESLint, TypeScript project builds, and Playwright smoke tests
 
-## Lokal starten
+## Finance workbook
 
-Voraussetzung ist eine aktuelle Node.js-Version (empfohlen: Node.js 20.19 oder neuer).
+The selected spreadsheet must implement ten exact underscore-prefixed machine tabs. It stores source records and dated snapshots—not UI totals. Money is normalized to integer cents before calculations; active records use their latest snapshot on or before `_Meta.as_of`.
+
+Complete contract and anonymous examples: [Finance Data Schema v1](docs/finance-data-schema-v1.md).
+
+## Environment and external setup
+
+Copy `.env.example` and provide all server variables through local/Vercel secret storage. Never add secrets to `VITE_` variables or tracked env files.
+
+The required owner actions include Google APIs, External OAuth consent, exact origins/callbacks, restricted Picker key, Postgres provisioning/migration, and Vercel variables:
+
+- concise checklist: [USER_SETUP.md](USER_SETUP.md)
+- exact walkthrough and troubleshooting: [Google OAuth/Vercel setup](docs/google-oauth-vercel-setup.md)
+
+## Local development
+
+Requirements: Node.js 20.19+ (current LTS recommended), npm, and Vercel CLI access for the real server flow.
 
 ```bash
 npm install
-npm run dev
+npx vercel link
+npx vercel env pull .env.local --environment=development
+npx vercel dev --listen 3000
 ```
 
-Vite nennt nach dem Start die lokale Adresse, üblicherweise `http://localhost:5173`.
+Open `http://localhost:3000`. Plain `npm run dev` starts only Vite and therefore does not provide the `api/` Functions.
 
-## Prüfen und bauen
+### Anonymous mocked development
+
+For UI work with no Google/Postgres credentials:
+
+```bash
+npm run dev:mock
+```
+
+This mode is gated to Vite development, uses only anonymous data under `src/mocks`, and stubs Picker selection. It is not a substitute for the real local `vercel dev` flow.
+
+## Verification
 
 ```bash
 npm test
 npm run lint
 npm run build
-npm run preview
 ```
 
-Der Produktions-Build liegt anschließend in `dist/`.
-
-Auf großen Viewports bleibt die Anwendung bewusst ein zentrierter, vergrößerter Android-Feed mit derselben persistenten Bottom Navigation; es gibt keine separate Desktop-Dashboard-Navigation.
-
-Für die reproduzierbare Browser-Abnahme einmalig Chromium für Playwright installieren und bei laufendem Entwicklungs- beziehungsweise Preview-Server prüfen:
+Browser tests mock Google and require no credentials. With a preview server running:
 
 ```bash
-npx playwright install chromium
-npm run smoke:browser
+# terminal 1
+npm run preview
+
+# terminal 2
+SMOKE_URL=http://127.0.0.1:4173 npm run smoke:browser
 SMOKE_URL=http://127.0.0.1:4173 npm run smoke:offline
 ```
 
-## Installation als PWA
+The suites cover all schema tabs and failures, cent conversion, latest snapshots, selectors, encryption, allowlisting, OAuth state/CSRF, revoked grants, mocked Picker/Sheets, provider last-good retention, signed-out/setup/loading/stale/offline/validation/reconnect UI states, responsive layouts, dark mode, reduced motion, focus, touch targets, console/runtime errors, charts, overflow, IndexedDB, and service-worker offline reload.
 
-1. Den Produktions-Build über HTTPS bereitstellen oder lokal über `npm run preview` öffnen.
-2. Die Seite in Chrome auf Android aufrufen.
-3. Im Browsermenü **„App installieren“** beziehungsweise **„Zum Startbildschirm hinzufügen“** wählen.
+## Connection lifecycle
 
-Manifest, Icons (einschließlich Maskable Icon) und Service Worker werden beim Build erzeugt beziehungsweise eingebunden. Nach dem ersten vollständigen Laden bleibt die Anwendungsshell offline nutzbar. Die Safe Areas moderner Geräte und der Standalone-Modus werden berücksichtigt.
+1. Sign in with the email configured in `ALLOWED_GOOGLE_EMAIL`.
+2. Choose **Google-Tabelle auswählen**; Picker shows Sheets only and permits one selection.
+3. The server validates Drive access/MIME and every schema rule before saving the selection.
+4. Data refreshes on startup, after selection, manually, on connectivity return, and when returning to the foreground after ten minutes. There is no cron or polling.
+5. Invalid or failed refreshes retain the visibly stale last-known-good snapshot.
+6. **Abmelden** clears only the app session. **Google-Verbindung trennen** attempts Google revocation, deletes the Postgres connection, clears the session, and removes IndexedDB finance data on that device.
 
-## Daten und spätere Google-Sheets-Anbindung
+## PWA installation
 
-Alle Finanzdaten der v0.1 liegen ausschließlich in [`src/data/financeFixture.ts`](src/data/financeFixture.ts). Die Datei exportiert ein vollständig typisiertes `FinanceFixture`; Komponenten enthalten keine verteilten Finanzkonstanten. Ableitungen wie Summen, freier Betrag, Prozentsatz und zukünftige Mehrkosten leben in [`src/domain/calculations.ts`](src/domain/calculations.ts).
-
-Diese Fixture ist die vorgesehene Integrationsgrenze: Eine spätere Google-Sheets-Anbindung soll die externe Tabelle in dieselbe `FinanceFixture`-Struktur überführen. Präsentation und Berechnungen können dadurch unverändert bleiben. v0.1 baut absichtlich noch keine Verbindung zu Google Sheets, Banken, Authentifizierung oder einer Datenbank auf.
+Build and host over HTTPS, open the production URL in Chrome on Android, and select **App installieren** / **Zum Startbildschirm hinzufügen**. The application shell and a previously synchronized last-good snapshot remain usable offline. See the local-data caveat in [security and data flow](docs/security-and-data-flow.md#indexeddb-and-offline-implications).
