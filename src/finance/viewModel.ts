@@ -9,6 +9,8 @@ import {
   selectLatestDebtSnapshot,
   selectLatestPocketSnapshot,
   selectNecessityTotalsCents,
+  selectBudgetAllocationCents,
+  selectOverviewAllocationCents,
   selectNextDebtReliefMilestone,
   selectNextFreeMoneyCents,
   selectPlannedAmountCents,
@@ -38,6 +40,8 @@ export type FinanceViewModel = ReturnType<typeof createFinanceViewModel>;
 
 export function createFinanceViewModel(data: FinanceDataV1) {
   const necessityTotals = selectNecessityTotalsCents(data);
+  const overviewAllocation = selectOverviewAllocationCents(data);
+  const budgetAllocation = selectBudgetAllocationCents(data);
   const accounts = data.accounts.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((account) => ({
     ...account,
     balance: centsToEuros(selectLatestAccountSnapshot(data, account.id)?.balanceCents ?? 0),
@@ -58,7 +62,9 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     id: debt.id,
     name: debt.name,
     kind: debt.kind,
-    note: debt.note,
+    supportingText: /\bdkb\b/i.test(debt.name)
+      ? 'Kredit mit monatlicher Rate'
+      : debt.note,
     monthlyPayment: centsToEuros(debt.monthlyPaymentCents),
     payoffBalance: centsToEuros(selectLatestDebtSnapshot(data, debt.id)?.payoffBalanceCents ?? 0),
   }));
@@ -75,6 +81,10 @@ export function createFinanceViewModel(data: FinanceDataV1) {
   }));
   let projectedFreeCents = selectFreeMoneyCents(data);
   const futureReliefMilestones = selectFutureDebtReliefMilestones(data);
+  const presentReliefEvent = ({ event, eventDetail }: { event: string; eventDetail: string | null }) => {
+    const machineFacing = event === 'debt-payment-ends' || /^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(event);
+    return machineFacing ? (eventDetail?.trim() || 'Eine Finanzierung') : event;
+  };
   const debtReliefMilestones = [
     {
       date: data.asOf,
@@ -92,8 +102,12 @@ export function createFinanceViewModel(data: FinanceDataV1) {
         label: `Nach ${monthLabel}`,
         monthLabel,
         freeAmount: centsToEuros(projectedFreeCents),
-        event: eventList.format(milestone.events.map(({ event }) => event)),
-        eventDetail: milestone.events.map(({ eventDetail }) => eventDetail).filter((detail) => detail !== null).join(' · ') || null,
+        event: eventList.format(milestone.events.map(presentReliefEvent)),
+        eventDetail: milestone.events
+          .filter(({ event }) => event !== 'debt-payment-ends' && !/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(event))
+          .map(({ eventDetail }) => eventDetail)
+          .filter((detail) => detail !== null)
+          .join(' · ') || null,
       };
     }),
   ];
@@ -102,7 +116,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
   const nextDebtRelief = nextReliefMilestone && nextFreeMoneyCents !== null ? {
     date: nextReliefMilestone.date,
     monthLabel: longMonth.format(dateForFormatting(nextReliefMilestone.date)),
-    eventLabel: eventList.format(nextReliefMilestone.events.map(({ event }) => event)),
+    eventLabel: eventList.format(nextReliefMilestone.events.map(presentReliefEvent)),
     eventCount: nextReliefMilestone.events.length,
     monthlyRelief: centsToEuros(nextReliefMilestone.monthlyReliefCents),
     freeAfter: centsToEuros(nextFreeMoneyCents),
@@ -114,6 +128,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       asOfLabel: fullDate.format(dateForFormatting(data.asOf)),
       monthLabel: longMonth.format(dateForFormatting(data.asOf)),
       monthlyIncome: centsToEuros(data.monthlyIncomeCents),
+      monthlyIncomeCents: data.monthlyIncomeCents,
       remainingPaymentCount: selectRemainingPaymentCount(data),
     },
     accounts,
@@ -123,11 +138,16 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       id,
       ...necessityPresentation[id],
       amount: centsToEuros(necessityTotals[id]),
+      amountCents: budgetAllocation.necessityCents[id],
     })),
     debts,
     debtBalanceMilestones,
     debtReliefMilestones,
     nextDebtRelief,
+    allocations: {
+      budget: budgetAllocation,
+      overview: overviewAllocation,
+    },
     totals: {
       currentCash: centsToEuros(selectCurrentAccountTotalCents(data)),
       plannedAmount: centsToEuros(selectPlannedAmountCents(data)),

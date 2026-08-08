@@ -45,6 +45,28 @@ export const selectFreePercentageBasisPoints = (data: FinanceDataV1) => data.mon
   ? 0
   : Math.round((selectFreeMoneyCents(data) * 10_000) / data.monthlyIncomeCents);
 
+export type OverviewAllocationCents = {
+  expensesCents: number;
+  freeCents: number;
+  incomeCents: number;
+  reservesCents: number;
+};
+
+/**
+ * Canonical overview allocation. Every value remains in integer cents and the
+ * three displayed roles reconcile exactly to the imported monthly income.
+ */
+export const selectOverviewAllocationCents = (data: FinanceDataV1): OverviewAllocationCents => {
+  const reservesCents = selectPlannedReserveCents(data);
+  const plannedCents = selectPlannedAmountCents(data);
+  return {
+    expensesCents: plannedCents - reservesCents,
+    freeCents: data.monthlyIncomeCents - plannedCents,
+    incomeCents: data.monthlyIncomeCents,
+    reservesCents,
+  };
+};
+
 export const selectNecessityTotalsCents = (data: FinanceDataV1): Record<NecessityId, number> => {
   const result: Record<NecessityId, number> = { essential: 0, necessary: 0, worthwhile: 0, optional: 0, unnecessary: 0 };
   data.budgetItems.filter(({ active }) => active).forEach(({ necessityId, monthlyAmountCents }) => {
@@ -52,6 +74,12 @@ export const selectNecessityTotalsCents = (data: FinanceDataV1): Record<Necessit
   });
   return result;
 };
+
+export const selectBudgetAllocationCents = (data: FinanceDataV1) => ({
+  freeCents: selectFreeMoneyCents(data),
+  incomeCents: data.monthlyIncomeCents,
+  necessityCents: selectNecessityTotalsCents(data),
+});
 
 export const selectCurrentPayoffCents = (data: FinanceDataV1) => sumCents(
   data.debts.filter(({ active }) => active).map(({ id }) => selectLatestDebtSnapshot(data, id)?.payoffBalanceCents ?? 0),

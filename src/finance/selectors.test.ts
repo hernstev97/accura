@@ -11,6 +11,8 @@ import {
   selectFutureDebtCostCents,
   selectLatestAccountSnapshot,
   selectNecessityTotalsCents,
+  selectBudgetAllocationCents,
+  selectOverviewAllocationCents,
   selectNextDebtReliefMilestone,
   selectNextFreeMoneyCents,
   selectPlannedAmountCents,
@@ -47,6 +49,15 @@ describe('cent-based finance selectors', () => {
       optional: 10_000,
       unnecessary: 5_000,
     });
+  });
+
+  it('reconciles overview and Budget ring allocations exactly to monthly income', () => {
+    const overview = selectOverviewAllocationCents(data);
+    expect(overview).toEqual({ expensesCents: 215_000, reservesCents: 30_000, freeCents: 14_132, incomeCents: 259_132 });
+    expect(overview.expensesCents + overview.reservesCents + overview.freeCents).toBe(overview.incomeCents);
+
+    const budget = selectBudgetAllocationCents(data);
+    expect(Object.values(budget.necessityCents).reduce((sum, amount) => sum + amount, 0) + budget.freeCents).toBe(budget.incomeCents);
   });
 
   it('keeps installment counts separate from cent-based scheduled totals', () => {
@@ -126,5 +137,19 @@ describe('cent-based finance selectors', () => {
     expect(view.totals.currentCash).toBe(1350.75);
     expect(view.nextDebtRelief).toMatchObject({ eventLabel: 'Coolblue', monthlyRelief: 164, freeAfter: 305.32 });
     expect(view.debtBalanceMilestones.map(({ balance }) => balance)).toEqual([14322.93, 13000, 8000, 0]);
+  });
+
+  it('keeps machine event codes and a raw DKB note out of presentation values', () => {
+    const withCopyLeaks = {
+      ...data,
+      debts: data.debts.map((debt) => debt.name === 'DKB' ? { ...debt, note: 'Raw English spreadsheet instruction' } : debt),
+      reliefMilestones: [
+        { date: '2026-09', monthlyReliefCents: 16_400, event: 'debt-payment-ends', eventDetail: 'Coolblue' },
+      ],
+    };
+    const view = createFinanceViewModel(withCopyLeaks);
+    expect(view.nextDebtRelief?.eventLabel).toBe('Coolblue');
+    expect(view.nextDebtRelief?.eventLabel).not.toContain('debt-payment-ends');
+    expect(view.debts.find(({ name }) => name === 'DKB')?.supportingText).toBe('Kredit mit monatlicher Rate');
   });
 });

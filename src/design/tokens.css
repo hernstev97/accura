@@ -30,6 +30,14 @@
   --color-outline-variant: #c4c8d0;
   --color-scrim: #000000;
 
+  /* Android/OS accent roles keep deterministic petrol fallbacks. */
+  --color-system-accent: #2f667a;
+  --color-on-system-accent: #ffffff;
+  --color-system-accent-container: #c5eaf6;
+  --color-system-accent-container-subtle: #e4f3f8;
+  --color-selected-indicator: var(--color-system-accent-container);
+  --color-focus-ring: var(--color-system-accent);
+
   --chart-essential: #2f667a;
   --chart-necessary: #71899a;
   --chart-worthwhile: #826994;
@@ -37,16 +45,26 @@
   --chart-unnecessary: #aa7777;
   --chart-free: #58784c;
 
-  --shape-status: 32px 32px 32px 32px;
-  --shape-section: 24px;
-  --shape-nested: 18px;
-  --shape-group-inner: 8px;
+  /* Concentric geometry: inner radius = max(0px, outer radius - real inset). */
+  --shape-role-outer: 32px;
+  --shape-section-outer: 24px;
+  --shape-nested-inset: 8px;
+  --shape-role-inner: max(0px, calc(var(--shape-role-outer) - var(--shape-nested-inset)));
+  --shape-section-inner: max(0px, calc(var(--shape-section-outer) - var(--shape-nested-inset)));
+  --shape-current-outer: var(--shape-section-outer);
+  --shape-current-inset: var(--shape-nested-inset);
+  --shape-calculated-inner: max(0px, calc(var(--shape-current-outer) - var(--shape-current-inset)));
+  --shape-grouped-list-outer: 24px;
+  --shape-grouped-list-inset: 2px;
+  --shape-grouped-list-inner: max(0px, calc(var(--shape-grouped-list-outer) - var(--shape-grouped-list-inset)));
+  --shape-grouped-list-shared-inner: 6px;
+  --shape-nested: var(--shape-section-inner);
+  --shape-group-inner: var(--shape-grouped-list-shared-inner);
   --shape-segment-shell: 26px;
   --shape-segment-selected: 22px;
   --shape-contextual: 16px 16px 16px 16px;
-  --shape-selected-card: 26px 26px 26px 26px;
-  --shape-expanded: 32px 32px 32px 32px;
-  --shape-full: 999px;
+  --shape-pill: 999px;
+  --shape-full: var(--shape-pill);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -59,8 +77,6 @@
 
   --motion-fast: 120ms;
   --motion-short: 180ms;
-  --motion-medium: 280ms;
-  --motion-long: 360ms;
   --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
 
   /* Material Web remains mapped to the same design source. */
@@ -112,11 +128,31 @@
     --color-on-attention-container: #ffd9e2;
     --color-outline: #8c929a;
     --color-outline-variant: #414850;
+    --color-system-accent: #92ccdf;
+    --color-on-system-accent: #073542;
+    --color-system-accent-container: #214e5d;
+    --color-system-accent-container-subtle: #1b343d;
     --chart-essential: #92ccdf;
     --chart-necessary: #9eb5c5;
     --chart-worthwhile: #d8bde9;
     --chart-optional: #c7afcb;
     --chart-unnecessary: #d9a3a3;
     --chart-free: #afd09f;
+  }
+}
+
+@supports (color: AccentColor) {
+  :root {
+    --color-system-accent: AccentColor;
+    --color-on-system-accent: AccentColorText;
+    --color-focus-ring: AccentColor;
+  }
+}
+
+@supports (color: AccentColor) and (color: color-mix(in srgb, red 20%, white)) {
+  :root {
+    --color-system-accent-container: color-mix(in srgb, AccentColor 24%, var(--color-page));
+    --color-system-accent-container-subtle: color-mix(in srgb, AccentColor 12%, var(--color-page));
+    --color-selected-indicator: var(--color-system-accent-container);
   }
 }

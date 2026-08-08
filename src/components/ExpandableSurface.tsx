@@ -1,6 +1,4 @@
-import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { spatialSpring } from '../design/motion';
 
 type ExpandableSurfaceProps = {
   children: ReactNode;
@@ -11,13 +9,11 @@ type ExpandableSurfaceProps = {
 
 export function ExpandableSurface({ children, className = '', expanded, label }: ExpandableSurfaceProps) {
   return (
-    <motion.section
+    <section
       aria-label={label}
       className={`expandable-surface ${expanded ? 'is-expanded' : ''} ${className}`.trim()}
-      layout
-      transition={{ layout: spatialSpring }}
     >
       {children}
-    </motion.section>
+    </section>
   );
 }

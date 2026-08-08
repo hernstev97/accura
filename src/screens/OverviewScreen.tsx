@@ -1,85 +1,69 @@
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
-import { AnimatedNumber } from '../components/AnimatedNumber';
+import { CircularAllocation } from '../components/CircularAllocation';
 import { ExpandableSurface } from '../components/ExpandableSurface';
 import { Icon } from '../components/Icon';
 import { MetricCard } from '../components/MetricCard';
 import { PressableSurface } from '../components/PressableSurface';
+import { ScreenEntrance } from '../components/ScreenEntrance';
 import { SectionHeading } from '../components/SectionHeading';
+import { Squiggle } from '../components/Squiggle';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
-import { spatialSpring } from '../design/motion';
+import type { CircularAllocationSegment } from '../design/circularAllocation';
 import { formatCurrency, percentFormatter } from '../lib/format';
 
 export function OverviewScreen() {
   const data = useFinanceViewModel();
-  const [metricExpanded, setMetricExpanded] = useState(false);
+  const [allocationDetailed, setAllocationDetailed] = useState(false);
   const [showEmptyPockets, setShowEmptyPockets] = useState(false);
-  const reduceMotion = useReducedMotion();
   const freeMoney = data.totals.freeMoney;
   const freePercentage = data.totals.freePercentage;
-  const plannedAmount = data.totals.plannedAmount;
-  const reserveAmount = data.totals.plannedReserves;
-  const expenseAmount = plannedAmount - reserveAmount;
+  const allocation = data.allocations.overview;
+  const segments: CircularAllocationSegment[] = [
+    { id: 'expenses', label: 'Ausgaben', amountCents: allocation.expensesCents, color: 'var(--color-system-accent)' },
+    { id: 'reserves', label: 'Rücklagen', amountCents: allocation.reservesCents, color: 'var(--color-tertiary)' },
+    { id: 'free', label: 'Frei', amountCents: allocation.freeCents, color: 'var(--chart-free)' },
+  ];
   const visiblePockets = showEmptyPockets ? data.pockets : data.pockets.filter((pocket) => pocket.balance !== 0);
   const visiblePocketCount = data.pockets.filter((pocket) => pocket.balance !== 0).length;
 
   return (
-    <div className="screen overview-screen" aria-labelledby="overview-title">
+    <ScreenEntrance className="overview-screen" destination="overview" labelledBy="overview-title">
       <header className="screen-heading">
         <h1 id="overview-title">Guten Morgen</h1>
         <p>Dein {data.meta.monthLabel} auf einen Blick.</p>
       </header>
 
-      <ExpandableSurface className="status-card" expanded={metricExpanded} label="Frei verfügbares Monatsbudget">
-        <PressableSurface
-          aria-expanded={metricExpanded}
-          aria-controls="free-money-details"
-          broad
-          className="status-card__trigger"
-          onClick={() => setMetricExpanded((expanded) => !expanded)}
-        >
-          <span className="status-card__topline">
-            <span className="status-card__label">Frei verfügbar</span>
-            <span className="status-card__action">
-              <span>{metricExpanded ? 'Weniger' : 'Details'}</span>
-              <span className={`disclosure-icon ${metricExpanded ? 'is-rotated' : ''}`}><Icon name="chevron" size={20} /></span>
-            </span>
-          </span>
-          <span className="status-card__amount"><AnimatedNumber value={freeMoney} /> <small>frei</small></span>
-          <span className="status-card__context">pro Monat · {percentFormatter.format(freePercentage)} % vom Einkommen</span>
-          <span className="allocation-track allocation-track--status" aria-hidden="true">
-            <span style={{ width: `${100 - freePercentage}%` }} />
-            <span style={{ width: `${freePercentage}%` }} />
-          </span>
-        </PressableSurface>
-
-        <AnimatePresence initial={false}>
-          {metricExpanded ? (
-            <motion.div
-              animate={{ opacity: 1, y: 0 }}
-              className="status-card__details"
-              exit={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
-              id="free-money-details"
-              initial={{ opacity: 0, y: reduceMotion ? 0 : -8 }}
-              transition={reduceMotion ? { duration: 0.1 } : spatialSpring}
-            >
-              <div className="status-card__detail-grid">
-                <div><span>Einkommen</span><strong>{formatCurrency(data.meta.monthlyIncome)}</strong></div>
-                <div><span>Verplant</span><strong>{formatCurrency(plannedAmount)}</strong></div>
-                <div><span>Frei</span><strong>{formatCurrency(freeMoney)}</strong></div>
-              </div>
-              <div className="allocation-strip" role="img" aria-label="Einkommen aufgeteilt in Ausgaben, Rücklagen und freien Betrag">
-                <span style={{ width: `${(expenseAmount / data.meta.monthlyIncome) * 100}%` }} />
-                <span style={{ width: `${(reserveAmount / data.meta.monthlyIncome) * 100}%` }} />
-                <span style={{ width: `${freePercentage}%` }} />
-              </div>
-              <div className="allocation-strip__legend">
-                <span>Ausgaben</span><span>Rücklagen</span><span>Frei</span>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </ExpandableSurface>
+      <section className="status-card" aria-label="Frei verfügbares Monatsbudget">
+        <div className="status-card__topline">
+          <span className="status-card__label">Einkommen im Überblick</span>
+          <span className="status-card__action">{allocationDetailed ? 'Drei Bereiche' : 'Geplant & frei'}</span>
+        </div>
+        <div className="status-card__composition">
+          <CircularAllocation
+            centerLabel="Frei"
+            centerSupporting={`${percentFormatter.format(freePercentage)} %`}
+            centerValue={formatCurrency(freeMoney)}
+            detailed={allocationDetailed}
+            interactiveLabel={allocationDetailed ? 'Zusammenfassung anzeigen' : 'Ausgaben, Rücklagen und freien Betrag anzeigen'}
+            onDetailedChange={setAllocationDetailed}
+            segments={segments}
+            totalCents={allocation.incomeCents}
+          />
+          <div className="status-card__summary-copy">
+            <strong>{formatCurrency(freeMoney)} frei</strong>
+            <span>von {formatCurrency(data.meta.monthlyIncome)} im Monat</span>
+            <small>Ring antippen für {allocationDetailed ? 'die Zusammenfassung' : 'alle drei Bereiche'}.</small>
+          </div>
+        </div>
+        <div className="allocation-metrics" aria-label="Werte der Einkommensaufteilung">
+          {segments.map((segment) => (
+            <div className="allocation-metric" data-allocation-id={segment.id} key={segment.id}>
+              <span><i aria-hidden="true" style={{ background: segment.color }} />{segment.label}</span>
+              <strong>{formatCurrency(segment.amountCents / 100)}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="section-group quick-metrics" aria-label="Schnellübersicht">
         <MetricCard label="Jetzt verfügbar" value={formatCurrency(data.totals.currentCash)} tone="primary" />
@@ -88,7 +72,7 @@ export function OverviewScreen() {
 
       <section className="content-section" aria-label="Konten">
         <SectionHeading compact subtitle="Zusammen verfügbar" title="Konten" />
-        <div className="grouped-list account-list">
+        <div className="grouped-list account-list entrance-group">
           {data.accounts.map((account, index) => (
             <article className="grouped-row" key={account.id}>
               <span className="row-icon"><Icon name={account.kind === 'bank' ? 'account' : 'wallet'} size={20} /></span>
@@ -121,27 +105,18 @@ export function OverviewScreen() {
           subtitle={showEmptyPockets ? 'Alle aktiven Pockets' : `${visiblePocketCount} Pockets mit Guthaben`}
           title="Pockets"
         />
-        <motion.div className="pocket-grid" id="pocket-list" layout transition={{ layout: spatialSpring }}>
-          <AnimatePresence initial={false}>
-            {visiblePockets.map((pocket, index) => (
-              <motion.article
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                className={`pocket ${pocket.balance === 0 ? 'pocket--empty' : ''}`}
-                exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.98, y: reduceMotion ? 0 : -8 }}
-                initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.98, y: reduceMotion ? 0 : -8 }}
-                key={pocket.id}
-                layout
-                transition={{ ...spatialSpring, delay: reduceMotion ? 0 : Math.min(index, 3) * 0.024 }}
-              >
-                <span>{pocket.name}</span>
-                <strong>{formatCurrency(pocket.balance)}</strong>
-              </motion.article>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        <div className="pocket-grid entrance-group" id="pocket-list">
+          {visiblePockets.map((pocket) => (
+            <article className={`pocket ${pocket.balance === 0 ? 'pocket--empty' : ''}`} key={pocket.id}>
+              <span>{pocket.name}</span>
+              <strong>{formatCurrency(pocket.balance)}</strong>
+            </article>
+          ))}
+        </div>
       </ExpandableSurface>
 
       <aside className="forecast-callout" aria-labelledby="forecast-title">
+        <Squiggle className="forecast-callout__squiggle" />
         <span className="forecast-callout__mark"><Icon name="trend" size={22} /></span>
         <div>
           <p>Dein nächster Spielraum</p>
@@ -160,6 +135,6 @@ export function OverviewScreen() {
           )}
         </div>
       </aside>
-    </div>
+    </ScreenEntrance>
   );
 }

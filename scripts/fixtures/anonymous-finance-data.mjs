@@ -43,7 +43,7 @@ export const anonymousFinanceData = {
     ['subscriptions', 'Abos', 4000, 'optional', 'expense', 10],
   ].map(([id, label, monthlyAmountCents, necessityId, kind, displayOrder]) => ({ id, label, monthlyAmountCents, necessityId, kind, displayOrder, active: true, note: null })),
   debts: [
-    { id: 'dkb', name: 'DKB', kind: 'loan', monthlyPaymentCents: 22022, displayOrder: 1, active: true, note: 'Fester Zahlungsplan' },
+    { id: 'dkb', name: 'DKB', kind: 'loan', monthlyPaymentCents: 22022, displayOrder: 1, active: true, note: 'Raw English DKB spreadsheet note' },
     { id: 'coolblue', name: 'Coolblue', kind: 'installment', monthlyPaymentCents: 16400, displayOrder: 2, active: true, note: 'Letzte Rate im September 2026' },
     { id: 'fabfilter', name: 'Fabfilter', kind: 'installment', monthlyPaymentCents: 3870, displayOrder: 3, active: true, note: 'Software-Finanzierung' },
     { id: 'straight-outta-cotton', name: 'Straight Outta Cotton', kind: 'installment', monthlyPaymentCents: 1838, displayOrder: 4, active: true, note: 'Ratenkauf' },
@@ -65,7 +65,7 @@ export const anonymousFinanceData = {
   ].map(([debtId, date, balanceCents]) => ({ debtId, date, balanceCents })),
   reliefMilestones: [
     { date: '2033-09', monthlyReliefCents: 22022, event: 'DKB', eventDetail: 'Letzte Rate' },
-    { date: '2026-09', monthlyReliefCents: 16400, event: 'Coolblue', eventDetail: 'Letzte Rate' },
+    { date: '2026-09', monthlyReliefCents: 16400, event: 'debt-payment-ends', eventDetail: 'Coolblue' },
     { date: '2027-01', monthlyReliefCents: 3870, event: 'Fabfilter', eventDetail: 'Letzte Rate' },
     { date: '2026-10', monthlyReliefCents: 1838, event: 'Straight Outta Cotton', eventDetail: 'Letzte Rate' },
     { date: '2026-12', monthlyReliefCents: 500, event: 'Soulframe', eventDetail: 'Letzte Rate' },
