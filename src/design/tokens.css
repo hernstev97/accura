@@ -34,6 +34,7 @@
   --chart-necessary: #71899a;
   --chart-worthwhile: #826994;
   --chart-optional: #9b829f;
+  --chart-unnecessary: #aa7777;
   --chart-free: #58784c;
 
   --shape-status: 32px 32px 32px 32px;
@@ -115,6 +116,7 @@
     --chart-necessary: #9eb5c5;
     --chart-worthwhile: #d8bde9;
     --chart-optional: #c7afcb;
+    --chart-unnecessary: #d9a3a3;
     --chart-free: #afd09f;
   }
 }

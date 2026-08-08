@@ -6,38 +6,30 @@ import { Icon } from '../components/Icon';
 import { MetricCard } from '../components/MetricCard';
 import { PressableSurface } from '../components/PressableSurface';
 import { SectionHeading } from '../components/SectionHeading';
-import { financeFixture } from '../data/financeFixture';
+import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import { spatialSpring } from '../design/motion';
-import {
-  selectCurrentCash,
-  selectDebtReliefGain,
-  selectFreeMoney,
-  selectFreePercentage,
-  selectPlannedAmount,
-  selectPlannedReserves,
-  selectVisiblePockets,
-} from '../domain/calculations';
 import { formatCurrency, percentFormatter } from '../lib/format';
 
-const data = financeFixture;
-
 export function OverviewScreen() {
+  const data = useFinanceViewModel();
   const [metricExpanded, setMetricExpanded] = useState(false);
   const [showEmptyPockets, setShowEmptyPockets] = useState(false);
   const reduceMotion = useReducedMotion();
-  const freeMoney = selectFreeMoney(data);
-  const freePercentage = selectFreePercentage(data);
-  const plannedAmount = selectPlannedAmount(data);
-  const reserveAmount = selectPlannedReserves(data);
+  const freeMoney = data.totals.freeMoney;
+  const freePercentage = data.totals.freePercentage;
+  const plannedAmount = data.totals.plannedAmount;
+  const reserveAmount = data.totals.plannedReserves;
   const expenseAmount = plannedAmount - reserveAmount;
   const projectedFreeMoney = data.debtReliefMilestones.at(-1)?.freeAmount ?? freeMoney;
-  const visiblePockets = selectVisiblePockets(data, showEmptyPockets);
+  const visiblePockets = showEmptyPockets ? data.pockets : data.pockets.filter((pocket) => pocket.balance !== 0);
+  const visiblePocketCount = data.pockets.filter((pocket) => pocket.balance !== 0).length;
+  const projectedDate = data.debtReliefMilestones.at(-1)?.label ?? 'Später';
 
   return (
     <div className="screen overview-screen" aria-labelledby="overview-title">
       <header className="screen-heading">
         <h1 id="overview-title">Guten Morgen</h1>
-        <p>Dein August ist im Plan.</p>
+        <p>Dein {data.meta.monthLabel} auf einen Blick.</p>
       </header>
 
       <ExpandableSurface className="status-card" expanded={metricExpanded} label="Frei verfügbares Monatsbudget">
@@ -92,8 +84,8 @@ export function OverviewScreen() {
       </ExpandableSurface>
 
       <section className="section-group quick-metrics" aria-label="Schnellübersicht">
-        <MetricCard label="Jetzt verfügbar" value={formatCurrency(selectCurrentCash(data))} tone="primary" />
-        <MetricCard label="Datenstand" supporting="Lokale Beispieldaten" value={data.meta.asOfLabel} />
+        <MetricCard label="Jetzt verfügbar" value={formatCurrency(data.totals.currentCash)} tone="primary" />
+        <MetricCard label="Datenstand" supporting="Google Sheets" value={data.meta.asOfLabel} />
       </section>
 
       <section className="content-section" aria-label="Konten">
@@ -104,13 +96,13 @@ export function OverviewScreen() {
               <span className="row-icon"><Icon name={account.kind === 'bank' ? 'account' : 'wallet'} size={20} /></span>
               <span className="grouped-row__body">
                 <strong>{account.name}</strong>
-                <small>{account.kind === 'bank' ? 'Bankkonto' : 'Zahlungskonto'}</small>
+                <small>{account.kind === 'bank' ? 'Bankkonto' : account.kind === 'cash' ? 'Bargeld' : 'Zahlungskonto'}</small>
               </span>
               <strong className="money-value">{formatCurrency(account.balance)}</strong>
               <span className="account-sequence" aria-label={`Konto ${index + 1} von ${data.accounts.length}`}>0{index + 1}</span>
             </article>
           ))}
-          <div className="grouped-total"><span>Gesamt</span><strong>{formatCurrency(selectCurrentCash(data))}</strong></div>
+          <div className="grouped-total"><span>Gesamt</span><strong>{formatCurrency(data.totals.currentCash)}</strong></div>
         </div>
       </section>
 
@@ -128,7 +120,7 @@ export function OverviewScreen() {
             </PressableSurface>
           }
           compact
-          subtitle={showEmptyPockets ? 'Alle Revolut-Pockets' : 'Vier Pockets mit Guthaben'}
+          subtitle={showEmptyPockets ? 'Alle aktiven Pockets' : `${visiblePocketCount} Pockets mit Guthaben`}
           title="Pockets"
         />
         <motion.div className="pocket-grid" id="pocket-list" layout transition={{ layout: spatialSpring }}>
@@ -155,8 +147,8 @@ export function OverviewScreen() {
         <span className="forecast-callout__mark"><Icon name="trend" size={22} /></span>
         <div>
           <p>Dein nächster Spielraum</p>
-          <h2 id="forecast-title">Ab Februar 2027 voraussichtlich {formatCurrency(projectedFreeMoney)} frei</h2>
-          <span>{formatCurrency(selectDebtReliefGain(data))} mehr pro Monat durch auslaufende Raten.</span>
+          <h2 id="forecast-title">{projectedDate} voraussichtlich {formatCurrency(projectedFreeMoney)} frei</h2>
+          <span>{formatCurrency(data.totals.debtReliefGain)} mehr pro Monat durch auslaufende Raten.</span>
         </div>
       </aside>
     </div>
