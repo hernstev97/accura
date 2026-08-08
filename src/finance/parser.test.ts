@@ -12,9 +12,13 @@ describe('Finance Data Schema v1 parser', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.data.schemaVersion).toBe(1);
-    expect(result.data.monthlyIncomeCents).toBe(300_000);
+    expect(result.data.monthlyIncomeCents).toBe(259_132);
     expect(result.data.accountSnapshots[1]?.balanceCents).toBe(120_025);
     expect(result.data.budgetItems[0]?.monthlyAmountCents).toBe(100_000);
+    expect(result.data.debtSnapshots[0]).toMatchObject({
+      remainingPaymentCount: 86,
+      remainingScheduledTotalCents: 1_893_914,
+    });
   });
 
   it.each(FINANCE_TAB_NAMES)('requires and parses the %s machine tab', (tab) => {
@@ -80,6 +84,40 @@ describe('Finance Data Schema v1 parser', () => {
     expect(euroNumberToCents(-1.005)).toBe(-101);
     expect(euroNumberToCents(12.344)).toBe(1234);
     expect(euroNumberToCents(12.345)).toBe(1235);
+  });
+
+  it('validates installment counts independently from required scheduled monetary totals', () => {
+    const missingMoney = workbook();
+    missingMoney._DebtSnapshots[1]![4] = '';
+    const missingMoneyResult = validateFinanceWorkbook(missingMoney);
+    expect(missingMoneyResult.success).toBe(false);
+    if (!missingMoneyResult.success) {
+      expect(missingMoneyResult.issues).toContainEqual(expect.objectContaining({
+        tab: '_DebtSnapshots',
+        row: 2,
+        column: 'remaining_scheduled_total',
+      }));
+    }
+
+    const fractionalCount = workbook();
+    fractionalCount._DebtSnapshots[1]![3] = 86.5;
+    const fractionalCountResult = validateFinanceWorkbook(fractionalCount);
+    expect(fractionalCountResult.success).toBe(false);
+    if (!fractionalCountResult.success) {
+      expect(fractionalCountResult.issues).toContainEqual(expect.objectContaining({
+        tab: '_DebtSnapshots',
+        row: 2,
+        column: 'remaining_payments',
+        expected: 'nicht negative Ganzzahl (Anzahl verbleibender Raten)',
+      }));
+    }
+  });
+
+  it('allows multiple relief events in the same month for deterministic grouping', () => {
+    const raw = workbook();
+    raw._ReliefMilestones.push(['2026-09', 10, 'Zweites Ereignis', 'Gleicher Monat']);
+    const result = validateFinanceWorkbook(raw);
+    expect(result.success).toBe(true);
   });
 
   it('ignores blank rows, unrelated tabs, and additional columns', () => {

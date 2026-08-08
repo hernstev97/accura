@@ -8,7 +8,7 @@ export const FINANCE_TAB_HEADERS: Record<FinanceTabName, readonly string[]> = {
   _PocketSnapshots: ['pocket_id', 'as_of', 'balance'],
   _BudgetItems: ['id', 'label', 'monthly_amount', 'necessity_id', 'kind', 'display_order', 'active', 'note'],
   _Debts: ['id', 'name', 'kind', 'monthly_payment', 'display_order', 'active', 'note'],
-  _DebtSnapshots: ['debt_id', 'as_of', 'payoff_balance', 'remaining_payments'],
+  _DebtSnapshots: ['debt_id', 'as_of', 'payoff_balance', 'remaining_payments', 'remaining_scheduled_total'],
   _DebtMilestones: ['debt_id', 'date', 'balance'],
   _ReliefMilestones: ['date', 'free_amount', 'event', 'event_detail'],
 };

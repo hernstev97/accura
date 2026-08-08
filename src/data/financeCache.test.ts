@@ -19,7 +19,7 @@ describe('last-known-good IndexedDB cache', () => {
     });
     await expect(loadCachedFinanceData()).resolves.toEqual(expect.objectContaining({
       spreadsheetId: 'spreadsheet-id',
-      data: expect.objectContaining({ schemaVersion: 1, monthlyIncomeCents: 300_000 }),
+      data: expect.objectContaining({ schemaVersion: 1, monthlyIncomeCents: 259_132 }),
     }));
   });
 

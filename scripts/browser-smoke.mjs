@@ -87,9 +87,13 @@ try {
   const mobile = await statePage('connected');
   await mobile.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await mobile.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  assert.match(await mobile.page.locator('body').innerText(), /550,00\s*€\s*frei/);
-  assert.match(await mobile.page.locator('body').innerText(), /1\.350,75\s*€/);
-  assert.match(await mobile.page.locator('body').innerText(), /Zuletzt aktualisiert/);
+  const overviewText = await mobile.page.locator('body').innerText();
+  assert.match(overviewText, /141,32\s*€\s*frei/);
+  assert.match(overviewText, /1\.350,75\s*€/);
+  assert.match(overviewText, /Coolblue endet im September 2026/);
+  assert.match(overviewText, /Danach voraussichtlich 305,32\s*€ frei/);
+  assert.match(overviewText, /164,00\s*€ mehr pro Monat/);
+  assert.match(overviewText, /Zuletzt aktualisiert/);
   await mobile.page.screenshot({ path: '/tmp/finance-connected-mobile.png', fullPage: true });
   await mobile.page.getByLabel('Finanzdaten aktualisieren').click();
   await mobile.page.getByText('Aktuell', { exact: true }).waitFor();
@@ -121,11 +125,17 @@ try {
 
   await mobile.page.getByRole('button', { name: 'Schulden', exact: true }).click();
   await mobile.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
-  assert.match(await mobile.page.locator('body').innerText(), /1\.060,00\s*€/);
+  const debtText = await mobile.page.locator('body').innerText();
+  assert.match(debtText, /Ablösesumme heute[\s\S]*14\.322,93\s*€/);
+  assert.match(debtText, /Noch planmäßig zu zahlen[\s\S]*19\.372,05\s*€/);
+  assert.match(debtText, /99 verbleibende Raten/);
+  assert.match(debtText, /Zukünftige Mehrkosten[\s\S]*5\.049,12\s*€/);
+  assert.doesNotMatch(debtText, /99,00\s*€/);
+  assert.doesNotMatch(debtText, /-14\.223,93\s*€/);
   await assertChartsHaveLayout(mobile.page, 'Schulden');
   const debtAction = mobile.page.locator('.debt-progress .extended-action');
   await debtAction.click();
-  assert.match(await mobile.page.locator('.debt-progress').innerText(), /September 2029[\s\S]*0,00\s*€/);
+  assert.match(await mobile.page.locator('.debt-progress').innerText(), /September 2033[\s\S]*0,00\s*€/);
   await assertNoOverflow(mobile.page, 'Mobile Schuldenansicht');
 
   await mobile.page.getByLabel('Verbindung und Informationen').click();

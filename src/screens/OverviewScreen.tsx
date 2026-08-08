@@ -20,10 +20,8 @@ export function OverviewScreen() {
   const plannedAmount = data.totals.plannedAmount;
   const reserveAmount = data.totals.plannedReserves;
   const expenseAmount = plannedAmount - reserveAmount;
-  const projectedFreeMoney = data.debtReliefMilestones.at(-1)?.freeAmount ?? freeMoney;
   const visiblePockets = showEmptyPockets ? data.pockets : data.pockets.filter((pocket) => pocket.balance !== 0);
   const visiblePocketCount = data.pockets.filter((pocket) => pocket.balance !== 0).length;
-  const projectedDate = data.debtReliefMilestones.at(-1)?.label ?? 'Später';
 
   return (
     <div className="screen overview-screen" aria-labelledby="overview-title">
@@ -147,8 +145,19 @@ export function OverviewScreen() {
         <span className="forecast-callout__mark"><Icon name="trend" size={22} /></span>
         <div>
           <p>Dein nächster Spielraum</p>
-          <h2 id="forecast-title">{projectedDate} voraussichtlich {formatCurrency(projectedFreeMoney)} frei</h2>
-          <span>{formatCurrency(data.totals.debtReliefGain)} mehr pro Monat durch auslaufende Raten.</span>
+          {data.nextDebtRelief ? (
+            <>
+              <span>{data.nextDebtRelief.eventLabel} {data.nextDebtRelief.eventCount === 1 ? 'endet' : 'enden'} im {data.nextDebtRelief.monthLabel}</span>
+              <h2 id="forecast-title">Danach voraussichtlich {formatCurrency(data.nextDebtRelief.freeAfter)} frei</h2>
+              <span>{formatCurrency(data.nextDebtRelief.monthlyRelief)} mehr pro Monat</span>
+            </>
+          ) : (
+            <>
+              <span>Keine weitere Entlastung geplant</span>
+              <h2 id="forecast-title">Aktuell {formatCurrency(freeMoney)} frei</h2>
+              <span>Im Datenstand gibt es keine zukünftigen Ratenenden.</span>
+            </>
+          )}
         </div>
       </aside>
     </div>

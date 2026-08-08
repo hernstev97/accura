@@ -35,7 +35,7 @@ Detailed design: [security and data flow](docs/security-and-data-flow.md).
 
 ## Finance workbook
 
-The selected spreadsheet must implement ten exact underscore-prefixed machine tabs. It stores source records and dated snapshots—not UI totals. Money is normalized to integer cents before calculations; active records use their latest snapshot on or before `_Meta.as_of`.
+The selected spreadsheet must implement ten exact underscore-prefixed machine tabs. It stores source records and dated snapshots—not UI totals. Money is normalized to integer cents before calculations, while installment counts remain separate integers; active records use their latest snapshot on or before `_Meta.as_of`.
 
 Complete contract and anonymous examples: [Finance Data Schema v1](docs/finance-data-schema-v1.md).
 

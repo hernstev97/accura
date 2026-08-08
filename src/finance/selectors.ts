@@ -1,6 +1,14 @@
-import type { AccountSnapshotV1, DebtSnapshotV1, FinanceDataV1, NecessityId, PocketSnapshotV1 } from './types';
+import type {
+  AccountSnapshotV1,
+  DebtSnapshotV1,
+  FinanceDataV1,
+  NecessityId,
+  PocketSnapshotV1,
+  ReliefMilestoneV1,
+} from './types';
 
 const sumCents = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
+const sumCounts = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
 
 function latestOnOrBefore<T>(records: T[], asOf: string, date: (record: T) => string): T | undefined {
   return records.filter((record) => date(record) <= asOf).sort((a, b) => date(b).localeCompare(date(a)))[0];
@@ -49,13 +57,55 @@ export const selectCurrentPayoffCents = (data: FinanceDataV1) => sumCents(
   data.debts.filter(({ active }) => active).map(({ id }) => selectLatestDebtSnapshot(data, id)?.payoffBalanceCents ?? 0),
 );
 
-export const selectRemainingDebtPaymentsCents = (data: FinanceDataV1) => sumCents(
-  data.debts.filter(({ active }) => active).map(({ id }) => selectLatestDebtSnapshot(data, id)?.remainingPaymentsCents ?? 0),
+export const selectRemainingPaymentCount = (data: FinanceDataV1) => sumCounts(
+  data.debts.filter(({ active }) => active).map(({ id }) => selectLatestDebtSnapshot(data, id)?.remainingPaymentCount ?? 0),
 );
 
-export const selectFutureDebtCostCents = (data: FinanceDataV1) => selectRemainingDebtPaymentsCents(data) - selectCurrentPayoffCents(data);
+export const selectRemainingScheduledTotalCents = (data: FinanceDataV1) => sumCents(
+  data.debts.filter(({ active }) => active).map(({ id }) => selectLatestDebtSnapshot(data, id)?.remainingScheduledTotalCents ?? 0),
+);
 
-export const selectDebtReliefGainCents = (data: FinanceDataV1) => {
-  const sorted = [...data.reliefMilestones].sort((a, b) => a.date.localeCompare(b.date));
-  return (sorted.at(-1)?.freeAmountCents ?? 0) - (sorted[0]?.freeAmountCents ?? 0);
+export const selectFutureDebtCostCents = (data: FinanceDataV1) => selectRemainingScheduledTotalCents(data) - selectCurrentPayoffCents(data);
+
+export type DebtReliefMilestoneGroup = {
+  date: string;
+  monthlyReliefCents: number;
+  events: Pick<ReliefMilestoneV1, 'event' | 'eventDetail'>[];
+};
+
+const milestoneSort = (a: ReliefMilestoneV1, b: ReliefMilestoneV1) =>
+  a.date.localeCompare(b.date)
+  || a.event.localeCompare(b.event, 'de-DE')
+  || (a.eventDetail ?? '').localeCompare(b.eventDetail ?? '', 'de-DE');
+
+const isFutureMilestone = (milestone: ReliefMilestoneV1, asOf: string) =>
+  (milestone.date.length === 7 ? `${milestone.date}-01` : milestone.date) > asOf;
+
+export const selectFutureDebtReliefMilestones = (data: FinanceDataV1): DebtReliefMilestoneGroup[] => {
+  const groups = new Map<string, DebtReliefMilestoneGroup>();
+  [...data.reliefMilestones]
+    .sort(milestoneSort)
+    .filter((milestone) => isFutureMilestone(milestone, data.asOf))
+    .forEach((milestone) => {
+      const month = milestone.date.slice(0, 7);
+      const existing = groups.get(month);
+      if (existing) {
+        existing.monthlyReliefCents += milestone.monthlyReliefCents;
+        existing.events.push({ event: milestone.event, eventDetail: milestone.eventDetail });
+      } else {
+        groups.set(month, {
+          date: month,
+          monthlyReliefCents: milestone.monthlyReliefCents,
+          events: [{ event: milestone.event, eventDetail: milestone.eventDetail }],
+        });
+      }
+    });
+  return [...groups.values()];
+};
+
+export const selectNextDebtReliefMilestone = (data: FinanceDataV1) => selectFutureDebtReliefMilestones(data)[0];
+
+export const selectNextFreeMoneyCents = (data: FinanceDataV1) => {
+  const next = selectNextDebtReliefMilestone(data);
+  return next ? selectFreeMoneyCents(data) + next.monthlyReliefCents : null;
 };
