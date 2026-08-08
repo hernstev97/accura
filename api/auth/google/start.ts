@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getServerConfig } from '../../_lib/config';
-import { buildGoogleAuthorizationUrl } from '../../_lib/google';
-import { handle, method } from '../../_lib/http';
-import { createOAuthTransaction, oauthCookie } from '../../_lib/security';
+import { getServerConfig } from '../../_lib/config.js';
+import { buildGoogleAuthorizationUrl } from '../../_lib/google.js';
+import { handle, method } from '../../_lib/http.js';
+import { createOAuthTransaction, oauthCookie } from '../../_lib/security.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['GET'])) return;

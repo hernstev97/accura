@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
-import { AppError } from '../_lib/errors';
-import { validateAndSaveSpreadsheet } from '../_lib/financeService';
-import { authenticated, handle, json, method } from '../_lib/http';
+import { AppError } from '../_lib/errors.js';
+import { validateAndSaveSpreadsheet } from '../_lib/financeService.js';
+import { authenticated, handle, json, method } from '../_lib/http.js';
 
 const bodySchema = z.object({ fileId: z.string().trim().min(10).max(256) }).strict();
 

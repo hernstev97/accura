@@ -1,10 +1,10 @@
-import { parseSheetsBatchResponse } from '../../src/finance/parser';
-import type { FinanceDataV1 } from '../../src/finance/types';
-import type { ServerConfig } from './config';
-import { AppError } from './errors';
-import { readGoogleFinanceWorkbook, refreshGoogleAccessToken, validateGoogleSpreadsheet } from './google';
-import type { ConnectionRepository, GoogleConnection } from './repository';
-import { decryptRefreshToken } from './security';
+import { parseSheetsBatchResponse } from '../../src/finance/parser.js';
+import type { FinanceDataV1 } from '../../src/finance/types.js';
+import type { ServerConfig } from './config.js';
+import { AppError } from './errors.js';
+import { readGoogleFinanceWorkbook, refreshGoogleAccessToken, validateGoogleSpreadsheet } from './google.js';
+import type { ConnectionRepository, GoogleConnection } from './repository.js';
+import { decryptRefreshToken } from './security.js';
 
 type Fetch = typeof fetch;
 

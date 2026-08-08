@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { accessForConnection } from '../_lib/financeService';
-import { AppError } from '../_lib/errors';
-import { authenticated, handle, json, method } from '../_lib/http';
+import { accessForConnection } from '../_lib/financeService.js';
+import { AppError } from '../_lib/errors.js';
+import { authenticated, handle, json, method } from '../_lib/http.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['GET'])) return;
