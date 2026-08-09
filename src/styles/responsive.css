@@ -232,12 +232,16 @@
 
   .screen-entrance[data-entrance='first'] > *,
   .screen-entrance[data-entrance='first'] .entrance-group > *,
-  .loading-indicator__mark i {
-    animation: none;
+  .loading-indicator__mark i,
+  .is-spinning {
+    animation: none !important;
     opacity: 1;
     transform: none;
   }
 
+  *,
+  *::before,
+  *::after,
   .adaptive-navigation__indicator-slot,
   .segmented-control__indicator-slot,
   .circular-allocation g,
@@ -245,7 +249,7 @@
   .circular-allocation__end-cap,
   .debt-chart,
   .is-rotated {
-    transition-duration: 0ms;
+    transition-duration: 0ms !important;
   }
 }
 

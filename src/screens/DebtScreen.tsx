@@ -54,7 +54,7 @@ export function DebtScreen() {
         tone="attention"
         value={formatCurrency(data.totals.payoffToday)}
         visual={(
-          <div className="debt-hero-status" aria-label={targetLabel}>
+          <div className="debt-hero-status" aria-label={targetLabel} role="img">
             <span className="debt-hero-status__icon"><Icon name="trend" size={26} /></span>
             <span>Ziel</span>
             <strong>{payoffMilestone?.shortLabel ?? 'Aktuell'}</strong>
@@ -106,7 +106,14 @@ export function DebtScreen() {
           <div><span>Ziel</span><strong>{payoffMilestone?.shortLabel}</strong></div>
         </div>
 
-        <div className="debt-chart" data-animation-active={balanceChartAnimationActive} style={{ height: progressExpanded ? 292 : 144 }}>
+        <div
+          aria-describedby="debt-progress-summary"
+          aria-labelledby="debt-progress-title"
+          className="debt-chart"
+          data-animation-active={balanceChartAnimationActive}
+          role="img"
+          style={{ height: progressExpanded ? 292 : 144 }}
+        >
           <AreaChart
             accessibilityLayer
             data={data.debtBalanceMilestones}
@@ -155,8 +162,8 @@ export function DebtScreen() {
             <div key={milestone.date}><span>{milestone.label}</span><strong className="financial-value">{formatCurrency(milestone.balance)}</strong></div>
           ))}
         </div>
-        <p className="sr-only">
-          {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrency(milestone.balance)}. `)}
+        <p className="sr-only" id="debt-progress-summary">
+          Restschuldverlauf: {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrency(milestone.balance)}. `)}
         </p>
       </ChartFrame>
 
@@ -205,7 +212,9 @@ export function DebtScreen() {
             />
           </LineChart>
         </div>
-        <p className="sr-only" id="relief-summary">Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}.</p>
+        <p className="sr-only" id="relief-summary">
+          Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}: {data.debtReliefMilestones.map((milestone) => `${milestone.label}: ${formatCurrency(milestone.freeAmount)} frei. `)}
+        </p>
 
         <div className="milestone-flow entrance-group" aria-label="Auslaufende Raten">
           {data.debtReliefMilestones.filter((milestone) => milestone.event).map((milestone, index) => (
