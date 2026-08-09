@@ -1,6 +1,7 @@
-import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import { MotionConfig } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon } from './components/Icon';
+import { SettingsEntry } from './components/SettingsDialog';
 import { SharedBottomNavigation, type Destination } from './components/SharedBottomNavigation';
 import { useFinanceData, type FinanceUiError } from './data/FinanceDataProvider';
 import { OverviewScreen } from './screens/OverviewScreen';
@@ -108,91 +109,6 @@ export function ConnectionStateScreen() {
   );
 }
 
-function InfoDisclosure() {
-  const finance = useFinanceData();
-  const [open, setOpen] = useState(false);
-  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
-  const surfaceRef = useRef<HTMLElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const cancelDisconnectRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    (confirmDisconnect ? cancelDisconnectRef.current : closeRef.current)?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (confirmDisconnect) setConfirmDisconnect(false);
-        else setOpen(false);
-      }
-      if (event.key !== 'Tab') return;
-      const focusable = [...(surfaceRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], summary') ?? [])];
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [confirmDisconnect, open]);
-
-  const close = () => { setConfirmDisconnect(false); setOpen(false); };
-
-  return (
-    <>
-      {!open ? (
-        <button aria-label="Verbindung und Informationen" className="icon-button icon-button--contextual" onClick={() => setOpen(true)} type="button">
-          <Icon name="info" />
-        </button>
-      ) : <span className="info-action-placeholder" aria-hidden="true" />}
-
-      <AnimatePresence>
-        {open ? (
-          <motion.div animate={{ opacity: 1 }} className="info-scrim" exit={{ opacity: 0 }} initial={{ opacity: 0 }} onPointerDown={(event) => { if (event.currentTarget === event.target) close(); }} transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}>
-            <section aria-labelledby="info-title" aria-modal="true" className="info-surface" ref={surfaceRef} role="dialog">
-              <div className="info-surface__header">
-                <div><p>Sichere Datenquelle</p><h2 id="info-title">Finanzen · v1</h2></div>
-                <button aria-label="Informationen schließen" className="icon-button" onClick={close} ref={closeRef} type="button"><Icon name="close" /></button>
-              </div>
-
-              {confirmDisconnect ? (
-                <div className="disconnect-confirmation" role="alert" aria-live="assertive">
-                  <h3>Google-Verbindung trennen?</h3>
-                  <p>Google-Zugriff, gespeicherte Verbindung und der Offline-Datenstand auf diesem Gerät werden entfernt.</p>
-                  <div className="dialog-actions">
-                    <button className="secondary-action" onClick={() => setConfirmDisconnect(false)} ref={cancelDisconnectRef} type="button">Abbrechen</button>
-                    <button className="danger-action" onClick={() => void finance.disconnect().then(close)} type="button">Endgültig trennen</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="connection-summary">
-                    <span>{finance.email ?? 'Nicht angemeldet'}</span>
-                    <strong>{finance.spreadsheet?.name ?? 'Keine Tabelle ausgewählt'}</strong>
-                    <small>OAuth-Tokens und Google-Zugangsdaten bleiben ausschließlich auf dem Server.</small>
-                  </div>
-                  {finance.data ? (
-                    <div className="settings-actions">
-                      <button className="settings-action" disabled={finance.syncState === 'syncing'} onClick={() => void finance.refresh()} type="button"><Icon name="refresh" size={20} />Jetzt aktualisieren</button>
-                      <button className="settings-action" onClick={() => void finance.selectSpreadsheet()} type="button"><Icon name="sheet" size={20} />Andere Tabelle auswählen</button>
-                    </div>
-                  ) : null}
-                  {finance.authState === 'authenticated' ? (
-                    <div className="settings-actions settings-actions--secondary">
-                      <button className="settings-action" onClick={() => void finance.logout().then(close)} type="button"><Icon name="logout" size={20} />Abmelden</button>
-                      <button className="settings-action settings-action--danger" onClick={() => setConfirmDisconnect(true)} type="button"><Icon name="unlink" size={20} />Google-Verbindung trennen</button>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </section>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </>
-  );
-}
-
 function DataStatus() {
   const finance = useFinanceData();
   const lastUpdated = finance.lastSuccessfulRefresh ? lastUpdatedFormatter.format(new Date(finance.lastSuccessfulRefresh)) : 'noch nicht synchronisiert';
@@ -251,7 +167,7 @@ function App() {
         <div className="app-content">
           <header className="top-app-bar">
             <div className="screen-identity"><span className="brand-mark" aria-hidden="true">F</span><div><span>Finanzen</span><strong>{hasData ? screenNames[destination] : 'Verbindung'}</strong></div></div>
-            <InfoDisclosure />
+            <SettingsEntry />
           </header>
           {hasData ? <DataStatus /> : null}
           <main aria-label={hasData ? screenNames[destination] : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>

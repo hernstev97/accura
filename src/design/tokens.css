@@ -35,6 +35,8 @@
   --color-on-primary: #ffffff;
   --color-primary-container: #c5eaf6;
   --color-on-primary-container: #0b3543;
+  --color-secondary: #52606f;
+  --color-on-secondary: #ffffff;
   --color-secondary-container: #dee4f2;
   --color-on-secondary-container: #283141;
   --color-tertiary: #705882;
@@ -48,18 +50,21 @@
   --color-outline-variant: #c4c8d0;
   --color-scrim: #000000;
 
-  /*
-   * Android/OS accent roles resolve through injectable sources. Fallbacks are
-   * declared first so unsupported browsers never inherit an accidental teal
-   * from a global accent-color declaration.
-   */
+  /* Browser system colors are only a probeable progressive enhancement. */
+  --color-browser-accent-fallback: #2f667a;
+  --color-browser-on-accent-fallback: #ffffff;
+  --color-browser-accent-source: var(--color-browser-accent-fallback);
+  --color-browser-on-accent-source: var(--color-browser-on-accent-fallback);
+
+  /* Public accent roles follow the active Material Dynamic Color pair. */
   --color-system-accent-fallback: #2f667a;
   --color-on-system-accent-fallback: #ffffff;
-  --color-system-accent-source: var(--color-system-accent-fallback);
-  --color-on-system-accent-source: var(--color-on-system-accent-fallback);
+  --color-system-accent-source: var(--color-primary, var(--color-system-accent-fallback));
+  --color-on-system-accent-source: var(--color-on-primary, var(--color-on-system-accent-fallback));
+  --color-system-accent-container-source: var(--color-primary-container);
   --color-system-accent: var(--color-system-accent-source);
   --color-on-system-accent: var(--color-on-system-accent-source);
-  --color-system-accent-container: color-mix(in srgb, var(--color-system-accent) 24%, var(--color-page));
+  --color-system-accent-container: color-mix(in srgb, var(--color-system-accent) 4%, var(--color-system-accent-container-source));
   --color-system-accent-container-subtle: color-mix(in srgb, var(--color-system-accent) 12%, var(--color-page));
   --color-system-accent-state: color-mix(in srgb, var(--color-system-accent) 10%, transparent);
   --color-selected-indicator: var(--color-system-accent-container);
@@ -113,6 +118,8 @@
   --md-sys-color-on-primary: var(--color-on-primary);
   --md-sys-color-primary-container: var(--color-primary-container);
   --md-sys-color-on-primary-container: var(--color-on-primary-container);
+  --md-sys-color-secondary: var(--color-secondary);
+  --md-sys-color-on-secondary: var(--color-on-secondary);
   --md-sys-color-secondary-container: var(--color-secondary-container);
   --md-sys-color-on-secondary-container: var(--color-on-secondary-container);
   --md-sys-color-tertiary: var(--color-tertiary);
@@ -132,7 +139,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme-resolved]) {
     --color-page: #111418;
     --color-container-low: #181c21;
     --color-container: #20262c;
@@ -144,6 +151,8 @@
     --color-on-primary: #073542;
     --color-primary-container: #214e5d;
     --color-on-primary-container: #c5eaf6;
+    --color-secondary: #bdc8d8;
+    --color-on-secondary: #283240;
     --color-secondary-container: #343e4d;
     --color-on-secondary-container: #dce5f4;
     --color-tertiary: #d8bde9;
@@ -155,8 +164,8 @@
     --color-on-attention-container: #ffd9e2;
     --color-outline: #8c929a;
     --color-outline-variant: #414850;
-    --color-system-accent-fallback: #92ccdf;
-    --color-on-system-accent-fallback: #073542;
+    --color-browser-accent-fallback: #92ccdf;
+    --color-browser-on-accent-fallback: #073542;
     --chart-essential: #92ccdf;
     --chart-necessary: #9eb5c5;
     --chart-worthwhile: #d8bde9;
@@ -166,16 +175,34 @@
   }
 }
 
+:root[data-theme-resolved='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme-resolved='dark'] {
+  color-scheme: dark;
+  --color-positive-container: #30452c;
+  --color-on-positive-container: #d8ebcf;
+  --color-attention-container: #57313b;
+  --color-on-attention-container: #ffd9e2;
+  --chart-essential: #92ccdf;
+  --chart-necessary: #9eb5c5;
+  --chart-worthwhile: #d8bde9;
+  --chart-optional: #c7afcb;
+  --chart-unnecessary: #d9a3a3;
+  --chart-free: #afd09f;
+}
+
 @supports (color: AccentColor) {
   :root {
-    --color-system-accent-source: AccentColor;
-    --color-on-system-accent-source: AccentColorText;
+    --color-browser-accent-source: AccentColor;
+    --color-browser-on-accent-source: AccentColorText;
   }
 }
 
 @supports (color: AccentColor) and (color: color-mix(in srgb, red 20%, white)) {
   :root {
-    --color-system-accent-container: color-mix(in srgb, var(--color-system-accent) 24%, var(--color-page));
+    --color-system-accent-container: color-mix(in srgb, var(--color-system-accent) 4%, var(--color-system-accent-container-source));
     --color-system-accent-container-subtle: color-mix(in srgb, var(--color-system-accent) 12%, var(--color-page));
     --color-system-accent-state: color-mix(in srgb, var(--color-system-accent) 10%, transparent);
     --color-selected-indicator: var(--color-system-accent-container);

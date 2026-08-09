@@ -22,7 +22,7 @@ The browser never receives a refresh token, OAuth client secret, database URL, t
 
 Detailed design: [security and data flow](docs/security-and-data-flow.md).
 
-Interface contracts: [motion, concentric shapes, circular allocation, and system accent](docs/design-system.md).
+Interface contracts: [motion, concentric shapes, circular allocation, and local Material You appearance](docs/design-system.md).
 
 ## Stack
 
@@ -31,7 +31,7 @@ Interface contracts: [motion, concentric shapes, circular allocation, and system
 - PostgreSQL via the maintained `postgres` client
 - Zod runtime schemas
 - JOSE ID-token verification
-- Motion, Recharts, Material Web compatibility, centralized MD3 tokens
+- Motion, Recharts, Material Web compatibility, official Material Color Utilities, centralized MD3 tokens
 - `vite-plugin-pwa` service worker and IndexedDB last-good cache
 - Vitest, ESLint, TypeScript project builds, and Playwright smoke tests
 
@@ -95,6 +95,8 @@ npm run smoke:auth-sw
 
 The suites cover all schema tabs and failures, cent conversion, latest snapshots, selectors, encryption, allowlisting, OAuth state/CSRF, revoked grants, mocked Picker/Sheets, provider last-good retention, signed-out/setup/loading/stale/offline/validation/reconnect UI states, responsive layouts, dark mode, reduced motion, focus, touch targets, console/runtime errors, charts, overflow, IndexedDB, and service-worker offline reload.
 
+They also cover the complete Appearance flow: browser-accent fallback, curated Material You presets, explicit/system light-dark resolution, local image quantization, five-to-seven palette candidates, thumbnail persistence/removal, reload and offline restoration, stacked-modal keyboard behavior, and stable financial semantic colors.
+
 ## Connection lifecycle
 
 1. Sign in with the email configured in `ALLOWED_GOOGLE_EMAIL`.
@@ -107,3 +109,7 @@ The suites cover all schema tabs and failures, cent conversion, latest snapshots
 ## PWA installation
 
 Build and host over HTTPS, open the production URL in Chrome on Android, and select **App installieren** / **Zum Startbildschirm hinzufügen**. The application shell and a previously synchronized last-good snapshot remain usable offline. See the local-data caveat in [security and data flow](docs/security-and-data-flow.md#indexeddb-and-offline-implications).
+
+## Local appearance data
+
+System colors exposed to a web page are only a browser hint and are not reliable Android-wallpaper detection. The **Bild** source therefore analyzes only a JPG, PNG, or WebP that the user deliberately selects. All palette extraction stays in the browser; the original image is never uploaded or permanently stored. At most one reduced WebP preview is kept in the local `finance-appearance-v1` IndexedDB database. Applying System/Andere Farben, removing the image, or resetting appearance removes that preview. The complete generated light/dark token pair is small, versioned device-local data in `localStorage` and is intentionally independent of Google sign-out/disconnect.
