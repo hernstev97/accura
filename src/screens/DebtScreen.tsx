@@ -48,6 +48,7 @@ export function DebtScreen() {
 
       <FinancialHero
         action={<AppButton onClick={openDebtProgress} size="small" variant="tonal">Restschuldverlauf öffnen</AppButton>}
+        className="financial-hero--allocation"
         id="debt-hero"
         label="Ablösesumme heute"
         supporting="Summe der dargestellten Gläubiger"

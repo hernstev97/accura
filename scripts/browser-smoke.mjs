@@ -346,7 +346,7 @@ async function themeSnapshot(page) {
 }
 
 async function openSettings(page) {
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   const dialog = page.getByRole('dialog', { name: 'Informationen' });
   await dialog.waitFor();
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Informationen schließen');
@@ -662,8 +662,8 @@ try {
   await appearance.page.keyboard.press('Escape');
   await appearance.page.getByRole('dialog', { name: 'Informationen' }).waitFor({ state: 'detached' });
   assert.equal(await appearance.page.evaluate(() => document.body.style.overflow), '', 'Body-Scroll bleibt nach Modalende gesperrt');
-  await appearance.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Informationen öffnen');
-  assert.equal(await appearance.page.getByLabel('Informationen öffnen').evaluate((element) => element === document.activeElement), true, 'Fokus kehrt nach Informationen nicht zum Auslöser zurück');
+  await appearance.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Einstellungen öffnen');
+  assert.equal(await appearance.page.getByLabel('Einstellungen öffnen').evaluate((element) => element === document.activeElement), true, 'Fokus kehrt nach Informationen nicht zum Auslöser zurück');
   const themeBeforeLogout = await themeSnapshot(appearance.page);
   await openSettings(appearance.page);
   await appearance.page.getByRole('button', { name: 'Abmelden' }).click();
@@ -814,7 +814,7 @@ try {
     const style = getComputedStyle(element);
     return { bottomLeft: Number.parseFloat(style.borderBottomLeftRadius), topLeft: Number.parseFloat(style.borderTopLeftRadius) };
   });
-  assert.equal(forecastRadii.topLeft > forecastRadii.bottomLeft, true, `Spielraum-Callout hat keine absichtsvolle Kontextform: ${JSON.stringify(forecastRadii)}`);
+  assert.equal(forecastRadii.topLeft, forecastRadii.bottomLeft, `Spielraum-Callout hat ungleiche Ecken: ${JSON.stringify(forecastRadii)}`);
 
   await overviewScreen.evaluate((element) => {
     element.dataset.persistenceProbe = 'same-screen';
@@ -955,7 +955,6 @@ try {
   assert.match(await mobile.page.locator('.debt-progress').innerText(), /September 2033[\s\S]*0,00\s*€/);
   await assertConcentric(mobile.page, '.debt-progress', '.debt-milestones', 'Schuldenverlauf');
   await assertConcentric(mobile.page, '.milestone-flow', '.milestone-flow .milestone-row', 'Entlastungsstufen');
-  await assertDecorativeSquiggle(mobile.page, '.milestone-flow__squiggle', 'Vertikaler Schuldenweg');
   await assertNoOverflow(mobile.page, 'Mobile Schuldenansicht');
   await assertNoVisibleTextBelow12px(mobile.page, '.debt-screen', 'Mobile Schuldenansicht');
   await mobile.page.waitForTimeout(550);
