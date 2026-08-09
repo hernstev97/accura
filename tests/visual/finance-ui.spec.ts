@@ -5,8 +5,17 @@ import { installFinanceApiMocks, installPickerMock } from '../../scripts/fixture
 type Theme = 'light' | 'dark';
 type FinanceDestination = 'overview' | 'budget' | 'debt';
 type FinanceState = 'connected' | 'signed-out' | 'no-spreadsheet' | 'validation-error' | 'reconnect';
+const defaultVisualTime = new Date('2026-08-09T06:00:00Z');
+const overviewHeading = /^(?:Guten Morgen|Guten Tag|Guten Abend|Gute Nacht)$/;
 
-async function preparePage(page: Page, context: BrowserContext, state: FinanceState | 'offline-empty' = 'connected', theme: Theme = 'light') {
+async function preparePage(
+  page: Page,
+  context: BrowserContext,
+  state: FinanceState | 'offline-empty' = 'connected',
+  theme: Theme = 'light',
+  fixGreetingTime = false,
+) {
+  if (fixGreetingTime) await page.clock.setFixedTime(defaultVisualTime);
   await context.setOffline(false);
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
   await page.addInitScript(() => {
@@ -31,7 +40,7 @@ async function preparePage(page: Page, context: BrowserContext, state: FinanceSt
 }
 
 async function openDestination(page: Page, destination: FinanceDestination) {
-  const headings = { overview: 'Guten Morgen', budget: 'Dein Budget', debt: 'Dein Weg auf null' } as const;
+  const headings = { overview: overviewHeading, budget: 'Dein Budget', debt: 'Dein Weg auf null' } as const;
   if (destination !== 'overview') await page.getByRole('button', { name: destination === 'budget' ? 'Budget' : 'Schulden', exact: true }).click();
   await page.getByRole('heading', { name: headings[destination] }).waitFor();
 }
@@ -86,7 +95,7 @@ for (const scenario of [
 ]) {
   test(`412 light ${scenario.name}`, async ({ page, context }) => {
     await page.setViewportSize({ width: 412, height: 915 });
-    await preparePage(page, context);
+    await preparePage(page, context, 'connected', 'light', scenario.destination === 'overview');
     await openDestination(page, scenario.destination);
     await scenario.interact?.(page);
     if (scenario.destination === 'overview' || scenario.destination === 'budget') {
@@ -110,9 +119,32 @@ for (const scenario of [
   });
 }
 
+test('overview greeting follows the local device time', async ({ page, context }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'light', true);
+
+  for (const { time, greeting } of [
+    { time: '2026-08-09T02:00:00Z', greeting: 'Gute Nacht' },
+    { time: '2026-08-09T06:00:00Z', greeting: 'Guten Morgen' },
+    { time: '2026-08-09T12:00:00Z', greeting: 'Guten Tag' },
+    { time: '2026-08-09T18:00:00Z', greeting: 'Guten Abend' },
+    { time: '2026-08-09T21:00:00Z', greeting: 'Gute Nacht' },
+  ]) {
+    await page.clock.setFixedTime(new Date(time));
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByRole('heading', { name: greeting })).toBeVisible();
+  }
+
+  await page.clock.setSystemTime(new Date('2026-08-09T08:59:59Z'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.getByRole('heading', { name: 'Guten Morgen' })).toBeVisible();
+  await page.clock.fastForward(1_000);
+  await expect(page.getByRole('heading', { name: 'Guten Tag' })).toBeVisible();
+});
+
 test('412 light info dialog', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
-  await preparePage(page, context);
+  await preparePage(page, context, 'connected', 'light', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
   await page.getByLabel('Informationen öffnen').click();
   await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
@@ -121,7 +153,7 @@ test('412 light info dialog', async ({ page, context }) => {
 
 test('412 light disconnect confirmation', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
-  await preparePage(page, context);
+  await preparePage(page, context, 'connected', 'light', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
   await page.getByLabel('Informationen öffnen').click();
   await page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
@@ -136,7 +168,7 @@ for (const scenario of [
 ]) {
   test(`412 dark ${scenario.name}`, async ({ page, context }) => {
     await page.setViewportSize({ width: 412, height: 915 });
-    await preparePage(page, context, 'connected', 'dark');
+    await preparePage(page, context, 'connected', 'dark', scenario.destination === 'overview');
     await openDestination(page, scenario.destination);
     await capture(page, `412-dark-${scenario.name}.png`);
   });
@@ -151,7 +183,7 @@ test('412 dark validation error', async ({ page, context }) => {
 
 test('412 dark info dialog', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
-  await preparePage(page, context, 'connected', 'dark');
+  await preparePage(page, context, 'connected', 'dark', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
   await page.getByLabel('Informationen öffnen').click();
   await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
@@ -163,7 +195,7 @@ for (const viewport of [{ width: 768, height: 1024 }, { width: 1440, height: 100
     for (const destination of ['overview', 'budget', 'debt'] as const) {
       test(`${viewport.width} ${theme} ${destination}`, async ({ page, context }) => {
         await page.setViewportSize(viewport);
-        await preparePage(page, context, 'connected', theme);
+        await preparePage(page, context, 'connected', theme, destination === 'overview');
         await openDestination(page, destination);
         await capture(page, `${viewport.width}-${theme}-${destination}.png`);
       });

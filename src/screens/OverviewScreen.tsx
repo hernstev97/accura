@@ -14,9 +14,11 @@ import { SurfaceSection } from '../components/SurfaceSection';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { formatCurrency, percentFormatter } from '../lib/format';
+import { useTimeOfDayGreeting } from '../lib/timeOfDayGreeting';
 
 export function OverviewScreen() {
   const data = useFinanceViewModel();
+  const greeting = useTimeOfDayGreeting();
   const [allocationDetailed, setAllocationDetailed] = useState(false);
   const [showEmptyPockets, setShowEmptyPockets] = useState(false);
   const freeMoney = data.totals.freeMoney;
@@ -32,7 +34,7 @@ export function OverviewScreen() {
 
   return (
     <ScreenEntrance className="overview-screen" destination="overview" labelledBy="overview-title">
-      <ScreenHeader id="overview-title" supporting={`Dein ${data.meta.monthLabel} auf einen Blick.`} title="Guten Morgen" />
+      <ScreenHeader id="overview-title" supporting={`Dein ${data.meta.monthLabel} auf einen Blick.`} title={greeting} />
 
       <FinancialHero
         action={(

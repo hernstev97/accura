@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import { installFinanceApiMocks } from './fixtures/anonymous-finance-data.mjs';
 
 const baseUrl = process.env.SMOKE_URL ?? 'http://127.0.0.1:4173';
+const overviewHeading = /^(?:Guten Morgen|Guten Tag|Guten Abend|Gute Nacht)$/;
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'de-DE', serviceWorkers: 'allow' });
 const page = await context.newPage();
@@ -15,7 +16,7 @@ page.on('pageerror', (error) => errors.push({ message: `Laufzeit: ${error.messag
 try {
   await installFinanceApiMocks(page);
   await page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await page.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.equal(await page.locator('[data-destination="overview"]').getAttribute('data-entrance'), 'first');
   await page.getByLabel('Informationen öffnen').click();
   await page.getByRole('button', { name: /Farben & Design/ }).click();
@@ -41,7 +42,7 @@ try {
   await page.unrouteAll({ behavior: 'wait' });
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
-  await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await page.getByRole('heading', { name: overviewHeading }).waitFor();
   await page.waitForFunction(() => document.fonts.check('16px "Google Sans Flex Variable"'));
   const offlineFont = await page.evaluate(async () => {
     const cacheNames = await caches.keys();
