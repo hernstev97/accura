@@ -19,23 +19,37 @@ export function useModalDialog({
 }) {
   useEffect(() => {
     if (!active) return;
-    const frame = requestAnimationFrame(() => initialFocusRef.current?.focus({ preventScroll: true }));
+    const frame = requestAnimationFrame(() => (initialFocusRef.current ?? surfaceRef.current)?.focus({ preventScroll: true }));
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!surfaceRef.current?.contains(document.activeElement)) return;
       if (event.key !== 'Tab') return;
-      const focusable = [...(surfaceRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])]
+      const surface = surfaceRef.current;
+      if (!surface) return;
+
+      const focusable = [...(surface.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])]
         .filter((element) => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true');
+
       if (!focusable.length) {
         event.preventDefault();
-        surfaceRef.current?.focus();
+        surface.focus();
         return;
       }
+
       const first = focusable[0];
       const last = focusable.at(-1)!;
-      if (event.shiftKey && document.activeElement === first) {
+      const activeElement = document.activeElement;
+      const isInside = surface.contains(activeElement) && activeElement !== surface;
+
+      if (!isInside) {
+        event.preventDefault();
+        if (event.shiftKey) {
+          last.focus();
+        } else {
+          first.focus();
+        }
+      } else if (event.shiftKey && activeElement === first) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && activeElement === last) {
         event.preventDefault();
         first.focus();
       }

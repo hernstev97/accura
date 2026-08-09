@@ -41,13 +41,13 @@ export function AdaptiveDialog({
     if (!open || !dialog) return;
     const returnFocusTarget = returnFocusRef?.current;
     if (!dialog.open) dialog.showModal();
-    const frame = requestAnimationFrame(() => initialFocusRef?.current?.focus({ preventScroll: true }));
+    const frame = requestAnimationFrame(() => activeInitialFocusRef.current?.focus({ preventScroll: true }));
     return () => {
       cancelAnimationFrame(frame);
       if (dialog.open) dialog.close();
       requestAnimationFrame(() => returnFocusTarget?.focus({ preventScroll: true }));
     };
-  }, [initialFocusRef, open, returnFocusRef]);
+  }, [activeInitialFocusRef, open, returnFocusRef]);
 
   if (!open || typeof document === 'undefined') return null;
 

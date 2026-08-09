@@ -128,6 +128,7 @@
 
 .budget-chart-panel[hidden] { display: none; }
 .budget-chart-panel:focus { outline: 0; }
+.budget-chart-panel:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; border-radius: var(--shape-section-outer); }
 .budget-chart { overflow: hidden; }
 .chart-frame__footer { margin-top: var(--space-4); }
 
@@ -153,7 +154,7 @@
   background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
-.debt-hero-status > span:not(.debt-hero-status__icon) { font-size: 12px; line-height: 16px; opacity: 0.76; }
+.debt-hero-status > span:not(.debt-hero-status__icon) { font-size: 12px; line-height: 16px; opacity: 0.88; }
 .debt-hero-status strong { font-size: 16px; line-height: 22px; }
 
 .supporting-note {
