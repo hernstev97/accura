@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 
 export function useChartAnimation(reducedMotion: boolean | null, changeKey: string, durationMs: number) {
-  const [active, setActive] = useState(() => !reducedMotion);
+  const isReduced = Boolean(reducedMotion);
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
-    if (reducedMotion) {
+    if (isReduced) {
       setActive(false);
       return;
     }
     setActive(true);
     const timeout = window.setTimeout(() => setActive(false), durationMs + 40);
     return () => window.clearTimeout(timeout);
-  }, [changeKey, durationMs, reducedMotion]);
+  }, [changeKey, durationMs, isReduced]);
 
-  return reducedMotion ? false : active;
+  return isReduced ? false : active;
 }

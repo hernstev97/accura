@@ -124,7 +124,15 @@ export function BudgetScreen() {
             tabIndex={0}
           >
             {chartView === option.id ? (hasChartValues ? (
-              <div className="budget-chart" data-animation-active={chartAnimationActive} data-chart-mode={chartView} style={{ height: chartHeight }}>
+              <div
+                aria-describedby={`budget-chart-summary-${option.id}`}
+                aria-label={chartTitle}
+                className="budget-chart"
+                data-animation-active={chartAnimationActive}
+                data-chart-mode={chartView}
+                role="img"
+                style={{ height: chartHeight }}
+              >
                 <BarChart
                   accessibilityLayer
                   data={chartData}
@@ -183,12 +191,12 @@ export function BudgetScreen() {
                 <p>Für diese Ansicht sind im aktuellen Datenstand keine positiven Beträge vorhanden.</p>
               </InlineNotice>
             )) : null}
+
+            <div className="sr-only" id={`budget-chart-summary-${option.id}`} role="list">
+              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrency(item.amount)}. </span>)}
+            </div>
           </div>
         ))}
-
-        <div className="sr-only" role="list">
-          {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrency(item.amount)}. </span>)}
-        </div>
       </ChartFrame>
     </ScreenEntrance>
   );
