@@ -60,7 +60,7 @@
 .screen-entrance[data-entrance='first'] > :nth-child(4) { animation-delay: 84ms; }
 
 .financial-hero .circular-allocation {
-  width: min(100%, 158px);
+  width: min(100%, 180px);
   color: inherit;
 }
 
@@ -84,7 +84,6 @@
 }
 
 .circular-allocation__arc {
-  filter: none;
   transition-duration: var(--motion-default);
 }
 

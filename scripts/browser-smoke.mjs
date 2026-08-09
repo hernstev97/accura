@@ -278,7 +278,7 @@ async function assertRingCenterFits(page, ringSelector, label) {
 
 async function assertLayeredRing(page, ringSelector, label) {
   const geometry = await page.locator(ringSelector).evaluate((ring) => ({
-    arcs: [...ring.querySelectorAll('[data-allocation-id]')].map((arc) => ({
+    arcs: [...ring.querySelectorAll('.circular-allocation__arc[data-allocation-id]')].map((arc) => ({
       cap: Number(arc.getAttribute('data-cap-extension')),
       dash: Number(arc.getAttribute('data-dash-length')),
       dasharray: arc.getAttribute('stroke-dasharray'),
@@ -287,17 +287,28 @@ async function assertLayeredRing(page, ringSelector, label) {
       overlapBefore: Number(arc.getAttribute('data-overlap-before')),
       tiny: arc.getAttribute('data-tiny') === 'true',
       visible: Number(arc.getAttribute('data-visible-span')),
+      id: arc.getAttribute('data-allocation-id'),
+    })),
+    endCaps: [...ring.querySelectorAll('[data-allocation-end-cap]')].map((cap) => ({
+      id: cap.getAttribute('data-allocation-end-cap'),
+      overlays: cap.getAttribute('data-overlays-allocation-id'),
+      shape: cap.getAttribute('data-overlay-shape'),
     })),
     markup: ring.innerHTML,
     mode: ring.getAttribute('data-geometry'),
   }));
-  assert.equal(geometry.mode, 'layered-overlap', `${label}: falscher Geometriemodus`);
+  assert.equal(geometry.mode, 'directed-end-cap-overlap', `${label}: falscher Geometriemodus`);
   assert.equal(/NaN|Infinity|undefined/.test(geometry.markup), false, `${label}: ungültiges SVG-Attribut`);
   assert.deepEqual(geometry.arcs.map(({ order }) => order), geometry.arcs.map((_, index) => index), `${label}: Zeichenreihenfolge ist instabil`);
   assert.equal(geometry.arcs.every(({ cap, dash, visible }) => Number.isFinite(cap) && Number.isFinite(dash) && Number.isFinite(visible) && dash >= 0 && visible > 0 && visible <= 100), true, `${label}: ungültige Bogenlänge`);
   assert.equal(geometry.arcs.every(({ cap, dash, visible }) => approximately(dash + cap * 2, visible, 0.02)), true, `${label}: Rundkappen wurden nicht aus der sichtbaren Länge korrigiert`);
   assert.equal(geometry.arcs.every(({ overlapAfter, overlapBefore }) => overlapAfter > 0 && overlapBefore > 0), true, `${label}: Layer-Überlappung fehlt`);
   assert.equal(geometry.arcs.every(({ dasharray }) => dasharray && !dasharray.includes('-')), true, `${label}: ungültiges stroke-dasharray`);
+  assert.deepEqual(geometry.endCaps, geometry.arcs.length > 1 ? geometry.arcs.map(({ id }, index, arcs) => ({
+    id,
+    overlays: arcs[(index + 1) % arcs.length].id,
+    shape: 'full-circle',
+  })) : [], `${label}: Endkappen liegen nicht gerichtet über dem Folgesegment`);
 }
 
 async function accentSnapshot(page) {

@@ -12,7 +12,6 @@ import { MetricCard } from '../components/MetricCard';
 import { MetricGrid } from '../components/MetricGrid';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { Squiggle } from '../components/Squiggle';
 import { SurfaceSection } from '../components/SurfaceSection';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import { createPaddedChartDomain } from '../design/chartScale';

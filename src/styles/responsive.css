@@ -1,11 +1,38 @@
 @container financial-hero (max-width: 460px) {
-  .financial-hero__composition {
+  .financial-hero--allocation .financial-hero__composition {
+    grid-template-columns: minmax(0, 1fr) clamp(164px, 48cqi, 180px);
+    min-height: 190px;
+    gap: var(--space-2);
+  }
+
+  .financial-hero--allocation .financial-hero__visual {
+    width: 100%;
+    margin: 0;
+  }
+
+  .financial-hero--allocation .financial-hero__value {
+    font-size: clamp(27px, 8.5cqi, 32px);
+  }
+
+  .financial-hero--allocation .financial-hero__supporting {
+    font-variation-settings: 'ROND' var(--type-body-rond), 'wdth' 85;
+    letter-spacing: -0.02em;
+  }
+
+  .financial-hero--allocation .financial-hero__action .app-button--small {
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+}
+
+@container financial-hero (max-width: 315px) {
+  .financial-hero--allocation .financial-hero__composition {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
   }
 
-  .financial-hero__visual {
-    width: min(100%, 164px);
+  .financial-hero--allocation .financial-hero__visual {
+    width: min(100%, 168px);
     margin: var(--space-2) auto 0;
   }
 }
@@ -187,12 +214,12 @@
 }
 
 @media (min-width: 1200px) {
-  .financial-hero__composition {
-    grid-template-columns: minmax(0, 1fr) 180px;
+  .financial-hero--allocation .financial-hero__composition {
+    grid-template-columns: minmax(0, 1fr) 196px;
   }
 
   .financial-hero .circular-allocation {
-    width: 174px;
+    width: 190px;
   }
 
   .allocation-legend {
@@ -215,6 +242,7 @@
   .segmented-control__indicator-slot,
   .circular-allocation g,
   .circular-allocation__arc,
+  .circular-allocation__end-cap,
   .debt-chart,
   .is-rotated {
     transition-duration: 0ms;
@@ -235,7 +263,8 @@
 
   .adaptive-navigation__indicator,
   .segmented-control__indicator-slot,
-  .circular-allocation__arc {
+  .circular-allocation__arc,
+  .circular-allocation__end-cap {
     forced-color-adjust: none;
   }
 }

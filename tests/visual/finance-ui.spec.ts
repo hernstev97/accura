@@ -45,6 +45,37 @@ async function expectNoAxeViolations(page: Page, label: string) {
   expect(result.violations, `${label}: ${JSON.stringify(result.violations, null, 2)}`).toEqual([]);
 }
 
+async function expectCompactHeroRingBesideCopy(page: Page, destination: 'overview' | 'budget') {
+  const geometry = await page.locator(`.${destination}-screen .financial-hero`).evaluate((hero) => {
+    const content = hero.querySelector('.financial-hero__content')?.getBoundingClientRect();
+    const ringElement = hero.querySelector('.circular-allocation');
+    const ring = ringElement?.getBoundingClientRect();
+    const centerValue = hero.querySelector('.circular-allocation__center strong');
+    const arcIds = [...(ringElement?.querySelectorAll('.circular-allocation__arc[data-allocation-id]') ?? [])]
+      .map((arc) => arc.getAttribute('data-allocation-id'));
+    return {
+      arcIds,
+      endCaps: [...(ringElement?.querySelectorAll('[data-allocation-end-cap]') ?? [])].map((cap) => ({
+        id: cap.getAttribute('data-allocation-end-cap'),
+        overlays: cap.getAttribute('data-overlays-allocation-id'),
+        shape: cap.getAttribute('data-overlay-shape'),
+      })),
+      contentRight: content?.right ?? 0,
+      ringLeft: ring?.left ?? 0,
+      ringWidth: ring?.width ?? 0,
+      centerWhiteSpace: centerValue ? getComputedStyle(centerValue).whiteSpace : '',
+    };
+  });
+  expect(geometry.ringLeft).toBeGreaterThanOrEqual(geometry.contentRight - 0.5);
+  expect(geometry.ringWidth).toBeGreaterThanOrEqual(164);
+  expect(geometry.centerWhiteSpace).toBe('nowrap');
+  expect(geometry.endCaps).toEqual(geometry.arcIds.length > 1 ? geometry.arcIds.map((id, index, arcIds) => ({
+    id,
+    overlays: arcIds[(index + 1) % arcIds.length],
+    shape: 'full-circle',
+  })) : []);
+}
+
 for (const scenario of [
   { name: 'overview-default', destination: 'overview' as const },
   { name: 'overview-detailed', destination: 'overview' as const, interact: async (page: Page) => page.locator('.overview-screen .circular-allocation__button').click() },
@@ -58,6 +89,9 @@ for (const scenario of [
     await preparePage(page, context);
     await openDestination(page, scenario.destination);
     await scenario.interact?.(page);
+    if (scenario.destination === 'overview' || scenario.destination === 'budget') {
+      await expectCompactHeroRingBesideCopy(page, scenario.destination);
+    }
     await capture(page, `412-light-${scenario.name}.png`);
   });
 }

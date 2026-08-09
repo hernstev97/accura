@@ -45,6 +45,7 @@ export function OverviewScreen() {
             {allocationDetailed ? 'Kompakte Aufteilung' : 'Aufteilung umschalten'}
           </AppButton>
         )}
+        className="financial-hero--allocation"
         footer={(
           <AllocationLegend items={segments.map((segment) => ({
             color: segment.color,
