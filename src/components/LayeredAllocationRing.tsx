@@ -88,9 +88,9 @@ export function LayeredAllocationRing({
         </g>
       </svg>
       <span className="circular-allocation__center" data-center-size={centerSize} aria-hidden="true">
-        <small>{centerLabel}</small>
         <strong data-testid="allocation-center-value">{centerValue}</strong>
-        {centerSupporting ? <span>{centerSupporting}</span> : null}
+        <small>{centerLabel}</small>
+        {/* {centerSupporting ? <span>{centerSupporting}</span> : null} */}
       </span>
       <span className="sr-only" data-testid="allocation-accessible-summary">{summary}</span>
     </>

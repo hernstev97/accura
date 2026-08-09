@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode, type RefObject } from 'react';
 import { useAppearance } from '../appearance/AppearanceProvider';
 import { analyzeWallpaperFile, WALLPAPER_IMAGE_ERROR, WallpaperAnalysisRaceGuard } from '../appearance/imagePalette';
 import { createWallpaperPalettes, preferenceFromCandidate, presetPalettes } from '../appearance/themePalettes';
 import type { ColorSource, PaletteCandidate, ResolvedThemeMode, ThemeMode, ThemeTokenSet } from '../appearance/types';
+import { AdaptiveDialog } from './AdaptiveDialog';
 import { Icon, type IconName } from './Icon';
-import { useModalDialog } from './useModalDialog';
 
 const sourceOptions: readonly { value: ColorSource; label: string; icon: IconName }[] = [
   { value: 'browser', label: 'System', icon: 'system' },
@@ -105,9 +104,10 @@ function SourceContent({ children }: { children: ReactNode }) {
 type ColorThemeDialogProps = {
   open: boolean;
   onClose: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
-export function ColorThemeDialog({ open, onClose }: ColorThemeDialogProps) {
+export function ColorThemeDialog({ open, onClose, returnFocusRef }: ColorThemeDialogProps) {
   const appearance = useAppearance();
   const activeRef = useRef(appearance);
   activeRef.current = appearance;
@@ -181,8 +181,6 @@ export function ColorThemeDialog({ open, onClose }: ColorThemeDialogProps) {
     requestGuard.current.invalidate();
     onClose();
   }, [onClose]);
-
-  useModalDialog({ active: open, surfaceRef, initialFocusRef: closeRef, onEscape: close });
 
   const activeCandidates = source === 'browser' ? [browserPalette] : source === 'preset' ? presetPalettes : wallpaperCandidates;
   const selectedId = source === 'browser' ? browserPalette.id : source === 'preset' ? presetId : wallpaperId;
@@ -289,20 +287,19 @@ export function ColorThemeDialog({ open, onClose }: ColorThemeDialogProps) {
     }
   };
 
-  if (!open || typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div className="color-theme-layer" onPointerDown={(event) => { if (event.currentTarget === event.target) close(); }}>
-      <section
-        aria-labelledby="color-theme-title"
-        aria-modal="true"
-        className="color-theme-dialog"
-        data-color-source={source}
-        ref={surfaceRef}
-        role="dialog"
-        style={previewTokens as CSSProperties}
-        tabIndex={-1}
-      >
+  return (
+    <AdaptiveDialog
+      ariaLabelledBy="color-theme-title"
+      className="color-theme-layer"
+      initialFocusRef={closeRef}
+      onClose={close}
+      open={open}
+      presentation="fullscreen"
+      returnFocusRef={returnFocusRef}
+      surfaceClassName="color-theme-dialog"
+      surfaceRef={surfaceRef}
+      style={previewTokens as CSSProperties}
+    >
         <header className="color-theme-dialog__header">
           <button aria-label="Farben schließen" className="icon-button color-theme-dialog__close" onClick={close} ref={closeRef} type="button"><Icon name="close" /></button>
           <h2 id="color-theme-title">Farben</h2>
@@ -374,8 +371,6 @@ export function ColorThemeDialog({ open, onClose }: ColorThemeDialogProps) {
             <SegmentedRadio id="appearance-source" label="Farbquelle" onChange={chooseSource} options={sourceOptions} value={source} />
           </section>
         </div>
-      </section>
-    </div>,
-    document.body,
+    </AdaptiveDialog>
   );
 }

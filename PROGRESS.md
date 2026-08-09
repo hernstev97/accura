@@ -17,3 +17,8 @@
 - 09.08.2026: ACC-3 Appearance-Domain mit browsergestütztem Akzent-Fallback, neun kuratierten Material-You-Paletten, lokalem Bild-Worker, versionierten Light-/Dark-Tokens und separater Thumbnail-IndexedDB ergänzt.
 - 09.08.2026: Info-Einstieg durch zugängliche Einstellungen und einen responsiven Farben-Dialog mit Draft-Vorschau, nativen Radio-Swatches, Fokusfallen und stabiler Finanzsemantik ersetzt.
 - 09.08.2026: Unit-, Production-Build-, Browser- und Offline-Prüfungen um Persistenz, OS-Moduswechsel, Bild-Races, 320-/412-/Desktop-Komposition sowie Theme-Erhalt bei Logout/Disconnect erweitert.
+- 09.08.2026: ACC-2 vereinheitlicht Overview, Budget und Schulden auf gemeinsame ScreenHeader-, FinancialHero-, AllocationLegend-, Metric-, Surface-, DataList-, Notice-, Button- und Chart-Rollen; Finanzlogik und Datenverträge bleiben unverändert.
+- 09.08.2026: App-Shell auf eine adaptive Bottom-Navigation/96-px-Rail, ein einheitliches SyncStatusBanner sowie gemeinsame Connection-, Lade-, Offline-, Reconnect- und Validierungszustände umgestellt.
+- 09.08.2026: Informations- und Farbdialoge auf native adaptive Dialoge mit gestapelter Inertheit, Fokusbegrenzung, Escape-Verhalten, Scroll-Lock und Fokuswiederherstellung migriert.
+- 09.08.2026: Dynamische Chart-Skalen, sichtbare Balkenwerte, WCAG-AA-Axe-Prüfungen, Forced Colors, sechs Reflow-Breiten und 26 deterministische Light-/Dark-Golden-Screens ergänzt; Design-System- und Linear-Abnahmekriterien aktualisiert.
+- 09.08.2026: Informationsdialog visuell und inhaltlich nachgeschärft: neutrale Darstellungsaktion, korrekter lokaler/Offline-Datenquellenstatus, zustandsabhängige Datenschutztexte und Aktionen sowie durchgehend Google Sans Flex mit `ROND: 100`.
