@@ -17,7 +17,7 @@ try {
   await page.goto(baseUrl, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
   assert.equal(await page.locator('[data-destination="overview"]').getAttribute('data-entrance'), 'first');
-  await page.getByLabel('Einstellungen öffnen').click();
+  await page.getByLabel('Informationen öffnen').click();
   await page.getByRole('button', { name: /Farben & Design/ }).click();
   const colors = page.getByRole('dialog', { name: 'Farben' });
   await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
@@ -33,7 +33,7 @@ try {
     };
   });
   assert.equal(onlineAppearance.source, 'preset');
-  await page.getByLabel('Einstellungen schließen').click();
+  await page.getByLabel('Informationen schließen').click();
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload({ waitUntil: 'networkidle' });
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker kontrolliert die Seite nicht');
@@ -61,7 +61,7 @@ try {
     };
   });
   assert.match(offlineFont.family, /Google Sans Flex Variable/, 'Offline-Ansicht verwendet nicht Google Sans Flex');
-  assert.match(offlineFont.variation, /"ROND" 100/, 'Offline-Ansicht verlor die ROND-Achse');
+  assert.match(offlineFont.variation, /"ROND" 100/, 'Offline-Ansicht verlor die vollständig gerundete Google-Sans-Flex-Rolle');
   assert.ok(offlineFont.cachedFontCount >= 1, 'Google Sans Flex ist nicht im Service-Worker-App-Shell-Cache');
   assert.ok(offlineFont.cachedPaletteWorkerCount >= 1, 'Palette-Worker ist nicht im Service-Worker-App-Shell-Cache');
   assert.deepEqual({ mode: offlineFont.mode, primary: offlineFont.primary, source: offlineFont.source }, onlineAppearance, 'Gespeichertes Theme wurde offline nicht synchron wiederhergestellt');
@@ -73,8 +73,12 @@ try {
   assert.match(offlineText, /Coolblue endet im September 2026/);
   assert.match(offlineText, /Danach voraussichtlich 305,32\s*€ frei/);
   assert.match(offlineText, /Offline · gespeicherter Stand/);
-  await page.getByLabel('Einstellungen öffnen').click();
-  assert.match(await page.getByRole('dialog', { name: 'Einstellungen' }).innerText(), /Andere Farben · Systemmodus/);
+  await page.getByLabel('Informationen öffnen').click();
+  const offlineInfo = await page.getByRole('dialog', { name: 'Informationen' }).innerText();
+  assert.match(offlineInfo, /Andere Farben · Systemmodus/);
+  assert.match(offlineInfo, /Offline verfügbar[\s\S]*Anonyme Finanzen/);
+  assert.match(offlineInfo, /lokal auf diesem Gerät verfügbar/);
+  assert.doesNotMatch(offlineInfo, /Jetzt aktualisieren|Andere Tabelle auswählen|Abmelden blendet Finanzdaten aus/);
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Budget', exact: true }).click();
   await page.getByRole('heading', { name: 'Dein Budget' }).waitFor();

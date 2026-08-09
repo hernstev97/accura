@@ -9,20 +9,46 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  /* Centralized type roles keep rounded expression deliberate, not uniformly loud. */
+  /* Every role uses the fully rounded Google Sans Flex cut; width and weight retain hierarchy. */
   --type-family: 'Google Sans Flex Variable', 'Segoe UI', system-ui, sans-serif;
-  --type-screen-size: clamp(30px, 7.4vw, 34px);
-  --type-screen-line: 1.08;
-  --type-screen-weight: 740;
-  --type-section-size: 21px;
-  --type-section-line: 1.22;
-  --type-section-weight: 690;
-  --type-primary-value-size: clamp(34px, 9vw, 42px);
-  --type-primary-value-line: 1.05;
-  --type-primary-value-weight: 680;
-  --type-financial-value-weight: 660;
+  --type-screen-size: clamp(32px, 7vw, 40px);
+  --type-screen-line: 1.05;
+  --type-screen-weight: 720;
+  --type-screen-rond: 100;
+  --type-screen-width: 100;
+  --type-hero-size: clamp(32px, 10cqi, 48px);
+  --type-hero-line: 1;
+  --type-hero-weight: 690;
+  --type-hero-rond: 100;
+  --type-hero-width: 96;
+  --type-section-size: 22px;
+  --type-section-line: 28px;
+  --type-section-weight: 680;
+  --type-section-rond: 100;
+  --type-component-size: 16px;
+  --type-component-line: 22px;
+  --type-component-weight: 650;
+  --type-component-rond: 100;
+  --type-body-size: 14px;
+  --type-body-line: 20px;
+  --type-body-weight: 450;
+  --type-body-rond: 100;
+  --type-label-size: 12px;
+  --type-label-line: 16px;
   --type-label-weight: 620;
-  --type-supporting-weight: 430;
+  --type-label-rond: 100;
+  --type-chart-size: 11px;
+  --type-chart-line: 16px;
+  --type-chart-weight: 560;
+  --type-metric-size: clamp(20px, 6cqi, 24px);
+  --type-metric-line: 1.1;
+  --type-metric-weight: 660;
+  --type-metric-rond: 100;
+  --type-primary-value-size: var(--type-hero-size);
+  --type-primary-value-line: var(--type-hero-line);
+  --type-primary-value-weight: var(--type-hero-weight);
+  --type-financial-value-weight: var(--type-metric-weight);
+  --type-supporting-weight: var(--type-body-weight);
 
   --color-page: #f7f9fe;
   --color-container-low: #f0f3f9;
@@ -44,6 +70,8 @@
   --color-on-tertiary-container: #392846;
   --color-positive-container: #d8ebcf;
   --color-on-positive-container: #264221;
+  --color-warning-container: #f8e6b9;
+  --color-on-warning-container: #4c3900;
   --color-attention-container: #ffd9e2;
   --color-on-attention-container: #5b2635;
   --color-outline: #74777f;
@@ -76,6 +104,10 @@
   --chart-optional: #9b829f;
   --chart-unnecessary: #aa7777;
   --chart-free: #58784c;
+  --chart-grid: color-mix(in srgb, var(--color-outline-variant) 72%, transparent);
+  --chart-cursor: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  --chart-line-width: 3px;
+  --chart-bar-radius: 11px;
 
   /* Concentric geometry: inner radius = max(0px, outer radius - real inset). */
   --shape-role-outer: 36px;
@@ -86,15 +118,16 @@
   --shape-current-outer: var(--shape-section-outer);
   --shape-current-inset: var(--shape-nested-inset);
   --shape-calculated-inner: max(0px, calc(var(--shape-current-outer) - var(--shape-current-inset)));
-  --shape-grouped-list-outer: 26px;
+  --shape-nested-card: 20px;
+  --shape-grouped-list-outer: 24px;
   --shape-grouped-list-inset: 2px;
   --shape-grouped-list-inner: max(0px, calc(var(--shape-grouped-list-outer) - var(--shape-grouped-list-inset)));
-  --shape-grouped-list-shared-inner: 7px;
+  --shape-grouped-list-shared-inner: 6px;
   --shape-nested: var(--shape-section-inner);
   --shape-group-inner: var(--shape-grouped-list-shared-inner);
   --shape-segment-shell: 28px;
   --shape-segment-selected: max(0px, calc(var(--shape-segment-shell) - 4px));
-  --shape-contextual: 22px 22px 22px 8px;
+  --shape-contextual: 22px 22px 22px 22px;
   --shape-pill: 999px;
   --shape-full: var(--shape-pill);
 
@@ -107,35 +140,21 @@
   --space-7: 32px;
   --space-8: 40px;
 
+  --screen-inset: 16px;
+  --screen-section-gap: 24px;
+  --surface-padding: 20px;
+  --touch-target: 48px;
+  --state-action-height: 56px;
+
   --motion-fast: 120ms;
   --motion-short: 180ms;
+  --motion-default: 180ms;
+  --motion-slow: 240ms;
+  --motion-screen: 260ms;
   --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --motion-spatial-fast: linear(0, 0.18 4.8%, 0.62 12%, 0.88 18%, 1.02 24%, 1.08 31%, 1.03 44%, 1 62%, 1);
+  --motion-spatial-default: linear(0, 0.12 4%, 0.48 11%, 0.8 18%, 0.98 27%, 1.05 36%, 1.02 54%, 1 74%, 1);
 
-  /* Material Web remains mapped to the same design source. */
-  --md-ref-typeface-brand: var(--type-family);
-  --md-ref-typeface-plain: var(--type-family);
-  --md-sys-color-primary: var(--color-primary);
-  --md-sys-color-on-primary: var(--color-on-primary);
-  --md-sys-color-primary-container: var(--color-primary-container);
-  --md-sys-color-on-primary-container: var(--color-on-primary-container);
-  --md-sys-color-secondary: var(--color-secondary);
-  --md-sys-color-on-secondary: var(--color-on-secondary);
-  --md-sys-color-secondary-container: var(--color-secondary-container);
-  --md-sys-color-on-secondary-container: var(--color-on-secondary-container);
-  --md-sys-color-tertiary: var(--color-tertiary);
-  --md-sys-color-tertiary-container: var(--color-tertiary-container);
-  --md-sys-color-on-tertiary-container: var(--color-on-tertiary-container);
-  --md-sys-color-surface: var(--color-page);
-  --md-sys-color-on-surface: var(--color-on-surface);
-  --md-sys-color-on-surface-variant: var(--color-on-surface-variant);
-  --md-sys-color-surface-container-lowest: var(--color-surface-bright);
-  --md-sys-color-surface-container-low: var(--color-container-low);
-  --md-sys-color-surface-container: var(--color-container);
-  --md-sys-color-surface-container-high: var(--color-container-high);
-  --md-sys-color-surface-container-highest: var(--color-container-high);
-  --md-sys-color-outline: var(--color-outline);
-  --md-sys-color-outline-variant: var(--color-outline-variant);
-  --md-sys-color-scrim: var(--color-scrim);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -160,6 +179,8 @@
     --color-on-tertiary-container: #eddff6;
     --color-positive-container: #30452c;
     --color-on-positive-container: #d8ebcf;
+    --color-warning-container: #4b3d1e;
+    --color-on-warning-container: #f8e6b9;
     --color-attention-container: #57313b;
     --color-on-attention-container: #ffd9e2;
     --color-outline: #8c929a;
@@ -183,6 +204,8 @@
   color-scheme: dark;
   --color-positive-container: #30452c;
   --color-on-positive-container: #d8ebcf;
+  --color-warning-container: #4b3d1e;
+  --color-on-warning-container: #f8e6b9;
   --color-attention-container: #57313b;
   --color-on-attention-container: #ffd9e2;
   --chart-essential: #92ccdf;

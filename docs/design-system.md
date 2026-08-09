@@ -1,20 +1,50 @@
 # Interface design system
 
-The interface keeps a compact Material Design 3 composition and uses expressive details only where they carry state or progression. React owns financial and interaction state; CSS owns stable geometry, entrance timing, system-accent fallback, and reduced-motion behavior.
+ACC-2 defines one calm-expressive Material 3 grammar for the complete finance PWA. Expression is reserved for the primary amount, progress, semantic notices, selection, and the next useful action. Supporting copy, lists, metadata, and ordinary surfaces stay deliberately quiet. React owns finance and interaction state; CSS owns role geometry, typography, color, motion, safe areas, and adaptive presentation.
+
+The UI is implemented with native React, HTML, CSS, and Recharts primitives. `@material/web` is not part of the client: there is no second component theme or hidden typography system to keep in sync.
+
+## Source and ownership contract
+
+`src/styles.css` is only an ordered import manifest:
+
+| File | Responsibility |
+| --- | --- |
+| `styles/base.css` | reset, local typeface, focus, scrolling, and document defaults |
+| `styles/shell.css` | top bar, sync banner, Bottom Navigation, and Navigation Rail |
+| `styles/primitives.css` | buttons, heroes, metrics, sections, lists, notices, charts, and dialogs |
+| `styles/screens.css` | screen composition only; no new token values |
+| `styles/states.css` | connection, loading, setup, offline, and error states |
+| `styles/responsive.css` | breakpoints, container queries, safe areas, Reduced Motion, and Forced Colors |
+
+Shared React roles are `ScreenHeader`, `FinancialHero`, `AllocationLegend`, `MetricGrid`/`MetricCard`, `SurfaceSection`, `DataList`/`DataListItem`, `InlineNotice`, `AppButton`, `AdaptiveNavigation`, `AdaptiveDialog`, `FinanceChartTooltip`, and `LoadingIndicator`. Overview, Budget, and Debt compose these roles; they do not create screen-local card dialects.
 
 ## Typography contract
 
-The application uses the official Google Fonts distribution of Google Sans Flex v22, bundled as full-axis Latin and Latin Extended WOFF2 files for the offline app shell. Source, version, and the retained SIL OFL 1.1 license are documented in [`docs/fonts/`](./fonts/README.md). The application does not use an unofficial “Google Sans Rounded” face: `ROND: 100`, `wdth: 100`, automatic optical sizing, and role-specific weights produce the rounded treatment.
+The application uses the official Google Fonts distribution of Google Sans Flex v22, bundled as full-axis Latin and Latin Extended WOFF2 files for the offline app shell. Source, version, and the retained SIL OFL 1.1 license are documented in [`docs/fonts/`](./fonts/README.md). Optical sizing stays automatic. Every visible type role uses the fully rounded `ROND: 100` cut; role hierarchy continues to come from size, weight, width, color, and spacing.
 
-`src/design/tokens.css` owns the screen, section, primary-value, financial-value, label, and supporting-copy roles. The family and variation settings inherit through every route and lazy-loaded screen, while Material Web typeface variables and Recharts text are explicitly mapped to the same source. Tabular lining numerals are the default so all money and date columns remain stable.
+| Role | Size / line height | Weight | `ROND` / `wdth` | Use |
+| --- | --- | ---: | --- | --- |
+| Screen title | `clamp(32px, 7vw, 40px) / 1.05` | 720 | 100 / 100 | destination and central state titles |
+| Hero numeral | `clamp(32px, 10cqi, 48px) / 1` | 690 | 100 / 96 | one primary finance amount per screen |
+| Section title | `22px / 28px` | 680 | 100 / 100 | content sections |
+| Component title | `16px / 22px` | 650 | 100 / 100 | cards and list rows |
+| Body | `14px / 20px` | 450 | 100 / 100 | explanatory copy |
+| Label | `12px / 16px` | 620 | 100 / 100 | fields and statuses |
+| Compact chart | `11px / 16px` | 560 | 100 / 100 | chart helpers only |
+| Metric numeral | `20–24px / 1.1` | 660 | 100 / 98 | secondary finance values |
 
-## Motion contract
+Visible product information never renders below 12 px. Currency values use tabular lining numerals, never ellipsis, and never wrap. Hero and metric numerals use container-relative clamps so 320 px reflow remains complete.
 
-Every destination uses `ScreenEntrance`. A destination is considered visited when its first committed screen mounts. The visited set is stored under `finance-screen-visits-v1` in `sessionStorage`, with an in-memory fallback for blocked storage. A first visit animates only opacity and a `translateY(18px)` transform for meaningful top-level sections: 300 ms emphasized easing with a 36 ms stagger. Immediately visible grouped children use a capped four-item, 32 ms stagger. Revisit, data refresh, theme change, expansion, and chart selection do not claim another entrance. Reduced motion renders the final state without an animation.
+## Color and elevation contract
 
-Destination switching has no exit transition or layout projection. Expandable surfaces and chart frames use normal document layout without broad layout springs. Direct indicators use a 200 ms emphasized transform and immediately retarget on repeated input.
+Petrol/teal `#2F667A` remains the deterministic product fallback. The active system/browser palette drives focus, primary actions, selected navigation, and segmented selection. It never replaces financial semantics: positive/free is green, reserves are tertiary violet, and debt/attention is pink-red. Semantic hero tones share the same saturation and geometry contracts.
 
-## Concentric shape contract
+Normal content surfaces use tonal elevation (`page`, `container-low`, `container`, `container-high`, and `surface-bright`). Shadows are restricted to adaptive navigation and modal surfaces. Dark mode does not use pure-black content surfaces. Static token pairs target 4.5:1 for normal text and 3:1 for large text and non-text UI.
+
+## Spacing and shape contract
+
+The layout uses a 4 px grid. Compact screen inset is 16 px, medium is 24 px, and expanded is 32 px. Main-section gaps are 24 px compact and 32 px from 600 px. Surface padding is 20 px compact and 24 px from 600 px. List rows are at least 64 px (72 px when supporting copy is present); actions are at least 48 px and central state actions are 56 px.
 
 Nested surfaces follow one geometric rule:
 
@@ -22,20 +52,59 @@ Nested surfaces follow one geometric rule:
 inner radius = max(0px, outer radius - actual inset distance)
 ```
 
-The actual inset includes padding and border thickness between visible boundaries. `src/design/tokens.css` exposes the outer role, section, grouped-list, shared-edge, inset, calculated-inner, and pill roles. Components set `--shape-current-outer` and `--shape-current-inset` to their real geometry, then consume the centralized `max()/calc()` relationship. Examples:
+The actual inset includes padding and border thickness between visible boundaries. Canonical outer roles are Hero 36 px, Section 28 px, nested card 20 px, and grouped list 24 px with 6 px shared edges. Components set `--shape-current-outer` and `--shape-current-inset` before consuming the centralized `max()/calc()` relationship.
 
 | Relationship | Outer | Inset | Inner |
 | --- | ---: | ---: | ---: |
-| Overview hero → allocation metric | 36 px | 20 px | 16 px |
-| Section group → paired metric | 28 px | 8 px | 20 px |
-| Pockets section → pocket tile | 28 px | 16 px | 12 px |
-| Expanded Pockets → pocket tile | 36 px | 16 px | 20 px |
-| Allocation section → reserve row | 28 px | 16 px | 12 px |
-| Grouped list → exposed row corners | 26 px | 2 px | 24 px |
+| Financial Hero → allocation legend item | 36 px | 20 px | 16 px |
+| Metric grid → Metric Card | 28 px | 8 px | 20 px |
+| Pockets section → pocket tile, compact | 28 px | 20 px | 8 px |
+| Expanded Pockets → pocket tile, compact | 36 px | 20 px | 16 px |
+| Chart section → debt milestone group, compact | 28 px | 20 px | 8 px |
+| Grouped list → exposed row corners | 24 px | 2 px | 22 px |
 | Segmented shell → selected indicator | 28 px | 4 px | 24 px |
-| Bottom navigation → selected indicator | 28 px | 7 px | 21 px / pill |
+| Bottom Navigation → selected indicator | 28 px | 8 px | 20 px |
 
-Adjacent grouped rows use `--shape-grouped-list-shared-inner` on shared edges; only the exposed first and last corners use the concentric outer-minus-inset radius.
+Adjacent grouped rows use 6 px corners on shared edges. The asymmetric contextual shape is reserved for positive/progressive notices and marks.
+
+## Motion contract
+
+Effects use 120 ms fast, 180 ms default, and 240 ms slow durations with `cubic-bezier(0.2, 0, 0, 1)`. Spatial indicator movement uses the bounded spatial easing tokens; color, opacity, and scrims never overshoot.
+
+Every destination uses `ScreenEntrance`. A destination is considered visited when its first committed screen mounts. The visited set is stored under `finance-screen-visits-v1` in `sessionStorage`, with an in-memory fallback for blocked storage. A first visit animates opacity and `translateY(12px)` for at most four top-level children over 260 ms with a 28 ms stagger. Revisit, data refresh, theme change, expansion, and chart selection do not replay the entrance. There is no exit transition, broad layout projection, or animated finance numeral.
+
+With `prefers-reduced-motion: reduce`, translation, stagger, indicator movement, chart motion, and shape morphing render immediately in their final state.
+
+## Adaptive layout contract
+
+- Below 600 px, a safe-area-aware sticky top bar and sync banner lead a single-column flow. One fixed Bottom Navigation occupies the bottom edge; document scroll padding keeps focused and final content above it.
+- From 600–839 px, the same reading order and Bottom Navigation remain. The content lane grows to at most 760 px and grids may add columns.
+- From 840 px, `.app-content--connected` is a 96 px Navigation Rail plus one main column. The same single `nav` element becomes sticky inside the app canvas; no duplicate navigation landmark exists. The app canvas is at most 1120 px and the content lane at most 880 px.
+- From 1200 px, heroes, legends, metrics, and lists may widen without introducing a separate dashboard information architecture or masonry ordering.
+
+The semantic DOM order is identical at every breakpoint. The browser smoke matrix covers 320, 360, 412, 768, 840, and 1440 px.
+
+## Shared finance-screen contract
+
+All three destinations use this top-level rhythm: `ScreenHeader` → `FinancialHero` → `MetricGrid` → ordered content sections. The hero always owns exactly one primary amount, the same geometry and numeral role, a contextual visual, and a 48 px follow-up action zone.
+
+| Role | Overview | Budget | Debt |
+| --- | --- | --- | --- |
+| Primary amount | free money | monthly income | payoff today |
+| Hero tone | positive | accent | attention |
+| Visual | interactive allocation ring | static allocation ring | debt target status |
+| Metrics | current cash, planned reserves | reserves, free | scheduled total, future cost |
+| Follow-up | toggle allocation | choose chart view | open debt progress |
+
+Overview and Budget share `AllocationLegend`. Accounts and creditors share `DataList`. Budget and both debt charts share `ChartFrame`/`SurfaceSection` and `FinanceChartTooltip`.
+
+## Global state and dialog contract
+
+`SyncStatusBanner` has one stable location and one targeted live region across all destinations. Healthy/syncing is low-priority tonal UI; stale, offline, reconnect, and validation use warning or danger tokens. Refresh remains a 48 px action, and linked details stay within the banner.
+
+`ConnectionStateLayout` owns signed-out, no-spreadsheet, disconnected, reconnect, validation, offline-without-cache, loading, and picker-validation composition. Tone and content vary; width, mark, title, copy, and the 56 px action zone do not. `ValidationIssues` is a grouped disclosure whose readable copy is at least 12 px.
+
+`AdaptiveDialog` uses native `<dialog>`/`showModal()`. It is a bottom sheet below 600 px and a centered surface above it; the color editor uses the same basis with a fullscreen compact presentation. The app background is inert, body scrolling is locked, Escape and scrim close only the topmost layer, and focus returns to the exact trigger. Disconnect confirmation stays in the Information dialog with tonal cancel and destructive confirmation actions.
 
 ## Layered allocation-ring contract
 
@@ -44,6 +113,32 @@ Adjacent grouped rows use `--shape-grouped-list-shared-inner` on shared edges; o
 All segments share one clockwise circle and input order is the draw order: every later segment rests on top of the previous one. The geometry assigns a small shared overlap at each boundary, then subtracts the visible extension of both round caps from the centerline dash. This produces deliberate capsule layering without random gaps or swollen contiguous-dash intersections. The final share absorbs floating-point residue. Segments below the tiny-share threshold use a narrower rounded capsule and a bounded minimum dash so they remain visible without reading as a major category. A thick neutral tonal track remains underneath in light and dark mode.
 
 The SVG remains mounted when the overview switches between its planned/free summary and detailed three-role state. The native button exposes `aria-pressed`, a localized accessible summary generated from the same cents, and keyboard activation.
+
+## Chart contract
+
+Recharts remains the rendering layer. `ChartFrame` supplies the same section heading/action surface for Budget, remaining debt, and debt relief. `FinanceChartTooltip` owns localized currency formatting and the tonal tooltip surface; chart components do not carry inline tooltip themes.
+
+Axis color, grid color, cursor color, label size, bar radius, line width, and padding consume central tokens. Every visible bar row retains its label and formatted Euro amount outside the tooltip. Color is reinforced by labels and a structured text alternative. Empty or all-zero data renders an `InlineNotice` rather than an empty plot.
+
+`src/design/chartScale.ts` calculates finite, padded, rounded domains. The debt-relief chart exposes its calculated and source extents for regression checks so neither minimum nor maximum can be clipped by a legacy fixed domain. Unit tests cover ordinary, flat, negative, invalid, and empty inputs.
+
+## Accessibility contract
+
+- Visible buttons and other direct actions have at least a 48 × 48 px target; central connection-state actions are 56 px high.
+- Keyboard focus uses a 3 px indicator with a 3 px offset and a dedicated contrast token.
+- `ScreenHeader`, `SurfaceSection`, and `ChartFrame` provide stable heading IDs and `aria-labelledby` relationships.
+- The budget selector is a native tab model with `aria-controls`, roving `tabIndex`, Arrow keys, Home, and End.
+- Expandable rings, pockets, validation groups, and debt progress expose state and valid controlled IDs.
+- Native dialogs provide modal background inertness; the manual guard only completes focus wrapping and stacked-dialog restoration.
+- Destination changes focus the main landmark without a scroll jump. Sync changes use one intentional live region.
+- Every chart has visible values plus a structured text alternative. Financial meaning is never encoded by color alone.
+- Reduced Motion and Forced Colors render complete content. The 320 px layout is also the reflow contract for 200% text zoom on a 640 CSS-pixel canvas.
+
+Automated Axe checks run without blanket exclusions and fail on serious/critical findings or WCAG 2 A/AA violations.
+
+## Visual-regression contract
+
+`playwright.config.ts` fixes Chromium, locale, timezone, device scale factor 1, local font readiness, explicit accent tokens, hidden carets, and completed motion. `tests/visual/finance-ui.spec.ts` owns full-page Golden Screenshots for financial screens, connection states, native dialogs, Light/Dark, mobile/tablet, and the expanded Navigation Rail. Updates require the explicit `npm run test:visual:update` command; the ordinary `npm run test:visual` command never rewrites baselines.
 
 ## Appearance and Material You colors
 
@@ -96,7 +191,7 @@ The original image is neither uploaded nor persisted. A separate `finance-appear
 
 ### Dialog and swatch contract
 
-The top app bar opens **Einstellungen**, whose Darstellung group opens the independent **Farben** modal. The underlying app is inert; when Farben is stacked above Einstellungen, the settings surface is also inert and hidden from assistive technology. Both dialogs trap focus, close only the top layer on Escape, restore focus to their trigger, prevent body scroll leakage, and keep every interaction target at least 48 px.
+The top app bar opens **Informationen**, whose Darstellung group opens the independent **Farben** modal. The underlying app is inert; when Farben is stacked above Informationen, the information surface is also inert and hidden from assistive technology. Both dialogs trap focus, close only the top layer on Escape, restore focus to their trigger, prevent body scroll leakage, and keep every interaction target at least 48 px.
 
 The Farben dialog keeps draft mode/source/palette state local. Close, Escape, or scrim discards it; Apply atomically activates the full pair and optional thumbnail. The preview is a private-data-free miniature of this finance app on real draft tokens—not an Android home-screen imitation. Wallpaper imagery remains in a clearly labeled source crop and never becomes the app surface.
 
@@ -104,4 +199,4 @@ Palette choices are a named native radio group. Every 62 px circular swatch uses
 
 ## Decorative roles
 
-`Squiggle` is a reusable static, pointer-transparent SVG with horizontal and vertical paths. It is always decorative and `aria-hidden`, uses a 3.5 px rounded semantic stroke, and never loops. The vertical green path connects debt-relief milestones, the directional path reinforces the debt target summary, and one compact horizontal path separates context from the projected value in the next-relief callout. These are compositional progression cues, not card wallpaper.
+`Squiggle` is a reusable static, pointer-transparent SVG. It is always decorative and `aria-hidden`, uses a 3.5 px rounded semantic stroke, and never loops. ACC-2 retains it only for the vertical debt-relief milestone sequence, where it explains actual temporal progression. The overview notice and creditor list contain no decorative connector or meaningless numbering.
