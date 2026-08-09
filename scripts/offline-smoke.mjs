@@ -18,7 +18,7 @@ try {
   await page.goto(baseUrl, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.equal(await page.locator('[data-destination="overview"]').getAttribute('data-entrance'), 'first');
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('button', { name: /Farben & Design/ }).click();
   const colors = page.getByRole('dialog', { name: 'Farben' });
   await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
@@ -74,7 +74,7 @@ try {
   assert.match(offlineText, /Coolblue endet im September 2026/);
   assert.match(offlineText, /Danach voraussichtlich 305,32\s*€ frei/);
   assert.match(offlineText, /Offline · gespeicherter Stand/);
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   const offlineInfo = await page.getByRole('dialog', { name: 'Informationen' }).innerText();
   assert.match(offlineInfo, /Andere Farben · Systemmodus/);
   assert.match(offlineInfo, /Offline verfügbar[\s\S]*Anonyme Finanzen/);

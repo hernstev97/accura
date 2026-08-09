@@ -65,7 +65,7 @@ The actual inset includes padding and border thickness between visible boundarie
 | Segmented shell → selected indicator | 28 px | 4 px | 24 px |
 | Bottom Navigation → selected indicator | 28 px | 8 px | 20 px |
 
-Adjacent grouped rows use 6 px corners on shared edges. The asymmetric contextual shape is reserved for positive/progressive notices and marks.
+Adjacent grouped rows use 6 px corners on shared edges. The contextual shape (22 px) is used for positive/progressive notices and marks.
 
 ## Motion contract
 
