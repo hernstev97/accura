@@ -1109,18 +1109,6 @@ button:disabled {
   background: var(--color-container);
 }
 
-.milestone-flow__squiggle {
-  position: absolute;
-  z-index: 3;
-  top: 26px;
-  bottom: 26px;
-  left: 27px;
-  width: 18px;
-  height: calc(100% - 52px);
-  color: var(--chart-free);
-  opacity: 0.62;
-}
-
 .milestone-row {
   position: relative;
   z-index: 2;

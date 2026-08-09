@@ -92,7 +92,8 @@ export async function installFinanceApiMocks(page, state = 'connected') {
     if (state === 'no-spreadsheet') return route.fulfill({ json: { ...anonymousSession, connection: { connected: true, spreadsheet: null } } });
     return route.fulfill({ json: anonymousSession });
   });
-  await page.route('**/api/finance', (route) => {
+  await page.route('**/api/finance', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 80));
     if (state === 'validation-error') return route.fulfill({ status: 422, json: { error: { code: 'invalid_finance_schema', message: 'Die Tabelle entspricht nicht Finance Data Schema v1.', details: { issues: [{ tab: '_Meta', row: 2, column: 'schema_version', message: 'Schema-Version wird nicht unterstützt.', expected: '1' }] } } } });
     if (state === 'reconnect') return route.fulfill({ status: 401, json: { error: { code: 'reconnect_required', message: 'Die Google-Verbindung muss erneut autorisiert werden.' } } });
     return route.fulfill({ json: anonymousFinanceResponse });
