@@ -76,7 +76,7 @@ describe('accura branding contracts', () => {
     expect(meta('name', 'twitter:title')).toBe(ACCURA_PAGE_TITLE);
     expect(meta('name', 'twitter:description')).toBe(ACCURA_DESCRIPTION);
     expect(meta('name', 'twitter:image')).toBe('/icons/pwa-512.png');
-    expect(indexHtml).toContain('rel="icon" type="image/svg+xml" href="/icons/accura-source.svg"');
+    expect(indexHtml).toContain('rel="icon" type="image/svg+xml" href="/icons/favicon.svg"');
     expect(indexHtml).toContain('rel="apple-touch-icon" sizes="192x192" href="/icons/pwa-192.png"');
     expect(indexHtml).not.toMatch(/rel="canonical"|property="og:url"/);
   });
