@@ -14,3 +14,6 @@
 - 08.08.2026: Finance Data Schema v1 mit centgenauer Normalisierung, Laufzeitvalidierung, Fremdschlüsseln, Snapshot-Auswahl und versionierter Domänengrenze ergänzt.
 - 08.08.2026: React-Datenprovider, manuelle/automatische Aktualisierung, Last-known-good-IndexedDB-Cache sowie Setup-, Offline-, Fehler- und Reconnect-Zustände integriert.
 - 08.08.2026: Persönliche Produktions-Fixture entfernt; Tests und Browser-Mocks verwenden ausschließlich anonyme Daten.
+- 09.08.2026: ACC-3 Appearance-Domain mit browsergestütztem Akzent-Fallback, neun kuratierten Material-You-Paletten, lokalem Bild-Worker, versionierten Light-/Dark-Tokens und separater Thumbnail-IndexedDB ergänzt.
+- 09.08.2026: Info-Einstieg durch zugängliche Einstellungen und einen responsiven Farben-Dialog mit Draft-Vorschau, nativen Radio-Swatches, Fokusfallen und stabiler Finanzsemantik ersetzt.
+- 09.08.2026: Unit-, Production-Build-, Browser- und Offline-Prüfungen um Persistenz, OS-Moduswechsel, Bild-Races, 320-/412-/Desktop-Komposition sowie Theme-Erhalt bei Logout/Disconnect erweitert.

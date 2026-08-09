@@ -15,6 +15,8 @@ Vercel Function trust boundary ───── PostgreSQL
         │ normalized FinanceDataV1 only
         ▼
 Browser PWA ───── IndexedDB last-known-good FinanceDataV1
+     │
+     └────────── local Appearance tokens + reduced wallpaper preview
 ```
 
 The browser is untrusted. It receives a signed-in status, CSRF token, selected file metadata, normalized finance records, and—only while opening Picker—a short-lived Google access token plus public Picker configuration. It never receives the Google refresh token, OAuth client secret, database credential, encryption key, or session secret.
@@ -101,6 +103,12 @@ The service worker precaches the application shell. After a successful sync, the
 This cache deliberately contains personal financial data in plaintext under the browser profile. It contains no OAuth token or server credential. Anyone with access to the unlocked browser profile may be able to inspect it. Device encryption, a locked OS account, and browser-profile hygiene remain user responsibilities.
 
 When the session endpoint is unreachable during offline startup, the PWA may display this cached snapshot without revalidating the HttpOnly session, because no server is reachable. It is clearly marked offline/stale. Signing out hides data but keeps the local snapshot for subsequent offline use by the same private-device owner. Disconnecting is the destructive privacy action and removes it.
+
+Appearance data has a separate boundary. The versioned `finance-appearance-v1` local-storage record contains only selected source/mode metadata, Material seed/variant identifiers, and complete generated light/dark CSS token sets. The same-named IndexedDB database may contain one reduced WebP thumbnail under `assets / wallpaper-preview`. It contains no original file, file path, object URL, Google data, or finance record.
+
+An image reaches this boundary only after an explicit local file-picker action. Decode, downscaling, Celebi quantization, scoring, and palette generation all run in the browser; no image request is sent to an API. The original bytes are released after analysis and never persisted. Applying System or a curated palette, confirming image removal, or resetting Appearance deletes the thumbnail. If IndexedDB is blocked, theme tokens still apply and persist where local storage is available, but the preview does not survive reload.
+
+Appearance is deliberately device/profile-local and independent of the Google account lifecycle. Logout and Google disconnect do not remove it; they continue to affect only the session, server connection, and finance-data cache described above.
 
 ## Refresh behavior
 

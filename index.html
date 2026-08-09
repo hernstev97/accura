@@ -3,13 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f7f9fe" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f9fe" media="(prefers-color-scheme: light)" data-theme-fallback="light" />
+    <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)" data-theme-fallback="dark" />
+    <meta name="theme-color" content="#f7f9fe" data-appearance-theme-color="active" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Persönlicher Finanzüberblick für Budget, Konten und Schulden." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Finanzen</title>
+    <script>
+      (() => {
+        try {
+          const preference = JSON.parse(localStorage.getItem('finance-appearance-v1') || 'null');
+          const tokenNames = ['--color-page', '--color-container-low', '--color-container', '--color-container-high', '--color-surface-bright', '--color-on-surface', '--color-on-surface-variant', '--color-primary', '--color-on-primary', '--color-primary-container', '--color-on-primary-container', '--color-secondary', '--color-on-secondary', '--color-secondary-container', '--color-on-secondary-container', '--color-tertiary', '--color-on-tertiary', '--color-tertiary-container', '--color-on-tertiary-container', '--color-outline', '--color-outline-variant', '--color-scrim'];
+          const validMode = ['system', 'light', 'dark'].includes(preference?.mode);
+          const validSource = ['browser', 'wallpaper', 'preset'].includes(preference?.source);
+          const validPalette = typeof preference?.palette?.id === 'string' && preference.palette.id.length > 0
+            && typeof preference.palette.name === 'string' && preference.palette.name.length > 0
+            && /^#[\da-f]{6}$/i.test(preference.palette.seed || '')
+            && ['tonalSpot', 'neutral', 'vibrant', 'expressive', 'monochrome'].includes(preference.palette.variant);
+          const validWallpaper = typeof preference?.wallpaper?.hasPreview === 'boolean'
+            && Array.isArray(preference.wallpaper.seeds) && preference.wallpaper.seeds.length <= 3
+            && preference.wallpaper.seeds.every((seed) => /^#[\da-f]{6}$/i.test(seed));
+          const validTokens = ['light', 'dark'].every((mode) => tokenNames.every((name) => /^#[\da-f]{6}$/i.test(preference?.theme?.[mode]?.[name] || '')));
+          if (!preference || preference.version !== 1 || !validMode || !validSource || !validPalette || !validWallpaper || !validTokens) return;
+          const resolved = preference.mode === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference.mode;
+          const root = document.documentElement;
+          root.dataset.themeMode = preference.mode;
+          root.dataset.themeResolved = resolved;
+          root.dataset.colorSource = preference.source;
+          root.dataset.appearanceReady = 'true';
+          root.style.colorScheme = resolved;
+          tokenNames.forEach((name) => root.style.setProperty(name, preference.theme[resolved][name]));
+          const meta = document.querySelector('meta[data-appearance-theme-color]');
+          if (meta) meta.content = preference.theme[resolved]['--color-page'];
+        } catch {
+          // CSS light/dark fallbacks remain authoritative when storage is unavailable.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

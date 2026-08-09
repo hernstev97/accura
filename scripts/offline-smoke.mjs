@@ -17,6 +17,23 @@ try {
   await page.goto(baseUrl, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
   assert.equal(await page.locator('[data-destination="overview"]').getAttribute('data-entrance'), 'first');
+  await page.getByLabel('Einstellungen öffnen').click();
+  await page.getByRole('button', { name: /Farben & Design/ }).click();
+  const colors = page.getByRole('dialog', { name: 'Farben' });
+  await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+  await colors.getByRole('radio', { name: 'Grün', exact: true }).check();
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  const onlineAppearance = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      mode: document.documentElement.dataset.themeMode,
+      primary: style.getPropertyValue('--color-primary').trim(),
+      source: document.documentElement.dataset.colorSource,
+    };
+  });
+  assert.equal(onlineAppearance.source, 'preset');
+  await page.getByLabel('Einstellungen schließen').click();
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload({ waitUntil: 'networkidle' });
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker kontrolliert die Seite nicht');
@@ -35,13 +52,19 @@ try {
     const style = getComputedStyle(document.documentElement);
     return {
       cachedFontCount: cachedRequests.filter(({ url }) => /google-sans-flex.*\.woff2/.test(url)).length,
+      cachedPaletteWorkerCount: cachedRequests.filter(({ url }) => /palette\.worker.*\.js/.test(url)).length,
       family: style.fontFamily,
+      mode: document.documentElement.dataset.themeMode,
+      primary: style.getPropertyValue('--color-primary').trim(),
+      source: document.documentElement.dataset.colorSource,
       variation: style.fontVariationSettings,
     };
   });
   assert.match(offlineFont.family, /Google Sans Flex Variable/, 'Offline-Ansicht verwendet nicht Google Sans Flex');
   assert.match(offlineFont.variation, /"ROND" 100/, 'Offline-Ansicht verlor die ROND-Achse');
   assert.ok(offlineFont.cachedFontCount >= 1, 'Google Sans Flex ist nicht im Service-Worker-App-Shell-Cache');
+  assert.ok(offlineFont.cachedPaletteWorkerCount >= 1, 'Palette-Worker ist nicht im Service-Worker-App-Shell-Cache');
+  assert.deepEqual({ mode: offlineFont.mode, primary: offlineFont.primary, source: offlineFont.source }, onlineAppearance, 'Gespeichertes Theme wurde offline nicht synchron wiederhergestellt');
   const offlineOverview = page.locator('[data-destination="overview"]');
   assert.equal(await offlineOverview.getAttribute('data-entrance'), 'visited', 'Service-Worker-Reload spielte den Eingang erneut ab');
   assert.equal(await offlineOverview.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
@@ -50,6 +73,9 @@ try {
   assert.match(offlineText, /Coolblue endet im September 2026/);
   assert.match(offlineText, /Danach voraussichtlich 305,32\s*€ frei/);
   assert.match(offlineText, /Offline · gespeicherter Stand/);
+  await page.getByLabel('Einstellungen öffnen').click();
+  assert.match(await page.getByRole('dialog', { name: 'Einstellungen' }).innerText(), /Andere Farben · Systemmodus/);
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Budget', exact: true }).click();
   await page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
   await page.getByRole('button', { name: 'Schulden', exact: true }).click();
@@ -61,7 +87,7 @@ try {
     return !expectedOfflineSessionFailure;
   });
   assert.deepEqual(unexpectedErrors, [], unexpectedErrors.map(({ message, url }) => `${message} (${url})`).join('\n'));
-  console.log('Offline-Smoke-Test bestanden: App-Shell, lokales Google Sans Flex und letzter gültiger normalisierter Datenstand laden offline aus Service Worker und IndexedDB.');
+  console.log('Offline-Smoke-Test bestanden: App-Shell, lokales Google Sans Flex, Palette-Worker, gespeichertes Material-You-Theme und letzter gültiger normalisierter Datenstand laden offline.');
 } finally {
   await context.setOffline(false);
   await context.close();

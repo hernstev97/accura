@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { installFinanceApiMocks, installPickerMock } from './fixtures/anonymous-finance-data.mjs';
+import { createAppearanceImageFixture } from './fixtures/appearance-image.mjs';
 
 const baseUrl = process.env.SMOKE_URL ?? 'http://127.0.0.1:5173';
 const browser = await chromium.launch({ headless: true });
@@ -193,6 +194,106 @@ async function accentSnapshot(page) {
   });
 }
 
+async function themeSnapshot(page) {
+  return page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      mode: document.documentElement.dataset.themeMode,
+      resolved: document.documentElement.dataset.themeResolved,
+      source: document.documentElement.dataset.colorSource,
+      page: style.getPropertyValue('--color-page').trim(),
+      primary: style.getPropertyValue('--color-primary').trim(),
+      primaryContainer: style.getPropertyValue('--color-primary-container').trim(),
+      positive: style.getPropertyValue('--color-positive-container').trim(),
+      attention: style.getPropertyValue('--color-attention-container').trim(),
+      reserve: style.getPropertyValue('--chart-worthwhile').trim(),
+      free: style.getPropertyValue('--chart-free').trim(),
+    };
+  });
+}
+
+async function openSettings(page) {
+  await page.getByLabel('Einstellungen öffnen').click();
+  const dialog = page.getByRole('dialog', { name: 'Einstellungen' });
+  await dialog.waitFor();
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Einstellungen schließen');
+  return dialog;
+}
+
+async function openColors(page) {
+  await page.getByRole('button', { name: /Farben & Design/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Farben' });
+  await dialog.waitFor();
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Farben schließen');
+  return dialog;
+}
+
+async function appearancePreviewExists(page) {
+  return page.evaluate(() => new Promise((resolve) => {
+    const request = indexedDB.open('finance-appearance-v1', 1);
+    request.onerror = () => resolve(false);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains('assets')) request.result.createObjectStore('assets');
+    };
+    request.onsuccess = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains('assets')) { database.close(); resolve(false); return; }
+      const getRequest = database.transaction('assets', 'readonly').objectStore('assets').get('wallpaper-preview');
+      getRequest.onsuccess = () => { resolve(Boolean(getRequest.result?.blob)); database.close(); };
+      getRequest.onerror = () => { resolve(false); database.close(); };
+    };
+  }));
+}
+
+async function assertModalWithinViewport(page, selector, label) {
+  const geometry = await page.locator(selector).evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      bottom: bounds.bottom,
+      height: bounds.height,
+      left: bounds.left,
+      right: bounds.right,
+      top: bounds.top,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+  assert.equal(geometry.left >= -0.5 && geometry.right <= geometry.viewportWidth + 0.5, true, `${label} läuft horizontal aus dem Viewport: ${JSON.stringify(geometry)}`);
+  assert.equal(geometry.top >= -0.5 && geometry.bottom <= geometry.viewportHeight + 0.5, true, `${label} läuft vertikal aus dem Viewport: ${JSON.stringify(geometry)}`);
+}
+
+async function assertAppearanceControlLayout(dialog, label) {
+  const segmented = await dialog.locator('.appearance-segmented__option').evaluateAll((options) => options.map((option) => {
+    const bounds = option.getBoundingClientRect();
+    const copy = option.querySelector('span');
+    return {
+      height: bounds.height,
+      labelFits: copy.scrollWidth <= copy.clientWidth + 1,
+      width: bounds.width,
+    };
+  }));
+  assert.equal(segmented.every(({ height, labelFits, width }) => height >= 47.5 && width >= 47.5 && labelFits), true, `${label} enthält ein zu kleines oder abgeschnittenes Segment: ${JSON.stringify(segmented)}`);
+
+  const focusGeometry = await dialog.locator('.palette-swatch[data-selected="true"]').evaluate((swatch) => {
+    swatch.querySelector('input').focus();
+    const color = swatch.querySelector('.palette-swatch__color');
+    const scroller = swatch.closest('.palette-swatches');
+    const colorBounds = color.getBoundingClientRect();
+    const scrollerBounds = scroller.getBoundingClientRect();
+    const style = getComputedStyle(color);
+    const focusExtent = Number.parseFloat(style.outlineWidth) + Number.parseFloat(style.outlineOffset);
+    return {
+      bottom: colorBounds.bottom + focusExtent <= scrollerBounds.bottom + 0.5,
+      left: colorBounds.left - focusExtent >= scrollerBounds.left - 0.5,
+      right: colorBounds.right + focusExtent <= scrollerBounds.right + 0.5,
+      size: { height: colorBounds.height, width: colorBounds.width },
+      top: colorBounds.top - focusExtent >= scrollerBounds.top - 0.5,
+    };
+  });
+  assert.equal(focusGeometry.size.height >= 58 && focusGeometry.size.width >= 58, true, `${label} enthält eine zu kleine Palette: ${JSON.stringify(focusGeometry)}`);
+  assert.equal(focusGeometry.top && focusGeometry.right && focusGeometry.left && focusGeometry.bottom, true, `${label} schneidet den Swatch-Fokusrahmen ab: ${JSON.stringify(focusGeometry)}`);
+}
+
 async function assertDecorativeSquiggle(page, selector, label) {
   const geometry = await page.locator(selector).evaluate((element) => {
     const bounds = element.getBoundingClientRect();
@@ -268,11 +369,240 @@ try {
 
   const logout = await statePage('connected');
   await logout.page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await logout.page.getByLabel('Verbindung und Informationen').click();
+  await openSettings(logout.page);
   await logout.page.getByRole('button', { name: 'Abmelden' }).click();
   await logout.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
   assert.deepEqual(logout.errors, [], logout.errors.join('\n'));
   await logout.context.close();
+
+  const appearance = await statePage('connected');
+  await appearance.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await appearance.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  const initialTheme = await themeSnapshot(appearance.page);
+  const settings = await openSettings(appearance.page);
+  const settingsSurface = appearance.page.locator('.settings-surface');
+  assert.equal(await settings.getAttribute('aria-modal'), 'true');
+  assert.equal(await appearance.page.getByLabel('Einstellungen schließen').evaluate((element) => element === document.activeElement), true, 'Einstellungsdialog setzt keinen sinnvollen Anfangsfokus');
+  await assertModalWithinViewport(appearance.page, '.settings-surface', 'Einstellungen 412×915');
+  await appearance.page.screenshot({ path: '/tmp/finance-appearance-settings-412x915.png' });
+
+  let colors = await openColors(appearance.page);
+  assert.equal(await colors.getAttribute('aria-modal'), 'true');
+  assert.equal(await colors.getByRole('button', { name: 'Anwenden', exact: true }).isDisabled(), true, 'Anwenden ist ohne Draft-Änderung aktiv');
+  assert.equal(await appearance.page.evaluate(() => document.body.style.overflow), 'hidden', 'Modal verhindert Body-Scroll-Leak nicht');
+  assert.equal(await settingsSurface.getAttribute('aria-hidden'), 'true', 'Einstellungen bleiben hinter dem Farbdialog für Assistive Technology sichtbar');
+  assert.equal(await settingsSurface.getAttribute('inert'), '', 'Einstellungen bleiben hinter dem Farbdialog bedienbar');
+  assert.equal(await appearance.page.locator('.app-shell').getAttribute('inert'), '', 'App-Hintergrund bleibt während des Modals bedienbar');
+  assert.equal(await appearance.page.getByLabel('Farben schließen').evaluate((element) => element === document.activeElement), true, 'Farbdialog setzt keinen Anfangsfokus');
+  await appearance.page.keyboard.press('Shift+Tab');
+  assert.equal(await colors.evaluate((element) => element.contains(document.activeElement)), true, 'Fokus verlässt den Farbdialog');
+  await assertModalWithinViewport(appearance.page, '.color-theme-dialog', 'Farben 412×915');
+  const systemCopy = await colors.innerText();
+  assert.match(systemCopy, /Verwendet den vom Browser bereitgestellten Akzent, falls verfügbar\. Andernfalls nutzt die App ihr Standardtheme\./);
+  assert.doesNotMatch(systemCopy, /Wallpaper erkannt|Android-Systemfarbe erkannt|Mit deinem aktuellen Hintergrund synchronisiert/i);
+  await colors.locator('.color-theme-dialog__scroll').evaluate((element) => { element.scrollTop = 0; });
+  await appearance.page.screenshot({ path: '/tmp/finance-appearance-system-412x915.png' });
+
+  const sourceControl = colors.locator('.appearance-source-picker');
+  await sourceControl.getByRole('radio', { name: 'Farben', exact: true }).check();
+  await colors.getByRole('radio', { name: 'Violett', exact: true }).check();
+  const draftPrimary = await colors.evaluate((element) => getComputedStyle(element).getPropertyValue('--color-primary').trim());
+  assert.notEqual(draftPrimary, initialTheme.primary, 'Preset ändert die Draft-Vorschau nicht');
+  assert.deepEqual(await themeSnapshot(appearance.page), initialTheme, 'Draft-Preset verändert das aktive Theme vor Anwenden');
+  await appearance.page.keyboard.press('Escape');
+  await colors.waitFor({ state: 'detached' });
+  assert.deepEqual(await themeSnapshot(appearance.page), initialTheme, 'Abbrechen verändert das aktive Theme');
+  await appearance.page.waitForFunction(() => document.activeElement?.classList.contains('appearance-settings-action'));
+  assert.equal(await appearance.page.getByRole('button', { name: /Farben & Design/ }).evaluate((element) => element === document.activeElement), true, 'Fokus kehrt nach Abbrechen nicht zur Farben-Aktion zurück');
+
+  colors = await openColors(appearance.page);
+  await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+  await colors.getByRole('radio', { name: 'Violett', exact: true }).check();
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  const presetTheme = await themeSnapshot(appearance.page);
+  assert.equal(presetTheme.source, 'preset');
+  assert.notEqual(presetTheme.primary, initialTheme.primary, 'Angewendetes Preset ändert das aktive Theme nicht');
+  for (const semantic of ['positive', 'attention', 'reserve', 'free']) assert.equal(presetTheme[semantic], initialTheme[semantic], `Preset verändert fachliche Farbe ${semantic}`);
+  assert.equal(await appearance.page.locator('meta[data-appearance-theme-color]').getAttribute('content'), presetTheme.page, 'Aktives theme-color folgt der Page-Farbe nicht');
+
+  await appearance.page.getByLabel('Einstellungen schließen').click();
+  await settings.waitFor({ state: 'detached' });
+  await appearance.page.reload({ waitUntil: 'networkidle' });
+  await appearance.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  assert.deepEqual(await themeSnapshot(appearance.page), presetTheme, 'Preset bleibt nach Reload nicht erhalten');
+  const storedPreset = await appearance.page.evaluate(() => localStorage.getItem('finance-appearance-v1'));
+  assert.match(storedPreset, /"version":1/);
+  assert.doesNotMatch(storedPreset, /blob:|data:image|filePath|originalImage/i);
+
+  await openSettings(appearance.page);
+  colors = await openColors(appearance.page);
+  const modeControl = colors.locator('.appearance-control-group');
+  await modeControl.getByRole('radio', { name: 'Dunkel', exact: true }).check();
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  assert.equal((await themeSnapshot(appearance.page)).resolved, 'dark', 'Explizit dunkel überschreibt den OS-Modus nicht');
+  colors = await openColors(appearance.page);
+  await colors.locator('.appearance-control-group').getByRole('radio', { name: 'Hell', exact: true }).check();
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  assert.equal((await themeSnapshot(appearance.page)).resolved, 'light', 'Explizit hell überschreibt den OS-Modus nicht');
+  colors = await openColors(appearance.page);
+  await colors.locator('.appearance-control-group').getByRole('radio', { name: 'System', exact: true }).check();
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  await appearance.page.emulateMedia({ colorScheme: 'dark' });
+  await appearance.page.waitForFunction(() => document.documentElement.dataset.themeResolved === 'dark');
+  await appearance.page.emulateMedia({ colorScheme: 'light' });
+  await appearance.page.waitForFunction(() => document.documentElement.dataset.themeResolved === 'light');
+
+  colors = await openColors(appearance.page);
+  await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Bild', exact: true }).check();
+  await colors.locator('input[type="file"]').setInputFiles([]);
+  assert.equal(await colors.getByRole('button', { name: 'Anwenden', exact: true }).isDisabled(), true, 'Abgebrochene Bildauswahl aktiviert Anwenden');
+  assert.equal(await colors.locator('.appearance-error').count(), 0, 'Abgebrochene Bildauswahl erzeugt einen Fehler');
+  await colors.locator('input[type="file"]').setInputFiles({
+    name: 'material-you-fixture.png',
+    mimeType: 'image/png',
+    buffer: createAppearanceImageFixture(),
+  });
+  await colors.getByText(/Paletten wurden lokal erstellt/).waitFor({ timeout: 30_000 });
+  const wallpaperPaletteCount = await colors.locator('.palette-swatches input[type="radio"]').count();
+  assert.equal(wallpaperPaletteCount >= 5 && wallpaperPaletteCount <= 7, true, `Hintergrundbild erzeugte ${wallpaperPaletteCount} statt fünf bis sieben Paletten`);
+  for (const name of ['Tonal Spot aus Hintergrundbild', 'Neutral aus Hintergrundbild', 'Vibrant aus Hintergrundbild', 'Expressiv aus Hintergrundbild', 'Monochrom aus Hintergrundbild']) {
+    assert.equal(await colors.getByRole('radio', { name, exact: true }).count(), 1, `${name} fehlt`);
+  }
+  assert.equal(await colors.getByText('Farben aus diesem Bild').isVisible(), true, 'Bildquelle ist nicht klar von der App-Vorschau getrennt');
+  await colors.getByRole('radio', { name: 'Vibrant aus Hintergrundbild', exact: true }).check();
+  await colors.locator('.color-theme-dialog__scroll').evaluate((element) => { element.scrollTop = 0; });
+  await appearance.page.waitForTimeout(260);
+  await appearance.page.screenshot({ path: '/tmp/finance-appearance-wallpaper-412x915.png' });
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  const wallpaperTheme = await themeSnapshot(appearance.page);
+  assert.equal(wallpaperTheme.source, 'wallpaper');
+  assert.equal(await appearancePreviewExists(appearance.page), true, 'Verkleinertes Wallpaper-Thumbnail wurde nicht in IndexedDB gespeichert');
+  const localWallpaperData = await appearance.page.evaluate(async () => {
+    const preference = localStorage.getItem('finance-appearance-v1') ?? '';
+    const record = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('finance-appearance-v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const getRequest = database.transaction('assets', 'readonly').objectStore('assets').get('wallpaper-preview');
+        getRequest.onsuccess = () => { resolve(getRequest.result); database.close(); };
+        getRequest.onerror = () => reject(getRequest.error);
+      };
+    });
+    const bitmap = await createImageBitmap(record.blob);
+    const dimensions = { height: bitmap.height, width: bitmap.width };
+    bitmap.close();
+    return { dimensions, preference, size: record.blob.size, type: record.blob.type };
+  });
+  assert.equal(localWallpaperData.size <= 250 * 1024, true, 'Thumbnail überschreitet ungefähr 250 KB');
+  assert.equal(Math.max(localWallpaperData.dimensions.width, localWallpaperData.dimensions.height) <= 480, true, 'Thumbnail überschreitet 480 Pixel');
+  assert.equal(localWallpaperData.type, 'image/webp');
+  assert.doesNotMatch(localWallpaperData.preference, /data:image|blob:|material-you-fixture|filePath/i);
+
+  await appearance.page.getByLabel('Einstellungen schließen').click();
+  await appearance.page.reload({ waitUntil: 'networkidle' });
+  await appearance.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  assert.deepEqual(await themeSnapshot(appearance.page), wallpaperTheme, 'Wallpaper-Theme bleibt nach Reload nicht erhalten');
+  await openSettings(appearance.page);
+  colors = await openColors(appearance.page);
+  await colors.getByText('Farben aus diesem Bild').waitFor();
+  assert.equal(await colors.locator('.palette-swatches input[type="radio"]').count() >= 5, true, 'Wallpaper-Paletten fehlen nach Reload');
+  await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+  await colors.getByRole('radio', { name: 'Indigo', exact: true }).check();
+  await colors.locator('.color-theme-dialog__scroll').evaluate((element) => { element.scrollTop = 0; });
+  await appearance.page.waitForTimeout(260);
+  await appearance.page.screenshot({ path: '/tmp/finance-appearance-preset-412x915.png' });
+  await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await colors.waitFor({ state: 'detached' });
+  assert.equal((await themeSnapshot(appearance.page)).source, 'preset');
+  assert.equal(await appearancePreviewExists(appearance.page), false, 'Wechsel zum Preset entfernt das nicht mehr benötigte Thumbnail nicht');
+
+  await appearance.page.keyboard.press('Escape');
+  await appearance.page.getByRole('dialog', { name: 'Einstellungen' }).waitFor({ state: 'detached' });
+  assert.equal(await appearance.page.evaluate(() => document.body.style.overflow), '', 'Body-Scroll bleibt nach Modalende gesperrt');
+  await appearance.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Einstellungen öffnen');
+  assert.equal(await appearance.page.getByLabel('Einstellungen öffnen').evaluate((element) => element === document.activeElement), true, 'Fokus kehrt nach Einstellungen nicht zum Zahnrad zurück');
+  const themeBeforeLogout = await themeSnapshot(appearance.page);
+  await openSettings(appearance.page);
+  await appearance.page.getByRole('button', { name: 'Abmelden' }).click();
+  await appearance.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  assert.deepEqual(await themeSnapshot(appearance.page), themeBeforeLogout, 'Abmelden entfernt die gerätebezogene Appearance-Präferenz');
+  assert.match(await appearance.page.evaluate(() => localStorage.getItem('finance-appearance-v1') ?? ''), /"version":1/);
+  await assertNoOverflow(appearance.page, 'Appearance-Flow 412×915');
+  assert.deepEqual(appearance.errors, [], appearance.errors.join('\n'));
+  await appearance.context.close();
+
+  const tabSync = await statePage('connected');
+  await tabSync.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await tabSync.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  const peer = await tabSync.context.newPage();
+  const peerErrors = collectErrors(peer);
+  await installFinanceApiMocks(peer, 'connected');
+  await installPickerMock(peer);
+  await peer.goto(baseUrl, { waitUntil: 'networkidle' });
+  await openSettings(peer);
+  const peerColors = await openColors(peer);
+  await peerColors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+  await peerColors.getByRole('radio', { name: 'Grün', exact: true }).check();
+  await peerColors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await peerColors.waitFor({ state: 'detached' });
+  await tabSync.page.waitForFunction(() => document.documentElement.dataset.colorSource === 'preset'
+    && JSON.parse(localStorage.getItem('finance-appearance-v1')).palette.id === 'preset-green');
+  assert.equal((await themeSnapshot(tabSync.page)).source, 'preset', 'Storage-Event aktualisiert einen zweiten Tab nicht');
+  assert.deepEqual([...tabSync.errors, ...peerErrors], [], [...tabSync.errors, ...peerErrors].join('\n'));
+  await tabSync.context.close();
+
+  for (const viewport of [
+    { width: 320, height: 720, name: '320x720' },
+    { width: 412, height: 915, name: '412x915-dark-dialog' },
+    { width: 1440, height: 1000, name: '1440x1000-dialog' },
+  ]) {
+    const visual = await statePage('connected', viewport);
+    await visual.page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await visual.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+    const visualSettings = await openSettings(visual.page);
+    await assertModalWithinViewport(visual.page, '.settings-surface', `Einstellungen ${viewport.name}`);
+    if (viewport.width === 1440) await visual.page.screenshot({ path: '/tmp/finance-appearance-settings-desktop.png' });
+    const visualColors = await openColors(visual.page);
+    if (viewport.width === 412) {
+      await visualColors.locator('.appearance-control-group').getByRole('radio', { name: 'Dunkel', exact: true }).check();
+    }
+    if (viewport.width === 1440) {
+      await visualColors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+      await visualColors.getByRole('radio', { name: 'Koralle', exact: true }).check();
+    }
+    await visualColors.locator('.color-theme-dialog__scroll').evaluate((element) => { element.scrollTop = 0; });
+    await visual.page.waitForTimeout(260);
+    if (viewport.width === 412) {
+      const selectedContrast = await visualColors.locator('.appearance-control-group .appearance-segmented__option[data-selected="true"]').evaluate((element) => {
+        const channels = (value) => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+        const luminance = (value) => channels(value).map((channel) => {
+          const normalized = channel / 255;
+          return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+        const style = getComputedStyle(element);
+        const foreground = luminance(style.color);
+        const background = luminance(style.backgroundColor);
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+      });
+      assert.equal(selectedContrast >= 4.5, true, `Dark-Draft-Auswahl verfehlt WCAG AA: ${selectedContrast}`);
+    }
+    await assertModalWithinViewport(visual.page, '.color-theme-dialog', `Farben ${viewport.name}`);
+    await assertAppearanceControlLayout(visualColors, `Farben ${viewport.name}`);
+    await assertNoOverflow(visual.page, `Farben ${viewport.name}`);
+    await assertTouchTargets(visual.page, `Farben ${viewport.name}`);
+    await visual.page.screenshot({ path: `/tmp/finance-appearance-${viewport.name}.png` });
+    await visual.page.keyboard.press('Escape');
+    await visualColors.waitFor({ state: 'detached' });
+    assert.equal(await visualSettings.isVisible(), true, 'Escape schließt mehr als den obersten Dialog');
+    assert.deepEqual(visual.errors, [], visual.errors.join('\n'));
+    await visual.context.close();
+  }
 
   const mobile = await statePage('connected');
   await mobile.page.goto(baseUrl, { waitUntil: 'networkidle' });
@@ -483,10 +813,10 @@ try {
   assert.equal(await revisitedBudget.getAttribute('data-entrance'), 'visited');
   assert.equal(await revisitedBudget.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
 
-  await mobile.page.getByLabel('Verbindung und Informationen').click();
-  const dialog = mobile.page.getByRole('dialog', { name: 'Finanzen · v1' });
+  await openSettings(mobile.page);
+  const dialog = mobile.page.getByRole('dialog', { name: 'Einstellungen' });
   await dialog.waitFor();
-  assert.equal(await mobile.page.getByLabel('Informationen schließen').evaluate((element) => element === document.activeElement), true);
+  assert.equal(await mobile.page.getByLabel('Einstellungen schließen').evaluate((element) => element === document.activeElement), true);
   await mobile.page.keyboard.press('Shift+Tab');
   assert.equal(await dialog.evaluate((element) => element.contains(document.activeElement)), true, 'Fokus verlässt den Dialog');
   await mobile.page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
@@ -494,7 +824,13 @@ try {
   await mobile.page.getByRole('button', { name: 'Abbrechen' }).click();
   await mobile.page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
-  await mobile.page.getByLabel('Verbindung und Informationen').click();
+  await openSettings(mobile.page);
+  const disconnectColors = await openColors(mobile.page);
+  await disconnectColors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+  await disconnectColors.getByRole('radio', { name: 'Blau', exact: true }).check();
+  await disconnectColors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await disconnectColors.waitFor({ state: 'detached' });
+  const themeBeforeDisconnect = await themeSnapshot(mobile.page);
   await mobile.page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
   await mobile.page.getByRole('button', { name: 'Endgültig trennen' }).click();
   await mobile.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
@@ -510,6 +846,8 @@ try {
     };
   }));
   assert.equal(cachedAfterDisconnect, null, 'Disconnect hat den IndexedDB-Datenstand nicht entfernt');
+  assert.deepEqual(await themeSnapshot(mobile.page), themeBeforeDisconnect, 'Disconnect entfernt die gerätebezogene Appearance-Präferenz');
+  assert.match(await mobile.page.evaluate(() => localStorage.getItem('finance-appearance-v1') ?? ''), /"version":1/);
   assert.deepEqual(mobile.errors, [], mobile.errors.join('\n'));
   await mobile.context.close();
 
@@ -560,7 +898,9 @@ try {
     await dark.page.goto(baseUrl, { waitUntil: 'networkidle' });
     await dark.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
     await dark.page.waitForTimeout(360);
-    assert.equal(await dark.page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-page').trim()), '#111418');
+    const resolvedDarkTheme = await themeSnapshot(dark.page);
+    assert.equal(resolvedDarkTheme.resolved, 'dark');
+    assert.match(resolvedDarkTheme.page, /^#[\dA-F]{6}$/i);
     await assertGoogleSansFlex(dark.page, `Dark ${viewport.name}`);
     await assertRingCenterFits(dark.page, '.overview-screen .circular-allocation', `Dark Übersichtsring ${viewport.name}`);
     await assertNoOverflow(dark.page, `Dark Übersicht ${viewport.name}`);

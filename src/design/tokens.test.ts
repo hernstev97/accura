@@ -8,13 +8,15 @@ const fontLicense = readFileSync(new URL('../../docs/fonts/Google-Sans-Flex-OFL.
 
 describe('design token contracts', () => {
   it('contains deterministic and system-supported accent paths', () => {
-    expect(tokens).toMatch(/--color-system-accent-fallback:\s*#2f667a/);
-    expect(tokens).toMatch(/--color-system-accent-source:\s*var\(--color-system-accent-fallback\)/);
+    expect(tokens).toMatch(/--color-browser-accent-fallback:\s*#2f667a/);
+    expect(tokens).toMatch(/--color-browser-accent-source:\s*var\(--color-browser-accent-fallback\)/);
+    expect(tokens).toMatch(/--color-system-accent-source:\s*var\(--color-primary/);
     expect(tokens).toMatch(/--color-system-accent:\s*var\(--color-system-accent-source\)/);
     expect(tokens).toMatch(/@supports \(color: AccentColor\)/);
-    expect(tokens).toMatch(/--color-system-accent-source:\s*AccentColor/);
-    expect(tokens).toMatch(/--color-on-system-accent-source:\s*AccentColorText/);
+    expect(tokens).toMatch(/--color-browser-accent-source:\s*AccentColor/);
+    expect(tokens).toMatch(/--color-browser-on-accent-source:\s*AccentColorText/);
     expect(tokens).toMatch(/color-mix\(in srgb, var\(--color-system-accent\)/);
+    expect(tokens).toMatch(/:root\[data-theme-resolved='dark'\]/);
   });
 
   it('bundles the official full-axis Google Sans Flex family with rounded settings and its license', () => {
