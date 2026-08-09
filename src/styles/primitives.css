@@ -21,6 +21,24 @@
   cursor: pointer;
 }
 
+.icon-button:focus-visible,
+.pressable-surface:focus-visible,
+.bottom-navigation__item:focus-visible,
+.segmented-control__item:focus-visible,
+.circular-allocation__button:focus-visible,
+.app-button:focus-visible,
+.appearance-settings-action:focus-visible,
+.settings-action:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.circular-allocation__button:focus-visible,
+.icon-button:focus-visible {
+  border-radius: 50%;
+  outline-offset: 4px;
+}
+
 .icon-button::before,
 .pressable-surface::before,
 .bottom-navigation__item::before,
@@ -1487,7 +1505,7 @@ button:disabled {
 .metric-card--attention { background: var(--color-attention-container); color: var(--color-on-attention-container); }
 .metric-card__label { margin-bottom: var(--space-4); font-size: 12px; line-height: 16px; opacity: 1; }
 .metric-card__value { margin: 0; overflow: visible; font-size: var(--type-metric-size); font-weight: var(--type-metric-weight); letter-spacing: -0.03em; line-height: var(--type-metric-line); overflow-wrap: normal; }
-.metric-card__supporting { margin: var(--space-2) 0 0; font-size: 12px; line-height: 16px; opacity: 0.76; }
+.metric-card__supporting { margin: var(--space-2) 0 0; font-size: 12px; line-height: 16px; opacity: 0.88; }
 
 .surface-section {
   min-width: 0;
