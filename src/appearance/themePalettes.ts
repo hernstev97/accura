@@ -66,7 +66,7 @@ export function createWallpaperPalettes(seeds: readonly string[]): PaletteCandid
   const variants: SchemeVariant[] = ['tonalSpot', 'neutral', 'vibrant', 'expressive', 'monochrome'];
   const palettes = variants.map((variant) => candidate(
     `wallpaper-${variant}-${bestId}`,
-    `${wallpaperVariantNames[variant]} aus Hintergrundbild`,
+    `${wallpaperVariantNames[variant]}`,
     bestSeed,
     variant,
   ));

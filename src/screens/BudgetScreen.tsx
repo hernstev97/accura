@@ -1,14 +1,21 @@
 import { useReducedMotion } from 'motion/react';
-import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from 'recharts';
+import { useState } from 'react';
+import { AllocationLegend } from '../components/AllocationLegend';
+import { AppButton } from '../components/AppButton';
 import { ChartFrame } from '../components/ChartFrame';
+import { FinanceChartTooltip } from '../components/FinanceChartTooltip';
+import { FinancialHero } from '../components/FinancialHero';
+import { InlineNotice } from '../components/InlineNotice';
 import { LayeredAllocationRing } from '../components/LayeredAllocationRing';
-import { Icon } from '../components/Icon';
+import { MetricCard } from '../components/MetricCard';
+import { MetricGrid } from '../components/MetricGrid';
 import { MorphingSegmentedControl } from '../components/MorphingSegmentedControl';
-import { SectionHeading } from '../components/SectionHeading';
 import { ScreenEntrance } from '../components/ScreenEntrance';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
+import { useChartAnimation } from '../design/useChartAnimation';
 import { formatCurrency } from '../lib/format';
 
 type ChartView = 'categories' | 'necessity';
@@ -23,15 +30,15 @@ type ChartItem = {
 const modeOptions = [
   { id: 'categories', label: 'Kategorien' },
   { id: 'necessity', label: 'Notwendigkeit' },
-];
+] as const;
 
 export function BudgetScreen() {
   const data = useFinanceViewModel();
   const [chartView, setChartView] = useState<ChartView>('categories');
   const reduceMotion = useReducedMotion();
+  const chartAnimationActive = useChartAnimation(reduceMotion, chartView, 280);
   const categoryData = [...data.budgetCategories].sort((a, b) => b.amount - a.amount);
   const freeMoney = data.totals.freeMoney;
-  const plannedReserveAmount = data.totals.plannedReserves;
   const stackedSegments = [
     ...data.necessityGroups,
     { id: 'free', label: 'Frei', amount: freeMoney, amountCents: data.allocations.budget.freeCents, colorToken: '--chart-free' },
@@ -46,120 +53,137 @@ export function BudgetScreen() {
     ? categoryData.map(({ id, label, amount, kind }) => ({ id, label, amount, kind }))
     : data.necessityGroups.map(({ id, label, amount, colorToken }) => ({ id, label, amount, colorToken }));
   const chartTitle = chartView === 'categories' ? 'Ausgaben nach Kategorie' : 'Budget nach Notwendigkeit';
-  const chartHeight = chartView === 'categories' ? Math.max(300, categoryData.length * 45 + 20) : 310;
+  const chartHeight = chartView === 'categories' ? Math.max(320, categoryData.length * 48 + 24) : 320;
+  const hasChartValues = chartData.some(({ amount }) => amount > 0);
+
+  const focusChartSelection = () => {
+    document.getElementById(`budget-chart-tab-${chartView}`)?.focus({ preventScroll: true });
+    document.getElementById('budget-breakdown')?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+  };
 
   return (
     <ScreenEntrance className="budget-screen" destination="budget" labelledBy="budget-title">
-      <header className="screen-heading">
-        <h1 id="budget-title">Dein Budget</h1>
-        <p>{data.meta.monthLabel} · vollständig aufgeteilt</p>
-      </header>
+      <ScreenHeader id="budget-title" supporting={`${data.meta.monthLabel} · vollständig aufgeteilt`} title="Dein Budget" />
 
-      <section className="allocation-group" aria-label="Aufteilung des Monatseinkommens">
-        <SectionHeading compact subtitle="im Monat" title="Einkommen" />
-        <div className="budget-allocation-composition">
+      <FinancialHero
+        action={<AppButton onClick={focusChartSelection} size="small" variant="tonal">Diagrammansicht wählen</AppButton>}
+        footer={(
+          <AllocationLegend items={stackedSegments.map((segment) => ({
+            color: `var(${segment.colorToken})`,
+            id: segment.id,
+            label: segment.label,
+            value: formatCurrency(segment.amount),
+          }))} />
+        )}
+        id="budget-hero"
+        label="Einkommen"
+        supporting="Im Monat · vollständig verplant"
+        tone="accent"
+        value={formatCurrency(data.meta.monthlyIncome)}
+        visual={(
           <LayeredAllocationRing
-            centerLabel="Einkommen"
-            centerValue={formatCurrency(data.meta.monthlyIncome)}
+            centerLabel="Budget"
+            centerSupporting="verteilt"
+            centerValue="100 %"
             detailed
             segments={ringSegments}
             totalCents={data.allocations.budget.incomeCents}
           />
-          <div className="allocation-legend entrance-group">
-            {stackedSegments.map((segment) => (
-              <div className="legend-item" data-allocation-id={segment.id} key={segment.id}>
-                <span className="legend-item__dot" style={{ background: `var(${segment.colorToken})` }} aria-hidden="true" />
-                <span>{segment.label}</span>
-                <strong>{formatCurrency(segment.amount)}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="reserve-row">
-          <span className="row-icon"><Icon name="reserve" size={20} /></span>
-          <p><strong>{formatCurrency(plannedReserveAmount)} Rücklagen</strong><span>Bewusst für spätere Ausgaben eingeplant.</span></p>
-        </div>
-      </section>
+        )}
+      />
+
+      <MetricGrid label="Budgetkennzahlen">
+        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={formatCurrency(data.totals.plannedReserves)} />
+        <MetricCard label="Frei" supporting="Ohne feste Zuordnung" tone="positive" value={formatCurrency(freeMoney)} />
+      </MetricGrid>
 
       <ChartFrame
-        action={<span className="position-count">{chartData.length} Positionen</span>}
+        action={<span className="position-count" role="status">{chartData.length} Positionen</span>}
         className="budget-chart-frame"
+        id="budget-breakdown"
         subtitle="Monatlich geplant · absteigend"
         title={chartTitle}
       >
         <MorphingSegmentedControl
+          controlsId="budget-chart"
           label="Budgetdiagramm auswählen"
-          onSelectionChange={(id) => setChartView(id as ChartView)}
+          onSelectionChange={setChartView}
           options={modeOptions}
           selectedId={chartView}
         />
 
-        <div
-          className="budget-chart"
-          data-chart-mode={chartView}
-          style={{ height: chartHeight }}
-        >
-          <BarChart
-            accessibilityLayer
-            data={chartData}
-            layout="vertical"
-            margin={{ top: 12, right: 86, bottom: 8, left: 0 }}
-            responsive
-            style={{ width: '100%', maxWidth: '100%', height: '100%' }}
+        {modeOptions.map((option) => (
+          <div
+            aria-labelledby={`budget-chart-tab-${option.id}`}
+            className="budget-chart-panel"
+            hidden={chartView !== option.id}
+            id={`budget-chart-${option.id}`}
+            key={option.id}
+            role="tabpanel"
+            tabIndex={0}
           >
-            <CartesianGrid horizontal={false} stroke="var(--color-outline-variant)" strokeDasharray="3 6" />
-            <XAxis domain={[0, 'dataMax']} hide type="number" />
-            <YAxis
-              axisLine={false}
-              dataKey="label"
-              interval={0}
-              tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12, fontWeight: 560 }}
-              tickLine={false}
-              type="category"
-              width={96}
-            />
-            <Tooltip
-              contentStyle={{
-                background: 'var(--color-surface-bright)',
-                border: 0,
-                borderRadius: 18,
-                boxShadow: '0 8px 28px rgb(0 0 0 / 0.16)',
-                color: 'var(--color-on-surface)',
-              }}
-              cursor={{ fill: 'color-mix(in srgb, var(--color-primary) 8%, transparent)' }}
-              formatter={(value) => [formatCurrency(Number(value)), 'Monatlich']}
-            />
-            <Bar
-              animationDuration={reduceMotion ? 0 : 280}
-              dataKey="amount"
-              isAnimationActive={!reduceMotion}
-              maxBarSize={22}
-              name="Monatlich"
-              radius={[0, 11, 11, 0]}
-            >
-              {chartData.map((item) => (
-                <Cell
-                  fill={
-                    item.kind === 'reserve'
-                      ? 'var(--color-tertiary)'
-                      : chartView === 'necessity' && item.colorToken
-                        ? `var(${item.colorToken})`
-                        : 'var(--color-primary)'
-                  }
-                  key={item.id}
-                />
-              ))}
-              <LabelList
-                dataKey="amount"
-                fill="var(--color-on-surface)"
-                fontSize={11}
-                fontWeight={650}
-                formatter={(value) => formatCurrency(Number(value))}
-                position="right"
-              />
-            </Bar>
-          </BarChart>
-        </div>
+            {chartView === option.id ? (hasChartValues ? (
+              <div className="budget-chart" data-animation-active={chartAnimationActive} data-chart-mode={chartView} style={{ height: chartHeight }}>
+                <BarChart
+                  accessibilityLayer
+                  data={chartData}
+                  layout="vertical"
+                  margin={{ top: 12, right: 94, bottom: 8, left: 0 }}
+                  responsive
+                  style={{ width: '100%', maxWidth: '100%', height: '100%' }}
+                >
+                  <CartesianGrid horizontal={false} stroke="var(--chart-grid)" strokeDasharray="3 6" />
+                  <XAxis domain={[0, 'dataMax']} hide type="number" />
+                  <YAxis
+                    axisLine={false}
+                    dataKey="label"
+                    interval={0}
+                    tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12, fontWeight: 560 }}
+                    tickLine={false}
+                    type="category"
+                    width={104}
+                  />
+                  <Tooltip
+                    content={(props) => <FinanceChartTooltip {...props} valueLabel="Monatlich" />}
+                    cursor={{ fill: 'var(--chart-cursor)' }}
+                    isAnimationActive={chartAnimationActive}
+                  />
+                  <Bar
+                    animationDuration={reduceMotion ? 0 : 280}
+                    dataKey="amount"
+                    isAnimationActive={!reduceMotion}
+                    maxBarSize={22}
+                    name="Monatlich"
+                    radius={[0, 11, 11, 0]}
+                  >
+                    {chartData.map((item) => (
+                      <Cell
+                        fill={item.kind === 'reserve'
+                          ? 'var(--color-tertiary)'
+                          : chartView === 'necessity' && item.colorToken
+                            ? `var(${item.colorToken})`
+                            : 'var(--color-primary)'}
+                        key={item.id}
+                      />
+                    ))}
+                    <LabelList
+                      dataKey="amount"
+                      fill="var(--color-on-surface)"
+                      fontSize={12}
+                      fontWeight={650}
+                      formatter={(value) => formatCurrency(Number(value))}
+                      position="right"
+                    />
+                  </Bar>
+                </BarChart>
+              </div>
+            ) : (
+              <InlineNotice title="Noch keine Werte" tone="info">
+                <p>Für diese Ansicht sind im aktuellen Datenstand keine positiven Beträge vorhanden.</p>
+              </InlineNotice>
+            )) : null}
+          </div>
+        ))}
 
         <div className="sr-only" role="list">
           {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrency(item.amount)}. </span>)}
