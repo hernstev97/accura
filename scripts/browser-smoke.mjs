@@ -4,6 +4,7 @@ import { installFinanceApiMocks, installPickerMock } from './fixtures/anonymous-
 import { createAppearanceImageFixture } from './fixtures/appearance-image.mjs';
 
 const baseUrl = process.env.SMOKE_URL ?? 'http://127.0.0.1:5173';
+const overviewHeading = /^(?:Guten Morgen|Guten Tag|Guten Abend|Gute Nacht)$/;
 const browser = await chromium.launch({ headless: true });
 
 function collectErrors(page) {
@@ -489,14 +490,14 @@ try {
   const loading = await statePage('loading');
   await loading.page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await loading.page.getByText('Verbindung wird geprüft …').waitFor();
-  await loading.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await loading.page.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.deepEqual(loading.errors, [], loading.errors.join('\n'));
   await loading.context.close();
 
   const picker = await statePage('no-spreadsheet');
   await picker.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await picker.page.getByRole('button', { name: 'Google-Tabelle auswählen' }).click();
-  await picker.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await picker.page.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.match(await picker.page.locator('body').innerText(), /Frei verfügbar/);
   assert.deepEqual(picker.errors, [], picker.errors.join('\n'));
   await picker.context.close();
@@ -511,7 +512,7 @@ try {
 
   const appearance = await statePage('connected');
   await appearance.page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await appearance.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await appearance.page.getByRole('heading', { name: overviewHeading }).waitFor();
   const initialTheme = await themeSnapshot(appearance.page);
   const settings = await openSettings(appearance.page);
   const settingsSurface = appearance.page.locator('.settings-surface');
@@ -565,7 +566,7 @@ try {
   await appearance.page.getByLabel('Informationen schließen').click();
   await settings.waitFor({ state: 'detached' });
   await appearance.page.reload({ waitUntil: 'networkidle' });
-  await appearance.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await appearance.page.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.deepEqual(await themeSnapshot(appearance.page), presetTheme, 'Preset bleibt nach Reload nicht erhalten');
   const storedPreset = await appearance.page.evaluate(() => localStorage.getItem('finance-appearance-v1'));
   assert.match(storedPreset, /"version":1/);
@@ -642,7 +643,7 @@ try {
 
   await appearance.page.getByLabel('Informationen schließen').click();
   await appearance.page.reload({ waitUntil: 'networkidle' });
-  await appearance.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await appearance.page.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.deepEqual(await themeSnapshot(appearance.page), wallpaperTheme, 'Wallpaper-Theme bleibt nach Reload nicht erhalten');
   await openSettings(appearance.page);
   colors = await openColors(appearance.page);
@@ -675,7 +676,7 @@ try {
 
   const tabSync = await statePage('connected');
   await tabSync.page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await tabSync.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await tabSync.page.getByRole('heading', { name: overviewHeading }).waitFor();
   const peer = await tabSync.context.newPage();
   const peerErrors = collectErrors(peer);
   await installFinanceApiMocks(peer, 'connected');
@@ -700,7 +701,7 @@ try {
   ]) {
     const visual = await statePage('connected', viewport);
     await visual.page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await visual.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+    await visual.page.getByRole('heading', { name: overviewHeading }).waitFor();
     const visualSettings = await openSettings(visual.page);
     await assertModalWithinViewport(visual.page, '.settings-surface', `Einstellungen ${viewport.name}`);
     if (viewport.width === 1440) await visual.page.screenshot({ path: '/tmp/finance-appearance-settings-desktop.png' });
@@ -742,7 +743,7 @@ try {
 
   const mobile = await statePage('connected');
   await mobile.page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await mobile.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await mobile.page.getByRole('heading', { name: overviewHeading }).waitFor();
   await assertGoogleSansFlex(mobile.page, 'Mobile Übersicht');
   const overviewScreen = mobile.page.locator('[data-destination="overview"]');
   const overviewRoleGeometry = await financeRoleGeometry(mobile.page, '.overview-screen');
@@ -972,7 +973,7 @@ try {
   assertStableNavigationGeometry(overviewNavigationGeometry, await navigationGeometry(mobile.page), 'Schnelle Navigation');
 
   await mobile.page.getByRole('button', { name: 'Übersicht', exact: true }).click();
-  await mobile.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await mobile.page.getByRole('heading', { name: overviewHeading }).waitFor();
   const revisitedOverview = mobile.page.locator('[data-destination="overview"]');
   assert.equal(await revisitedOverview.getAttribute('data-entrance'), 'visited');
   assert.equal(await revisitedOverview.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
@@ -1031,7 +1032,7 @@ try {
   ]) {
     const test = await statePage('connected', viewport);
     await test.page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await test.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+    await test.page.getByRole('heading', { name: overviewHeading }).waitFor();
     await test.page.waitForTimeout(360);
     await assertGoogleSansFlex(test.page, `Light ${viewport.name}`);
     await assertRingCenterFits(test.page, '.overview-screen .circular-allocation', `Übersichtsring ${viewport.name}`);
@@ -1074,7 +1075,7 @@ try {
   ]) {
     const dark = await statePage('connected', viewport, { colorScheme: 'dark' });
     await dark.page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await dark.page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+    await dark.page.getByRole('heading', { name: overviewHeading }).waitFor();
     await dark.page.waitForTimeout(360);
     const resolvedDarkTheme = await themeSnapshot(dark.page);
     assert.equal(resolvedDarkTheme.resolved, 'dark');
@@ -1111,7 +1112,7 @@ try {
   const reducedErrors = collectErrors(reduced);
   await installFinanceApiMocks(reduced);
   await reduced.goto(baseUrl, { waitUntil: 'networkidle' });
-  await reduced.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await reduced.getByRole('heading', { name: overviewHeading }).waitFor();
   const reducedScreen = reduced.locator('[data-destination="overview"]');
   assert.equal(await reducedScreen.getAttribute('data-entrance'), 'reduced');
   assert.equal(await reducedScreen.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
@@ -1139,7 +1140,7 @@ try {
   await installFinanceApiMocks(forced);
   await installPickerMock(forced);
   await forced.goto(baseUrl, { waitUntil: 'networkidle' });
-  await forced.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
+  await forced.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.equal(await forced.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'Forced Colors wurde nicht emuliert');
   assert.notEqual(await forced.locator('.financial-hero').evaluate((element) => getComputedStyle(element).borderStyle), 'none', 'Hero verliert in Forced Colors seine Begrenzung');
   await assertAdaptiveNavigation(forced, 412, 'Forced Colors Übersicht');
