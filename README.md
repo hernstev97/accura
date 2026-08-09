@@ -1,6 +1,6 @@
-# Finanzen
+# accura
 
-“Finanzen” is a mobile-first personal-finance PWA. Its Material Design 3 Expressive interface shows available money, accounts, pockets, monthly planning, and projected debt relief. Visible product copy remains German; light/dark mode, safe areas, reduced motion, responsive charts, keyboard behavior, and the centered Android-derived desktop composition are preserved.
+“accura” is a mobile-first personal-finance PWA. Its Material Design 3 Expressive interface shows available money, accounts, pockets, monthly planning, and projected debt relief. Visible product copy remains German; light/dark mode, safe areas, reduced motion, responsive charts, keyboard behavior, and the centered Android-derived desktop composition are preserved.
 
 Production contains no hardcoded personal finance fixture. One allowlisted user authenticates with Google, selects one native Google Sheet through Picker, and receives validated, normalized finance data through same-origin Vercel Functions.
 
@@ -108,7 +108,7 @@ They also cover the complete Appearance flow: browser-accent fallback, curated M
 
 ## PWA installation
 
-Build and host over HTTPS, open the production URL in Chrome on Android, and select **App installieren** / **Zum Startbildschirm hinzufügen**. The application shell and a previously synchronized last-good snapshot remain usable offline. See the local-data caveat in [security and data flow](docs/security-and-data-flow.md#indexeddb-and-offline-implications).
+Build and host over HTTPS, open accura's production URL in Chrome on Android, and select **App installieren** / **Zum Startbildschirm hinzufügen**. The application shell and a previously synchronized last-good snapshot remain usable offline. See the local-data caveat in [security and data flow](docs/security-and-data-flow.md#indexeddb-and-offline-implications).
 
 ## Local appearance data
 

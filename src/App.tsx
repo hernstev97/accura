@@ -1,6 +1,7 @@
 import { MotionConfig } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { AdaptiveNavigation, type Destination } from './components/AdaptiveNavigation';
+import { AccuraLogo } from './components/AccuraLogo';
 import { AppButton } from './components/AppButton';
 import { ConnectionStateLayout } from './components/ConnectionStateLayout';
 import { Icon } from './components/Icon';
@@ -137,8 +138,8 @@ function App() {
         <div className={`app-content ${hasData ? 'app-content--connected' : ''}`}>
           <header className="top-app-bar">
             <div className="screen-identity">
-              <span className="brand-mark" aria-hidden="true">F</span>
-              <div><span>Finanzen</span><strong>{hasData ? screenNames[destination] : 'Verbindung'}</strong></div>
+              <AccuraLogo className="brand-mark" />
+              <div><span>accura</span><strong>{hasData ? screenNames[destination] : 'Verbindung'}</strong></div>
             </div>
             <SettingsEntry />
           </header>

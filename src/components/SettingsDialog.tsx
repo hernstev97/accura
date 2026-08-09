@@ -98,7 +98,7 @@ export function SettingsEntry() {
         surfaceRef={surfaceRef}
       >
         <header className="settings-surface__header">
-          <div><p>Finanzen auf diesem Gerät</p><h2 id="settings-title">Informationen</h2></div>
+          <div><p>accura auf diesem Gerät</p><h2 id="settings-title">Informationen</h2></div>
           <AppButton aria-label="Informationen schließen" className="icon-button" iconOnly onClick={closeSettings} ref={closeRef} variant="text"><Icon name="close" /></AppButton>
         </header>
 

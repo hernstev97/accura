@@ -4,6 +4,7 @@ import { analyzeWallpaperFile, WALLPAPER_IMAGE_ERROR, WallpaperAnalysisRaceGuard
 import { createWallpaperPalettes, preferenceFromCandidate, presetPalettes } from '../appearance/themePalettes';
 import type { ColorSource, PaletteCandidate, ResolvedThemeMode, ThemeMode, ThemeTokenSet } from '../appearance/types';
 import { AdaptiveDialog } from './AdaptiveDialog';
+import { AccuraLogo } from './AccuraLogo';
 import { Icon, type IconName } from './Icon';
 
 const sourceOptions: readonly { value: ColorSource; label: string; icon: IconName }[] = [
@@ -42,7 +43,7 @@ function SegmentedRadio<T extends string>({ id, label, options, value, onChange 
 
 function ThemePreview({ tokens, source, wallpaperUrl }: { tokens: ThemeTokenSet; source: ColorSource; wallpaperUrl: string | null }) {
   return (
-    <section className="appearance-preview" aria-label="Vorschau der Finanz-App" style={tokens as CSSProperties}>
+    <section className="appearance-preview" aria-label="Vorschau von accura" style={tokens as CSSProperties}>
       {source === 'wallpaper' && wallpaperUrl ? (
         <figure className="appearance-preview__wallpaper">
           <img alt="Ausgewählter Bildausschnitt" src={wallpaperUrl} />
@@ -54,7 +55,7 @@ function ThemePreview({ tokens, source, wallpaperUrl }: { tokens: ThemeTokenSet;
         </div>
       )}
       <div className="appearance-preview__app">
-        <div className="appearance-preview__topbar"><span>F</span><b>Finanzen</b><i /></div>
+        <div className="appearance-preview__topbar"><AccuraLogo className="appearance-preview__logo" /><b>accura</b><i /></div>
         <div className="appearance-preview__hero">
           <small>Verfügbar</small>
           <strong>1.234,56 €</strong>
