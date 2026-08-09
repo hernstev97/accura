@@ -47,9 +47,27 @@ function Arc({ segment, exposeData }: { exposeData: boolean; segment: LayeredArc
   );
 }
 
+function SegmentEndCap({ nextSegmentId, segment }: { nextSegmentId: string; segment: LayeredArcSegment }) {
+  const endAngle = ((-segment.offset + segment.dashLength) / LAYERED_RING_GEOMETRY.pathTotal) * Math.PI * 2;
+  const centerX = 66 + LAYERED_RING_GEOMETRY.radius * Math.cos(endAngle);
+  const centerY = 66 + LAYERED_RING_GEOMETRY.radius * Math.sin(endAngle);
+
+  return (
+    <circle
+      className="circular-allocation__end-cap"
+      cx={precision(centerX)}
+      cy={precision(centerY)}
+      data-allocation-end-cap={segment.id}
+      data-overlay-shape="full-circle"
+      data-overlays-allocation-id={nextSegmentId}
+      r={precision(segment.strokeWidth / 2)}
+      style={{ fill: segment.color }}
+    />
+  );
+}
+
 export function LayeredAllocationRing({
   centerLabel,
-  centerSupporting,
   centerValue,
   className = '',
   detailed,
@@ -85,6 +103,17 @@ export function LayeredAllocationRing({
         </g>
         <g className={`circular-allocation__detail-arcs ${detailed ? '' : 'is-hidden'}`}>
           {detailedArcs.map((segment) => <Arc exposeData key={segment.id} segment={segment} />)}
+          {detailedArcs.length > 1 ? (
+            <g className="circular-allocation__end-caps">
+              {detailedArcs.map((segment, index) => (
+                <SegmentEndCap
+                  key={segment.id}
+                  nextSegmentId={detailedArcs[(index + 1) % detailedArcs.length].id}
+                  segment={segment}
+                />
+              ))}
+            </g>
+          ) : null}
         </g>
       </svg>
       <span className="circular-allocation__center" data-center-size={centerSize} aria-hidden="true">
@@ -100,7 +129,7 @@ export function LayeredAllocationRing({
     <div
       className={`layered-allocation-ring circular-allocation ${interactive ? 'circular-allocation--interactive' : ''} ${className}`.trim()}
       data-detailed={detailed}
-      data-geometry="layered-overlap"
+      data-geometry="directed-end-cap-overlap"
       data-path-radius={LAYERED_RING_GEOMETRY.radius}
       data-stroke-width={LAYERED_RING_GEOMETRY.strokeWidth}
       data-summary-planned-cents={plannedCents}

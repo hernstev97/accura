@@ -67,6 +67,7 @@ export function BudgetScreen() {
 
       <FinancialHero
         action={<AppButton onClick={focusChartSelection} size="small" variant="tonal">Diagrammansicht wählen</AppButton>}
+        className="financial-hero--allocation"
         footer={(
           <AllocationLegend items={stackedSegments.map((segment) => ({
             color: `var(${segment.colorToken})`,

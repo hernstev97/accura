@@ -831,7 +831,7 @@ button:disabled {
 }
 
 .circular-allocation {
-  max-width: 166px;
+  max-width: 190px;
   color: var(--color-on-surface);
 }
 
@@ -875,9 +875,13 @@ button:disabled {
 }
 
 .circular-allocation__arc {
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.13));
   stroke-linecap: round;
   transition: opacity 200ms var(--motion-emphasized), stroke 200ms var(--motion-emphasized), stroke-dasharray 200ms var(--motion-emphasized), stroke-dashoffset 200ms var(--motion-emphasized);
+}
+
+.circular-allocation__end-cap {
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
 }
 
 .circular-allocation--interactive .circular-allocation__button:active .circular-allocation__svg {
@@ -1361,6 +1365,10 @@ button:disabled {
   min-height: 190px;
   align-items: center;
   gap: var(--space-5);
+}
+
+.financial-hero--allocation .financial-hero__composition {
+  grid-template-columns: minmax(0, 1fr) minmax(164px, 180px);
 }
 
 .financial-hero__content {

@@ -26,7 +26,8 @@ export type LayeredArcSegment = AllocationRingSegment & {
 };
 
 export const LAYERED_RING_GEOMETRY = Object.freeze({
-  maxBoundaryOverlap: 2.2,
+  boundaryOverlapFraction: 0.58,
+  maxBoundaryOverlap: 3.4,
   minimumDashLength: 0.35,
   pathTotal: 100,
   radius: 49,
@@ -46,8 +47,9 @@ function capExtensionFor(strokeWidth: number) {
 /**
  * Builds clockwise, intentionally overlapping capsules on one circular path.
  * Each desired visible span includes half of the shared overlap at either end;
- * the round-cap extension is then removed from the SVG dash length. Later input
- * segments render on top of earlier ones, making every boundary deterministic.
+ * the round-cap extension is then removed from the SVG dash length. The renderer
+ * adds each segment's trailing cap in a second pass so it rests on the beginning
+ * of the next segment, including across the circular closing boundary.
  */
 export function createLayeredArcSegments(segments: AllocationRingSegment[], totalCents: number): LayeredArcSegment[] {
   if (!Number.isSafeInteger(totalCents) || totalCents <= 0) return [];
@@ -89,7 +91,11 @@ export function createLayeredArcSegments(segments: AllocationRingSegment[], tota
   const boundaryOverlaps = spans.map((span, index) => {
     const nextSpan = spans[(index + 1) % spans.length];
     return clamp(
-      Math.min(LAYERED_RING_GEOMETRY.maxBoundaryOverlap, span * 0.42, nextSpan * 0.42),
+      Math.min(
+        LAYERED_RING_GEOMETRY.maxBoundaryOverlap,
+        span * LAYERED_RING_GEOMETRY.boundaryOverlapFraction,
+        nextSpan * LAYERED_RING_GEOMETRY.boundaryOverlapFraction,
+      ),
       0,
       LAYERED_RING_GEOMETRY.maxBoundaryOverlap,
     );

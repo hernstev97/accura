@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 export type SurfaceTone = 'accent' | 'neutral' | 'positive' | 'attention';
 
 export type FinancialHeroProps = {
+  className?: string;
   id: string;
   label: string;
   value: ReactNode;
@@ -13,10 +14,10 @@ export type FinancialHeroProps = {
   footer?: ReactNode;
 };
 
-export function FinancialHero({ action, footer, id, label, supporting, tone, value, visual }: FinancialHeroProps) {
+export function FinancialHero({ action, className = '', footer, id, label, supporting, tone, value, visual }: FinancialHeroProps) {
   const labelId = `${id}-label`;
   return (
-    <section aria-labelledby={labelId} className={`financial-hero financial-hero--${tone}`} id={id}>
+    <section aria-labelledby={labelId} className={`financial-hero financial-hero--${tone} ${className}`.trim()} id={id}>
       <div className="financial-hero__composition">
         <div className="financial-hero__content">
           <h2 className="financial-hero__label" id={labelId}>{label}</h2>
