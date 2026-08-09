@@ -36,7 +36,7 @@
   flex-direction: column;
 }
 
-.screen-identity span:not(.brand-mark) {
+.screen-identity span {
   color: var(--color-on-surface-variant);
   font-size: var(--type-label-size);
   font-variation-settings: 'ROND' var(--type-label-rond), 'wdth' 100;
@@ -54,18 +54,10 @@
 }
 
 .brand-mark {
-  display: grid;
   width: 40px;
-  height: 40px;
+  height: auto;
   flex: 0 0 auto;
-  border-radius: var(--shape-contextual);
-  place-items: center;
-  background: var(--color-primary-container);
-  color: var(--color-on-primary-container);
-  font-size: 18px;
-  font-variation-settings: 'ROND' var(--type-screen-rond), 'wdth' 100;
-  font-weight: var(--type-screen-weight);
-  line-height: 1;
+  color: var(--color-system-accent);
 }
 
 .sync-status {

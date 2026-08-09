@@ -146,7 +146,7 @@ test('412 light info dialog', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await preparePage(page, context, 'connected', 'light', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
   await capture(page, '412-light-info-dialog.png');
 });
@@ -155,7 +155,7 @@ test('412 light disconnect confirmation', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await preparePage(page, context, 'connected', 'light', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
   await page.getByText('Google-Verbindung trennen?').waitFor();
   await capture(page, '412-light-disconnect-confirmation.png');
@@ -185,7 +185,7 @@ test('412 dark info dialog', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await preparePage(page, context, 'connected', 'dark', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
   await capture(page, '412-dark-info-dialog.png');
 });
@@ -224,7 +224,7 @@ test('WCAG AA connection states and dialogs', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'de-DE', serviceWorkers: 'block' });
   const page = await context.newPage();
   await preparePage(page, context);
-  await page.getByLabel('Informationen öffnen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
   await expectNoAxeViolations(page, 'Info-Dialog');
   await page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
