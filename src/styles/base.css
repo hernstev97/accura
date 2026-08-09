@@ -1,0 +1,59 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: var(--color-container-low);
+  scroll-behavior: smooth;
+  scroll-padding-block-end: calc(112px + env(safe-area-inset-bottom));
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-container-low);
+  color: var(--color-on-surface);
+  font-family: var(--type-family);
+  font-size: var(--type-body-size);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-variation-settings: 'ROND' var(--type-body-rond), 'wdth' 100, 'GRAD' 0, 'slnt' 0;
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+}
+
+:where(button, input, select, textarea, summary, a[href], [tabindex]):focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+main:focus,
+main[tabindex]:focus-visible {
+  outline: 0;
+}
+
+.financial-value {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-variation-settings: 'ROND' var(--type-metric-rond), 'wdth' 98, 'GRAD' 0, 'slnt' 0;
+  white-space: nowrap;
+}
+
+@keyframes screen-entrance {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}

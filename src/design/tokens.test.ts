@@ -19,12 +19,15 @@ describe('design token contracts', () => {
     expect(tokens).toMatch(/:root\[data-theme-resolved='dark'\]/);
   });
 
-  it('bundles the official full-axis Google Sans Flex family with rounded settings and its license', () => {
+  it('bundles Google Sans Flex and uses its fully rounded cut in every type role', () => {
     expect(fontFaces).toMatch(/font-family:\s*'Google Sans Flex Variable'/);
     expect(fontFaces).toMatch(/google-sans-flex-latin-full-normal\.woff2/);
     expect(fontFaces).toMatch(/google-sans-flex-latin-ext-full-normal\.woff2/);
     expect(tokens).toMatch(/font-optical-sizing:\s*auto/);
     expect(tokens).toMatch(/font-variation-settings:\s*'ROND' 100, 'wdth' 100/);
+    for (const role of ['screen', 'hero', 'section', 'component', 'body', 'label', 'metric']) {
+      expect(tokens).toMatch(new RegExp(`--type-${role}-rond:\\s*100`));
+    }
     expect(packageJson).toContain('@fontsource-variable/google-sans-flex');
     expect(packageJson).not.toContain('@fontsource-variable/roboto-flex');
     expect(fontLicense).toMatch(/Copyright 2015 Google LLC/);

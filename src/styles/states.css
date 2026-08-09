@@ -1,0 +1,70 @@
+.connection-state {
+  display: flex;
+  min-height: calc(100dvh - 80px - env(safe-area-inset-top));
+  padding-block: clamp(48px, 12vh, 104px);
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.connection-state__mark {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-5);
+  border-radius: var(--shape-contextual);
+  place-items: center;
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.connection-state--warning .connection-state__mark {
+  background: var(--color-warning-container);
+  color: var(--color-on-warning-container);
+}
+
+.connection-state--danger .connection-state__mark {
+  background: var(--color-attention-container);
+  color: var(--color-on-attention-container);
+}
+
+.connection-state .screen-header {
+  max-width: 620px;
+  margin-bottom: 0;
+}
+
+.connection-state__details {
+  width: min(100%, 620px);
+  margin-top: var(--space-5);
+}
+
+.connection-state__actions {
+  margin-top: var(--space-6);
+}
+
+.connection-state__hint {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.validation-issues {
+  width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--shape-nested-card);
+  background: var(--color-attention-container);
+  color: var(--color-on-attention-container);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.validation-issues summary {
+  min-height: var(--touch-target);
+  line-height: var(--touch-target);
+}
+
+.screen-loading {
+  min-height: calc(100dvh - 80px);
+}
