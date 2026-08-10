@@ -1,10 +1,10 @@
-export type VisitedDestination = 'overview' | 'budget' | 'debt';
+export type VisitedDestination = 'overview' | 'upcoming' | 'budget' | 'debt';
 
 export const SCREEN_VISITS_SESSION_KEY = 'finance-screen-visits-v1';
 
 type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
-const validDestinations = new Set<VisitedDestination>(['overview', 'budget', 'debt']);
+const validDestinations = new Set<VisitedDestination>(['overview', 'upcoming', 'budget', 'debt']);
 
 function parseVisited(value: string | null) {
   if (!value) return new Set<VisitedDestination>();

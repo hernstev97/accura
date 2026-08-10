@@ -179,9 +179,9 @@
   .adaptive-navigation__track {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(3, 72px);
+    grid-template-rows: repeat(var(--navigation-count, 4), 72px);
     width: 80px;
-    height: 216px;
+    height: calc(72px * var(--navigation-count, 4));
   }
 
   .adaptive-navigation__indicator-slot {

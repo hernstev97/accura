@@ -30,12 +30,13 @@ Exactly one data row.
 | `as_of` | yes | ISO full date | `2026-08-08` |
 | `currency` | yes | currently exactly `EUR` | `EUR` |
 | `monthly_income` | yes | numeric euros | `3000` |
+| `salary_day` | no | integer (1..31) or blank | `25` |
 
 Example:
 
 ```csv
-schema_version,as_of,currency,monthly_income
-1,2026-08-08,EUR,3000
+schema_version,as_of,currency,monthly_income,salary_day
+1,2026-08-08,EUR,3000,25
 ```
 
 ## `_Accounts`
@@ -92,6 +93,7 @@ Defines accounts without balances.
 | `display_order` | yes | integer | `1` |
 | `active` | yes | boolean | `TRUE` |
 | `note` | no | text or blank | `Fest eingeplant` |
+| `due_day` | no | integer (1..31) or blank | `1` |
 
 `necessity_id` is one of:
 
@@ -114,6 +116,7 @@ The German labels, chart colors, and shape tokens live in application presentati
 | `display_order` | yes | integer | `1` |
 | `active` | yes | boolean | `TRUE` |
 | `note` | no | text or blank | `Fester Zahlungsplan` |
+| `due_day` | no | integer (1..31) or blank | `20` |
 
 ## `_DebtSnapshots`
 
@@ -169,6 +172,11 @@ After runtime validation and normalization, all financial calculations operate o
 - Future additional debt cost: remaining scheduled total minus payoff total.
 - Next relief milestone: earliest grouped calendar month strictly after `_Meta.as_of`, independent of source-row order.
 - Free amount after the next relief: current free amount plus the grouped next `free_amount` values.
+- Next salary date: earliest date on or after `as_of` matching configured `salary_day` (clamped to the last day of target month if the target month has fewer days).
+- Next occurrence of recurring payment: earliest date on or after `as_of` matching `due_day` (clamped to target month's last valid day).
+- Pending recurring payments until next salary: active budget items and debts with a specified `due_day` whose next occurrence falls in `[as_of, nextSalaryDate]` (inclusive of salary day).
+- Safe to spend: `currentlyAvailableMoney - pendingPaymentsUntilNextSalary`.
+- Shortly before salary flag: payment due date falls within 7 calendar days inclusive before `nextSalaryDate`.
 - Dates and labels: localized in the UI from ISO source dates.
 
 The workbook must not contain account totals, pocket totals, free totals, necessity aggregates, reserve totals, payoff totals, or future-cost totals.

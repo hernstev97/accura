@@ -56,6 +56,7 @@ export type BudgetItemV1 = {
   displayOrder: number;
   active: boolean;
   note: string | null;
+  dueDay: number | null;
 };
 
 export type DebtV1 = {
@@ -66,6 +67,7 @@ export type DebtV1 = {
   displayOrder: number;
   active: boolean;
   note: string | null;
+  dueDay: number | null;
 };
 
 export type DebtSnapshotV1 = {
@@ -89,12 +91,32 @@ export type ReliefMilestoneV1 = {
   eventDetail: string | null;
 };
 
+export type UpcomingPaymentV1 = {
+  id: string;
+  name: string;
+  amountCents: number;
+  dueDay: number;
+  dueDate: string;
+  source: 'budget' | 'debt';
+  isShortlyBeforeSalary: boolean;
+};
+
+export type UpcomingSummaryV1 = {
+  salaryDay: number | null;
+  nextSalaryDate: string | null;
+  payments: UpcomingPaymentV1[];
+  totalPendingCents: number;
+  currentlyAvailableCents: number;
+  safeToSpendCents: number;
+};
+
 /** Canonical, versioned source-domain contract. It contains no derived totals. */
 export type FinanceDataV1 = {
   schemaVersion: typeof FINANCE_SCHEMA_VERSION;
   asOf: string;
   currency: 'EUR';
   monthlyIncomeCents: number;
+  salaryDay: number | null;
   accounts: FinanceAccountV1[];
   accountSnapshots: AccountSnapshotV1[];
   pockets: FinancePocketV1[];
