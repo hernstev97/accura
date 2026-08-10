@@ -99,7 +99,7 @@ describe('Upcoming recurring payments calculation domain logic', () => {
   describe('Shortly before salary identification (isShortlyBeforeSalary)', () => {
     it('identifies payments within the 7 calendar day threshold before salary', () => {
       expect(isShortlyBeforeSalary('2026-08-18', '2026-08-25')).toBe(true); // 7 days before
-      expect(isShortlyBeforeSalary('2026-08-25', '2026-08-25')).toBe(true); // on salary day
+      expect(isShortlyBeforeSalary('2026-08-25', '2026-08-25')).toBe(false); // on salary day (not strictly before)
       expect(isShortlyBeforeSalary('2026-08-17', '2026-08-25')).toBe(false); // 8 days before
       expect(isShortlyBeforeSalary('2026-08-26', '2026-08-25')).toBe(false); // after salary day
     });
@@ -127,7 +127,7 @@ describe('Upcoming recurring payments calculation domain logic', () => {
       expect(total).toBe(32022); // 320.22 EUR
     });
 
-    it('includes payments occurring ON salary day (same calendar day)', () => {
+    it('excludes payments occurring ON salary day (same calendar day)', () => {
       const dataWithSalaryDayPayment: FinanceDataV1 = {
         ...baseData,
         salaryDay: 25,
@@ -148,9 +148,7 @@ describe('Upcoming recurring payments calculation domain logic', () => {
       };
       const payments = selectUpcomingPayments(dataWithSalaryDayPayment, '2026-08-08');
       const sameDay = payments.find((p) => p.id === 'same-day-bill');
-      expect(sameDay).toBeDefined();
-      expect(sameDay?.dueDate).toBe('2026-08-25');
-      expect(sameDay?.isShortlyBeforeSalary).toBe(true);
+      expect(sameDay).toBeUndefined();
     });
 
     it('includes payment due today', () => {

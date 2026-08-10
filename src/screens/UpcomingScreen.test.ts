@@ -82,4 +82,30 @@ describe('UpcomingScreen view model integration', () => {
     expect(upcoming.totalPending).toBe(2320.22);
     expect(upcoming.safeToSpend).toBe(-969.47); // 1350.75 - 2320.22 = -969.47
   });
+
+  it('excludes payments that occur on payday from upcoming.payments and totalPending', () => {
+    const dataWithPaydayBill: FinanceDataV1 = {
+      ...baseData,
+      salaryDay: 25,
+      budgetItems: [
+        ...baseData.budgetItems,
+        {
+          id: 'payday-bill',
+          label: 'Miete am Gehaltstag',
+          monthlyAmountCents: 50000,
+          necessityId: 'essential',
+          kind: 'expense',
+          displayOrder: 99,
+          active: true,
+          note: null,
+          dueDay: 25, // payday!
+        },
+      ],
+    };
+    const viewModel = createFinanceViewModel(dataWithPaydayBill);
+    const upcoming = viewModel.upcoming;
+
+    expect(upcoming.payments.find((p) => p.id === 'payday-bill')).toBeUndefined();
+    expect(upcoming.totalPending).toBe(320.22);
+  });
 });
