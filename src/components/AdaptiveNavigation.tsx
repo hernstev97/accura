@@ -1,10 +1,11 @@
 import type { CSSProperties } from 'react';
 import { Icon, type IconName } from './Icon';
 
-export type Destination = 'overview' | 'budget' | 'debt';
+export type Destination = 'overview' | 'upcoming' | 'budget' | 'debt';
 
 const destinations: ReadonlyArray<{ id: Destination; label: string; icon: IconName }> = [
   { id: 'overview', label: 'Übersicht', icon: 'overview' },
+  { id: 'upcoming', label: 'Demnächst', icon: 'calendar' },
   { id: 'budget', label: 'Budget', icon: 'budget' },
   { id: 'debt', label: 'Schulden', icon: 'debt' },
 ];
@@ -21,7 +22,7 @@ export function AdaptiveNavigation({ onSelect, selectedId }: AdaptiveNavigationP
       aria-label="Hauptnavigation"
       className="adaptive-navigation bottom-navigation"
       data-selected-index={selectedIndex}
-      style={{ '--navigation-offset': `${selectedIndex * 100}%` } as CSSProperties}
+      style={{ '--navigation-offset': `${selectedIndex * 100}%`, '--navigation-count': destinations.length } as CSSProperties}
     >
       <span className="adaptive-navigation__track bottom-navigation__track">
         <span aria-hidden="true" className="adaptive-navigation__indicator-slot bottom-navigation__indicator-slot">

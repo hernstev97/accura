@@ -11,6 +11,7 @@ export const financeDataV1Schema = z.object({
   asOf: isoDate,
   currency: z.literal('EUR'),
   monthlyIncomeCents: cents,
+  salaryDay: z.number().int().min(1).max(31).nullable(),
   accounts: z.array(z.object({
     id,
     name: z.string().min(1),
@@ -36,6 +37,7 @@ export const financeDataV1Schema = z.object({
     displayOrder: z.number().int().safe(),
     active: z.boolean(),
     note: z.string().nullable(),
+    dueDay: z.number().int().min(1).max(31).nullable(),
   })),
   debts: z.array(z.object({
     id,
@@ -45,6 +47,7 @@ export const financeDataV1Schema = z.object({
     displayOrder: z.number().int().safe(),
     active: z.boolean(),
     note: z.string().nullable(),
+    dueDay: z.number().int().min(1).max(31).nullable(),
   })),
   debtSnapshots: z.array(z.object({
     debtId: id,
