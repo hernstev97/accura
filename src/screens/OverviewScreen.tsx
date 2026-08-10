@@ -8,12 +8,13 @@ import { InlineNotice } from '../components/InlineNotice';
 import { LayeredAllocationRing } from '../components/LayeredAllocationRing';
 import { MetricCard } from '../components/MetricCard';
 import { MetricGrid } from '../components/MetricGrid';
+import { MoneyValue } from '../components/MoneyValue';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SurfaceSection } from '../components/SurfaceSection';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
-import { formatCurrency, percentFormatter } from '../lib/format';
+import { percentFormatter } from '../lib/format';
 import { useTimeOfDayGreeting } from '../lib/timeOfDayGreeting';
 
 export function OverviewScreen() {
@@ -53,14 +54,14 @@ export function OverviewScreen() {
             color: segment.color,
             id: segment.id,
             label: segment.label,
-            value: formatCurrency(segment.amountCents / 100),
+            value: <MoneyValue value={segment.amountCents / 100} />,
           }))} />
         )}
         id="overview-hero"
         label="Frei verfügbar"
-        supporting={`von ${formatCurrency(data.meta.monthlyIncome)} Einkommen im Monat`}
+        supporting={<>von <MoneyValue value={data.meta.monthlyIncome} /> Einkommen im Monat</>}
         tone="positive"
-        value={<>{formatCurrency(freeMoney)} <span className="financial-hero__value-unit">frei</span></>}
+        value={<><MoneyValue value={freeMoney} /> <span className="financial-hero__value-unit">frei</span></>}
         visual={(
           <LayeredAllocationRing
             centerLabel="Frei"
@@ -76,28 +77,28 @@ export function OverviewScreen() {
       />
 
       <MetricGrid label="Schnellübersicht">
-        <MetricCard label="Jetzt verfügbar" value={formatCurrency(data.totals.currentCash)} tone="accent" />
-        <MetricCard label="Rücklagen geplant" supporting="Bewusst für später reserviert" value={formatCurrency(data.totals.plannedReserves)} />
+        <MetricCard label="Jetzt verfügbar" tone="accent" value={<MoneyValue value={data.totals.currentCash} />} />
+        <MetricCard label="Rücklagen geplant" supporting="Bewusst für später reserviert" value={<MoneyValue value={data.totals.plannedReserves} />} />
       </MetricGrid>
 
       <InlineNotice className="next-relief-notice" icon={<Icon name="trend" size={22} />} title="Nächster Spielraum" tone="positive">
         {data.nextDebtRelief ? (
           <>
             <p>{data.nextDebtRelief.eventLabel} {data.nextDebtRelief.eventCount === 1 ? 'endet' : 'enden'} im {data.nextDebtRelief.monthLabel}.</p>
-            <strong className="inline-notice__financial">Danach voraussichtlich {formatCurrency(data.nextDebtRelief.freeAfter)} frei</strong>
-            <p>{formatCurrency(data.nextDebtRelief.monthlyRelief)} mehr pro Monat.</p>
+            <strong className="inline-notice__financial">Danach voraussichtlich <MoneyValue value={data.nextDebtRelief.freeAfter} /> frei</strong>
+            <p><MoneyValue value={data.nextDebtRelief.monthlyRelief} /> mehr pro Monat.</p>
           </>
         ) : (
           <>
             <p>Keine weitere Entlastung geplant.</p>
-            <strong className="inline-notice__financial">Aktuell {formatCurrency(freeMoney)} frei</strong>
+            <strong className="inline-notice__financial">Aktuell <MoneyValue value={freeMoney} /> frei</strong>
           </>
         )}
       </InlineNotice>
 
       <SurfaceSection id="accounts" supporting="Zusammen verfügbar" title="Konten">
         <DataList
-          footer={<><span>Gesamt</span><strong className="financial-value">{formatCurrency(data.totals.currentCash)}</strong></>}
+          footer={<><span>Gesamt</span><strong className="financial-value"><MoneyValue value={data.totals.currentCash} /></strong></>}
           label="Konten"
         >
           {data.accounts.map((account) => (
@@ -106,7 +107,7 @@ export function OverviewScreen() {
               key={account.id}
               supporting={account.kind === 'bank' ? 'Bankkonto' : account.kind === 'cash' ? 'Bargeld' : 'Zahlungskonto'}
               title={account.name}
-              value={formatCurrency(account.balance)}
+              value={<MoneyValue value={account.balance} />}
             />
           ))}
         </DataList>
@@ -135,7 +136,7 @@ export function OverviewScreen() {
           {visiblePockets.map((pocket) => (
             <article className={`pocket ${pocket.balance === 0 ? 'pocket--empty' : ''}`} key={pocket.id}>
               <span>{pocket.name}</span>
-              <strong className="financial-value">{formatCurrency(pocket.balance)}</strong>
+              <strong className="financial-value"><MoneyValue value={pocket.balance} /></strong>
             </article>
           ))}
         </div>
@@ -143,3 +144,4 @@ export function OverviewScreen() {
     </ScreenEntrance>
   );
 }
+

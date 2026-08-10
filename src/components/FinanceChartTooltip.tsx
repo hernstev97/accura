@@ -1,5 +1,5 @@
 import type { TooltipContentProps } from 'recharts';
-import { formatCurrency } from '../lib/format';
+import { MoneyValue } from './MoneyValue';
 
 type FinanceChartTooltipProps = Pick<TooltipContentProps, 'active' | 'label' | 'payload'> & {
   valueLabel: string;
@@ -13,8 +13,9 @@ export function FinanceChartTooltip({ active, formatTitle, label, payload, value
   return (
     <div className="finance-chart-tooltip">
       {title ? <span>{title}</span> : null}
-      <strong>{formatCurrency(Number(entry.value))}</strong>
+      <strong><MoneyValue value={Number(entry.value)} /></strong>
       <small>{valueLabel}</small>
     </div>
   );
 }
+

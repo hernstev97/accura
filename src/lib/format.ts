@@ -18,3 +18,27 @@ export const percentFormatter = new Intl.NumberFormat('de-DE', {
 });
 
 export const formatCurrency = (value: number) => currencyFormatter.format(value);
+
+export const formatCurrencyValue = (value: number, privacyMode = false, compact = false) => {
+  if (privacyMode) return 'Betrag ausgeblendet';
+  return compact ? compactCurrencyFormatter.format(value) : currencyFormatter.format(value);
+};
+
+const DIGIT_SHAPES: Record<string, string> = {
+  '0': 'o',
+  '1': 't',
+  '2': 'z',
+  '3': 'e',
+  '4': 'h',
+  '5': 's',
+  '6': 'b',
+  '7': 'f',
+  '8': 'B',
+  '9': 'g',
+};
+
+export function maskMoneyShape(formatted: string): string {
+  return formatted.replace(/\d/g, (digit) => DIGIT_SHAPES[digit] ?? 'x');
+}
+
+

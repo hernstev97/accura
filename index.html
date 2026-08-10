@@ -56,6 +56,9 @@
           tokenNames.forEach((name) => root.style.setProperty(name, preference.theme[resolved][name]));
           const meta = document.querySelector('meta[data-appearance-theme-color]');
           if (meta) meta.content = preference.theme[resolved]['--color-page'];
+          if (localStorage.getItem('finance-privacy-v1') === 'true') {
+            root.dataset.privacyMode = 'true';
+          }
         } catch {
           // CSS light/dark fallbacks remain authoritative when storage is unavailable.
         }
