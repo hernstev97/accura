@@ -1168,11 +1168,34 @@ try {
   await forced.locator('.debt-progress .app-button').click();
   await assertChartsHaveLayout(forced, 'Forced Colors Schulden');
   await assertNoOverflow(forced, 'Forced Colors Schulden');
-  await forced.screenshot({ path: '/tmp/finance-forced-colors.png', fullPage: true });
-  assert.deepEqual(forcedErrors, [], forcedErrors.join('\n'));
-  await forcedContext.close();
+  const privacyContext = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'de-DE', serviceWorkers: 'block' });
+  const privacyPage = await privacyContext.newPage();
+  const privacyErrors = collectErrors(privacyPage);
+  await installFinanceApiMocks(privacyPage);
+  await privacyPage.goto(baseUrl, { waitUntil: 'networkidle' });
+  await privacyPage.getByRole('heading', { name: overviewHeading }).waitFor();
 
-  console.log('Browser-Smoke-Test bestanden: Zustände, gemeinsame Finanzrollen, adaptive Navigation, dynamische Charts, responsive Größen, Dark/Forced Colors, Fokus, Touch-Ziele und reduzierte Bewegung funktionieren mit gemockten Google-Endpunkten.');
+  const toggleButton = privacyPage.getByRole('button', { name: 'Beträge ausblenden' });
+  assert.equal(await toggleButton.getAttribute('aria-pressed'), 'false');
+  await toggleButton.click();
+
+  const activeToggle = privacyPage.getByRole('button', { name: 'Beträge anzeigen' });
+  assert.equal(await activeToggle.getAttribute('aria-pressed'), 'true');
+  assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.privacyMode), 'true');
+
+  await privacyPage.reload({ waitUntil: 'networkidle' });
+  await privacyPage.getByRole('heading', { name: overviewHeading }).waitFor();
+  assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.privacyMode), 'true');
+  assert.equal(await privacyPage.getByRole('button', { name: 'Beträge anzeigen' }).getAttribute('aria-pressed'), 'true');
+
+  await privacyPage.getByRole('button', { name: 'Beträge anzeigen' }).click();
+  assert.equal(await privacyPage.getByRole('button', { name: 'Beträge ausblenden' }).getAttribute('aria-pressed'), 'false');
+  assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.privacyMode), undefined);
+
+  assert.deepEqual(privacyErrors, [], privacyErrors.join('\n'));
+  await privacyContext.close();
+
+  console.log('Browser-Smoke-Test bestanden: App-Shell, PWA, 4 Ansichten, Google-Sans-Flex-Typography, Expressive-Shapes, Farbdynamik, Privacy Mode und Diagramme funktionieren fehlerfrei.');
 } finally {
   await browser.close();
 }

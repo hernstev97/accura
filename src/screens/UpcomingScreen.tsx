@@ -4,11 +4,11 @@ import { Icon } from '../components/Icon';
 import { InlineNotice } from '../components/InlineNotice';
 import { MetricCard } from '../components/MetricCard';
 import { MetricGrid } from '../components/MetricGrid';
+import { MoneyValue } from '../components/MoneyValue';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SurfaceSection } from '../components/SurfaceSection';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
-import { formatCurrency } from '../lib/format';
 
 function getDaysUntilSalaryLabel(dueDateISO: string, nextSalaryDateISO: string): string {
   const [y1, m1, d1] = dueDateISO.split('-').map(Number);
@@ -42,7 +42,7 @@ export function UpcomingScreen() {
         label="Bis Gehalt verfügbar"
         supporting={upcoming.nextSalaryDateLabel ? `Frei bis zum Gehaltseingang am ${upcoming.nextSalaryDateLabel}` : 'Kein Gehaltstag in der Tabelle hinterlegt'}
         tone={isNegativeSafeToSpend ? 'attention' : 'positive'}
-        value={<>{formatCurrency(safeToSpend)} <span className="financial-hero__value-unit">frei</span></>}
+        value={<><MoneyValue value={safeToSpend} /> <span className="financial-hero__value-unit">frei</span></>}
         visual={(
           <div className="debt-hero-status" aria-label={`${upcoming.payments.length} ${upcoming.payments.length === 1 ? 'Fälligkeit' : 'Fälligkeiten'}`} role="img">
             <span className="debt-hero-status__icon" aria-hidden="true"><Icon name="calendar" size={26} /></span>
@@ -57,7 +57,7 @@ export function UpcomingScreen() {
           label="Noch fällig"
           supporting={`${upcoming.payments.length} ${upcoming.payments.length === 1 ? 'Zahlung' : 'Zahlungen'} bis Gehalt`}
           tone="neutral"
-          value={formatCurrency(upcoming.totalPending)}
+          value={<MoneyValue value={upcoming.totalPending} />}
         />
         <MetricCard
           label="Nächstes Gehalt"
@@ -70,8 +70,8 @@ export function UpcomingScreen() {
       {isNegativeSafeToSpend ? (
         <InlineNotice icon={<Icon name="info" size={22} />} title="Ausstehende Zahlungen übersteigen Guthaben" tone="danger">
           <p>
-            Bis zum nächsten Gehalt am {upcoming.nextSalaryDateLabel ?? 'Gehaltstag'} stehen {formatCurrency(upcoming.totalPending)} an
-            Abzügen an. Das verfügbare Kontoguthaben reicht um {formatCurrency(Math.abs(safeToSpend))} nicht aus.
+            Bis zum nächsten Gehalt am {upcoming.nextSalaryDateLabel ?? 'Gehaltstag'} stehen <MoneyValue value={upcoming.totalPending} /> an
+            Abzügen an. Das verfügbare Kontoguthaben reicht um <MoneyValue value={Math.abs(safeToSpend)} /> nicht aus.
           </p>
         </InlineNotice>
       ) : null}
@@ -98,7 +98,7 @@ export function UpcomingScreen() {
           title="Anstehende Abzüge"
         >
           <DataList
-            footer={<><span>Ausstehende Summe</span><strong className="financial-value">{formatCurrency(upcoming.totalPending)}</strong></>}
+            footer={<><span>Ausstehende Summe</span><strong className="financial-value"><MoneyValue value={upcoming.totalPending} /></strong></>}
             label="Anstehende Abzüge"
           >
             {upcoming.payments.map((payment) => (
@@ -114,7 +114,7 @@ export function UpcomingScreen() {
                   </>
                 )}
                 title={payment.name}
-                value={formatCurrency(payment.amount)}
+                value={<MoneyValue value={payment.amount} />}
               />
             ))}
           </DataList>
@@ -123,3 +123,4 @@ export function UpcomingScreen() {
     </ScreenEntrance>
   );
 }
+
