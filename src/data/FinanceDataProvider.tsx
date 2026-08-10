@@ -123,12 +123,14 @@ export function FinanceDataProvider({
   children,
   api = productionFinanceApi,
   pickerLauncher = launchGooglePicker,
+  initialState = initialFinanceState,
 }: {
   children: ReactNode;
   api?: FinanceApi;
   pickerLauncher?: PickerLauncher;
+  initialState?: FinanceProviderState;
 }) {
-  const [state, dispatch] = useReducer(financeProviderReducer, initialFinanceState);
+  const [state, dispatch] = useReducer(financeProviderReducer, initialState);
   const [online, setOnline] = useReducer((_current: boolean, next: boolean) => next, typeof navigator === 'undefined' ? true : navigator.onLine);
   const stateRef = useRef(state);
   const refreshPromise = useRef<Promise<void> | null>(null);

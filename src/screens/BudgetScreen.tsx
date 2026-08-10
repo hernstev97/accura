@@ -10,13 +10,15 @@ import { InlineNotice } from '../components/InlineNotice';
 import { LayeredAllocationRing } from '../components/LayeredAllocationRing';
 import { MetricCard } from '../components/MetricCard';
 import { MetricGrid } from '../components/MetricGrid';
+import { MoneyValue } from '../components/MoneyValue';
 import { MorphingSegmentedControl } from '../components/MorphingSegmentedControl';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { useChartAnimation } from '../design/useChartAnimation';
-import { formatCurrency } from '../lib/format';
+import { formatCurrency, formatCurrencyValue, maskMoneyShape } from '../lib/format';
+import { usePrivacy } from '../privacy/PrivacyProvider';
 
 type ChartView = 'categories' | 'necessity';
 type ChartItem = {
@@ -34,6 +36,7 @@ const modeOptions = [
 
 export function BudgetScreen() {
   const data = useFinanceViewModel();
+  const { privacyMode } = usePrivacy();
   const [chartView, setChartView] = useState<ChartView>('categories');
   const reduceMotion = useReducedMotion();
   const chartAnimationActive = useChartAnimation(reduceMotion, chartView, 280);
@@ -73,14 +76,14 @@ export function BudgetScreen() {
             color: `var(${segment.colorToken})`,
             id: segment.id,
             label: segment.label,
-            value: formatCurrency(segment.amount),
+            value: <MoneyValue value={segment.amount} />,
           }))} />
         )}
         id="budget-hero"
         label="Einkommen"
         supporting="Im Monat · vollständig verplant"
         tone="accent"
-        value={formatCurrency(data.meta.monthlyIncome)}
+        value={<MoneyValue value={data.meta.monthlyIncome} />}
         visual={(
           <LayeredAllocationRing
             centerLabel="Budget"
@@ -94,8 +97,8 @@ export function BudgetScreen() {
       />
 
       <MetricGrid label="Budgetkennzahlen">
-        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={formatCurrency(data.totals.plannedReserves)} />
-        <MetricCard label="Frei" supporting="Ohne feste Zuordnung" tone="positive" value={formatCurrency(freeMoney)} />
+        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={<MoneyValue value={data.totals.plannedReserves} />} />
+        <MetricCard label="Frei" supporting="Ohne feste Zuordnung" tone="positive" value={<MoneyValue value={freeMoney} />} />
       </MetricGrid>
 
       <ChartFrame
@@ -180,7 +183,7 @@ export function BudgetScreen() {
                       fill="var(--color-on-surface)"
                       fontSize={12}
                       fontWeight={650}
-                      formatter={(value) => formatCurrency(Number(value))}
+                      formatter={(value) => privacyMode ? maskMoneyShape(formatCurrency(Number(value))) : formatCurrency(Number(value))}
                       position="right"
                     />
                   </Bar>
@@ -193,7 +196,7 @@ export function BudgetScreen() {
             )) : null}
 
             <div className="sr-only" id={`budget-chart-summary-${option.id}`} role="list">
-              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrency(item.amount)}. </span>)}
+              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrencyValue(item.amount, privacyMode)}. </span>)}
             </div>
           </div>
         ))}
@@ -201,3 +204,4 @@ export function BudgetScreen() {
     </ScreenEntrance>
   );
 }
+

@@ -6,6 +6,7 @@ import { AppButton } from './components/AppButton';
 import { ConnectionStateLayout } from './components/ConnectionStateLayout';
 import { Icon } from './components/Icon';
 import { LoadingIndicator } from './components/LoadingIndicator';
+import { PrivacyToggle } from './components/PrivacyToggle';
 import { SettingsEntry } from './components/SettingsDialog';
 import { SyncStatusBanner } from './components/SyncStatusBanner';
 import { ValidationIssues } from './components/ValidationIssues';
@@ -144,7 +145,10 @@ function App() {
               <AccuraLogo className="brand-mark" />
               <div><span>accura</span><strong>{hasData ? screenNames[destination] : 'Verbindung'}</strong></div>
             </div>
-            <SettingsEntry />
+            <div className="top-app-bar__actions">
+              <PrivacyToggle />
+              <SettingsEntry />
+            </div>
           </header>
           {hasData ? <SyncStatusBanner /> : null}
           <main aria-label={hasData ? screenNames[destination] : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>

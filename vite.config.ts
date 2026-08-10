@@ -28,7 +28,7 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
     server: {
       deps: {
         inline: ['@material/material-color-utilities'],

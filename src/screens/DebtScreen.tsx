@@ -10,16 +10,19 @@ import { Icon } from '../components/Icon';
 import { InlineNotice } from '../components/InlineNotice';
 import { MetricCard } from '../components/MetricCard';
 import { MetricGrid } from '../components/MetricGrid';
+import { MoneyValue } from '../components/MoneyValue';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SurfaceSection } from '../components/SurfaceSection';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import { createPaddedChartDomain } from '../design/chartScale';
 import { useChartAnimation } from '../design/useChartAnimation';
-import { compactCurrencyFormatter, formatCurrency } from '../lib/format';
+import { compactCurrencyFormatter, formatCurrencyValue, maskMoneyShape } from '../lib/format';
+import { usePrivacy } from '../privacy/PrivacyProvider';
 
 export function DebtScreen() {
   const data = useFinanceViewModel();
+  const { privacyMode } = usePrivacy();
   const [progressExpanded, setProgressExpanded] = useState(false);
   const reduceMotion = useReducedMotion();
   const balanceChartAnimationActive = useChartAnimation(reduceMotion, progressExpanded ? 'expanded' : 'collapsed', 360);
@@ -53,7 +56,7 @@ export function DebtScreen() {
         label="Ablösesumme heute"
         supporting="Summe der dargestellten Gläubiger"
         tone="attention"
-        value={formatCurrency(data.totals.payoffToday)}
+        value={<MoneyValue value={data.totals.payoffToday} />}
         visual={(
           <div className="debt-hero-status" aria-label={targetLabel} role="img">
             <span className="debt-hero-status__icon"><Icon name="trend" size={26} /></span>
@@ -64,8 +67,8 @@ export function DebtScreen() {
       />
 
       <MetricGrid label="Schuldenkennzahlen">
-        <MetricCard label="Noch planmäßig zu zahlen" supporting={remainingPaymentLabel} value={formatCurrency(data.totals.remainingScheduledTotal)} />
-        <MetricCard label="Zukünftige Mehrkosten" tone="attention" value={formatCurrency(data.totals.futureDebtCost)} />
+        <MetricCard label="Noch planmäßig zu zahlen" supporting={remainingPaymentLabel} value={<MoneyValue value={data.totals.remainingScheduledTotal} />} />
+        <MetricCard label="Zukünftige Mehrkosten" tone="attention" value={<MoneyValue value={data.totals.futureDebtCost} />} />
       </MetricGrid>
 
       <SurfaceSection className="creditors-section" id="creditors" supporting="Aktuelle Ablösebeträge" title="Gläubiger">
@@ -76,7 +79,7 @@ export function DebtScreen() {
               key={creditor.id}
               supporting={creditor.supportingText}
               title={creditor.name}
-              value={formatCurrency(creditor.payoffBalance)}
+              value={<MoneyValue value={creditor.payoffBalance} />}
             />
           ))}
         </DataList>
@@ -102,7 +105,7 @@ export function DebtScreen() {
         title="Restschuld"
       >
         <div className="debt-progress__summary">
-          <div><span>Heute</span><strong className="financial-value">{formatCurrency(currentDebt?.balance ?? data.totals.payoffToday)}</strong></div>
+          <div><span>Heute</span><strong className="financial-value"><MoneyValue value={currentDebt?.balance ?? data.totals.payoffToday} /></strong></div>
           <span className="debt-progress__direction" aria-hidden="true"><Icon name="trend" size={22} /></span>
           <div><span>Ziel</span><strong>{payoffMilestone?.shortLabel}</strong></div>
         </div>
@@ -133,7 +136,7 @@ export function DebtScreen() {
               <XAxis axisLine={false} dataKey="shortLabel" interval="preserveStartEnd" minTickGap={18} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickLine={false} />
             ) : <XAxis dataKey="shortLabel" hide />}
             {progressExpanded ? (
-              <YAxis axisLine={false} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tickLine={false} width={68} />
+              <YAxis axisLine={false} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(value) => privacyMode ? maskMoneyShape(compactCurrencyFormatter.format(Number(value))) : compactCurrencyFormatter.format(Number(value))} tickLine={false} width={68} />
             ) : <YAxis hide />}
             <Tooltip
               content={(props) => (
@@ -160,11 +163,11 @@ export function DebtScreen() {
 
         <div className="debt-milestones" hidden={!progressExpanded} id="debt-progress-details">
           {data.debtBalanceMilestones.map((milestone) => (
-            <div key={milestone.date}><span>{milestone.label}</span><strong className="financial-value">{formatCurrency(milestone.balance)}</strong></div>
+            <div key={milestone.date}><span>{milestone.label}</span><strong className="financial-value"><MoneyValue value={milestone.balance} /></strong></div>
           ))}
         </div>
         <p className="sr-only" id="debt-progress-summary">
-          Restschuldverlauf: {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrency(milestone.balance)}. `)}
+          Restschuldverlauf: {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrencyValue(milestone.balance, privacyMode)}. `)}
         </p>
       </ChartFrame>
 
@@ -184,10 +187,10 @@ export function DebtScreen() {
           aria-labelledby="debt-relief-title"
           className="relief-chart"
           data-animation-active={reliefChartAnimationActive}
-          data-domain-max={reliefDomain[1]}
-          data-domain-min={reliefDomain[0]}
-          data-value-max={reliefValueMax}
-          data-value-min={reliefValueMin}
+          data-domain-max={privacyMode ? undefined : reliefDomain[1]}
+          data-domain-min={privacyMode ? undefined : reliefDomain[0]}
+          data-value-max={privacyMode ? undefined : reliefValueMax}
+          data-value-min={privacyMode ? undefined : reliefValueMin}
           role="img"
         >
           <LineChart
@@ -199,7 +202,7 @@ export function DebtScreen() {
           >
             <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 6" vertical={false} />
             <XAxis axisLine={false} dataKey="label" interval="preserveStartEnd" tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(label: string) => label.replace('Ab ', '').replace(/ (\d{2})(\d{2})$/, ' $2')} tickLine={false} />
-            <YAxis axisLine={false} domain={[reliefDomain[0], reliefDomain[1]]} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tickLine={false} width={62} />
+            <YAxis axisLine={false} domain={[reliefDomain[0], reliefDomain[1]]} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(value) => privacyMode ? maskMoneyShape(compactCurrencyFormatter.format(Number(value))) : compactCurrencyFormatter.format(Number(value))} tickLine={false} width={62} />
             <Tooltip content={(props) => <FinanceChartTooltip {...props} valueLabel="Frei pro Monat" />} isAnimationActive={!reduceMotion} />
             <Line
               animationDuration={reduceMotion ? 0 : 360}
@@ -214,7 +217,7 @@ export function DebtScreen() {
           </LineChart>
         </div>
         <p className="sr-only" id="relief-summary">
-          Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}: {data.debtReliefMilestones.map((milestone) => `${milestone.label}: ${formatCurrency(milestone.freeAmount)} frei. `)}
+          Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}: {data.debtReliefMilestones.map((milestone) => `${milestone.label}: ${formatCurrencyValue(milestone.freeAmount, privacyMode)} frei. `)}
         </p>
 
         <div className="milestone-flow entrance-group" aria-label="Auslaufende Raten">
@@ -225,7 +228,7 @@ export function DebtScreen() {
                 <span>{milestone.eventDetail}</span>
                 <strong>{milestone.event}</strong>
               </div>
-              <p><strong className="financial-value">{formatCurrency(milestone.freeAmount)}</strong><span>frei · {milestone.label}</span></p>
+              <p><strong className="financial-value"><MoneyValue value={milestone.freeAmount} /></strong><span>frei · {milestone.label}</span></p>
             </article>
           ))}
         </div>
@@ -233,3 +236,4 @@ export function DebtScreen() {
     </ScreenEntrance>
   );
 }
+
