@@ -108,13 +108,13 @@ export function isShortlyBeforeSalary(
   nextSalaryDateISO: string,
   thresholdDays: number = SHORTLY_BEFORE_SALARY_THRESHOLD_DAYS,
 ): boolean {
-  if (dueDateISO > nextSalaryDateISO) return false;
+  if (dueDateISO >= nextSalaryDateISO) return false;
   const cutoffISO = addCalendarDays(nextSalaryDateISO, -thresholdDays);
   return dueDateISO >= cutoffISO;
 }
 
 /**
- * Returns all active recurring payments due from today up to and including the next salary date,
+ * Returns all active recurring payments due strictly before the next salary date (today <= dueDate < nextSalaryDate),
  * sorted chronologically.
  */
 export function selectUpcomingPayments(data: FinanceDataV1, todayISO?: string): UpcomingPaymentV1[] {
@@ -130,7 +130,7 @@ export function selectUpcomingPayments(data: FinanceDataV1, todayISO?: string): 
     const dueDate = getNextOccurrenceDate(today, item.dueDay);
     if (!dueDate) return;
 
-    if (dueDate >= today && dueDate <= nextSalaryDate) {
+    if (dueDate >= today && dueDate < nextSalaryDate) {
       const amountCents = 'monthlyAmountCents' in item ? item.monthlyAmountCents : item.monthlyPaymentCents;
       const name = 'label' in item ? item.label : item.name;
       candidates.push({
