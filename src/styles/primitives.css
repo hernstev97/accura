@@ -1657,3 +1657,30 @@ dialog.adaptive-dialog::backdrop { background: color-mix(in srgb, var(--color-sc
 .is-spinning {
   animation: loading-spin 800ms linear infinite;
 }
+
+.money-value {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.money-value--masked {
+  user-select: none;
+  pointer-events: none;
+}
+
+.money-value__blur {
+  display: inline-block;
+  filter: blur(7px);
+  opacity: 0.78;
+  transform: translateZ(0);
+  will-change: filter;
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .money-value__blur {
+    filter: none;
+    opacity: 0.6;
+  }
+}
+

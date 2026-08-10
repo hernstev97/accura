@@ -5,6 +5,7 @@ import {
   type AllocationRingSegment,
   type LayeredArcSegment,
 } from '../design/layeredAllocationRing';
+import { usePrivacy } from '../privacy/PrivacyProvider';
 
 type LayeredAllocationRingProps = {
   centerLabel: string;
@@ -76,6 +77,7 @@ export function LayeredAllocationRing({
   segments,
   totalCents,
 }: LayeredAllocationRingProps) {
+  const { privacyMode } = usePrivacy();
   const detailedArcs = createLayeredArcSegments(segments, totalCents);
   const freeCents = segments.find(({ id }) => id === 'free')?.amountCents ?? 0;
   const plannedCents = Math.max(0, totalCents - freeCents);
@@ -83,7 +85,7 @@ export function LayeredAllocationRing({
     { id: 'planned', label: 'Verplant', amountCents: plannedCents, color: 'var(--color-system-accent)' },
     { id: 'free-track', label: 'Frei', amountCents: Math.max(0, freeCents), color: 'transparent' },
   ], totalCents).filter(({ id }) => id === 'planned');
-  const summary = describeAllocationRing(segments, totalCents);
+  const summary = describeAllocationRing(segments, totalCents, privacyMode);
   const interactive = Boolean(onDetailedChange);
   const compactCenterValue = centerValue.replace(/\s/g, '');
   const centerSize = compactCenterValue.length >= 12 ? 'long' : compactCenterValue.length >= 9 ? 'medium' : 'default';
@@ -102,7 +104,7 @@ export function LayeredAllocationRing({
           {summaryArcs.map((segment) => <Arc exposeData={false} key={segment.id} segment={segment} />)}
         </g>
         <g className={`circular-allocation__detail-arcs ${detailed ? '' : 'is-hidden'}`}>
-          {detailedArcs.map((segment) => <Arc exposeData key={segment.id} segment={segment} />)}
+          {detailedArcs.map((segment) => <Arc exposeData={!privacyMode} key={segment.id} segment={segment} />)}
           {detailedArcs.length > 1 ? (
             <g className="circular-allocation__end-caps">
               {detailedArcs.map((segment, index) => (
@@ -132,8 +134,8 @@ export function LayeredAllocationRing({
       data-geometry="directed-end-cap-overlap"
       data-path-radius={LAYERED_RING_GEOMETRY.radius}
       data-stroke-width={LAYERED_RING_GEOMETRY.strokeWidth}
-      data-summary-planned-cents={plannedCents}
-      data-total-cents={totalCents}
+      data-summary-planned-cents={privacyMode ? undefined : plannedCents}
+      data-total-cents={privacyMode ? undefined : totalCents}
     >
       {interactive ? (
         <button
@@ -153,3 +155,4 @@ export function LayeredAllocationRing({
     </div>
   );
 }
+

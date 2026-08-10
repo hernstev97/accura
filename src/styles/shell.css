@@ -23,6 +23,12 @@
   backdrop-filter: blur(18px) saturate(1.15);
 }
 
+.top-app-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .screen-identity {
   display: flex;
   min-width: 0;
