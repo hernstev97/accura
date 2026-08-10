@@ -18,6 +18,7 @@ import {
   selectRemainingPaymentCount,
   selectRemainingScheduledTotalCents,
 } from './selectors';
+import { selectUpcomingSummary } from './upcoming';
 import type { FinanceDataV1, NecessityId } from './types';
 
 const necessityPresentation: Record<NecessityId, { label: string; colorToken: string }> = {
@@ -122,6 +123,8 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     freeAfter: centsToEuros(nextFreeMoneyCents),
   } : null;
 
+  const upcomingSummary = selectUpcomingSummary(data);
+
   return {
     meta: {
       asOf: data.asOf,
@@ -144,6 +147,20 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     debtBalanceMilestones,
     debtReliefMilestones,
     nextDebtRelief,
+    upcoming: {
+      salaryDay: upcomingSummary.salaryDay,
+      nextSalaryDate: upcomingSummary.nextSalaryDate,
+      nextSalaryDateLabel: upcomingSummary.nextSalaryDate ? fullDate.format(dateForFormatting(upcomingSummary.nextSalaryDate)) : null,
+      totalPending: centsToEuros(upcomingSummary.totalPendingCents),
+      totalPendingCents: upcomingSummary.totalPendingCents,
+      safeToSpend: centsToEuros(upcomingSummary.safeToSpendCents),
+      safeToSpendCents: upcomingSummary.safeToSpendCents,
+      payments: upcomingSummary.payments.map((p) => ({
+        ...p,
+        amount: centsToEuros(p.amountCents),
+        dueDateLabel: fullDate.format(dateForFormatting(p.dueDate)),
+      })),
+    },
     allocations: {
       budget: budgetAllocation,
       overview: overviewAllocation,

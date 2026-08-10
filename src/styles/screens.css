@@ -213,3 +213,16 @@
   font-size: 14px;
   line-height: 20px;
 }
+
+.pre-salary-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border-radius: 6px;
+  background: var(--color-warning-container);
+  color: var(--color-on-warning-container);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}

@@ -122,6 +122,18 @@ function readOptionalText(tab: FinanceTabName, record: LocatedRecord, column: st
   return read(tab, record, column, z.string().trim().min(1), 'Text oder leer', issues) ?? null;
 }
 
+function readOptionalDay(tab: FinanceTabName, record: LocatedRecord, column: string, issues: FinanceValidationIssue[]) {
+  const value = record.values[column];
+  if (isBlank(value)) return null;
+  const day = read(tab, record, column, integerSchema, 'Ganzzahl von 1 bis 31 oder leer', issues);
+  if (day === undefined) return undefined;
+  if (day < 1 || day > 31) {
+    issues.push(issue(tab, record.row, column, 'Ganzzahl von 1 bis 31 oder leer'));
+    return undefined;
+  }
+  return day;
+}
+
 function readMoney(tab: FinanceTabName, record: LocatedRecord, column: string, issues: FinanceValidationIssue[]) {
   const value = read(tab, record, column, z.number().finite(), 'numerischer Euro-Wert ohne Währungssymbol', issues);
   if (value === undefined) return undefined;
@@ -169,6 +181,7 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
   const asOf = meta ? read('_Meta', meta, 'as_of', isoDateSchema, 'ISO-Datum YYYY-MM-DD', issues) : undefined;
   const currency = meta ? read('_Meta', meta, 'currency', z.literal('EUR'), 'EUR', issues) : undefined;
   const monthlyIncomeCents = meta ? readMoney('_Meta', meta, 'monthly_income', issues) : undefined;
+  const salaryDay = meta ? readOptionalDay('_Meta', meta, 'salary_day', issues) : undefined;
   if (schemaVersion !== undefined && schemaVersion !== FINANCE_SCHEMA_VERSION) {
     issues.push(issue('_Meta', meta?.row ?? 2, 'schema_version', 'unterstützte Schema-Version 1', `Schema-Version ${schemaVersion} wird nicht unterstützt.`));
   }
@@ -218,8 +231,9 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
     const displayOrder = read('_BudgetItems', record, 'display_order', integerSchema, 'Ganzzahl', issues);
     const active = read('_BudgetItems', record, 'active', booleanSchema, 'boolescher Wert TRUE/FALSE', issues);
     const note = readOptionalText('_BudgetItems', record, 'note', issues);
-    return id !== undefined && label !== undefined && monthlyAmountCents !== undefined && necessityId !== undefined && kind !== undefined && displayOrder !== undefined && active !== undefined
-      ? [{ id, label, monthlyAmountCents, necessityId, kind, displayOrder, active, note }] : [];
+    const dueDay = readOptionalDay('_BudgetItems', record, 'due_day', issues);
+    return id !== undefined && label !== undefined && monthlyAmountCents !== undefined && necessityId !== undefined && kind !== undefined && displayOrder !== undefined && active !== undefined && dueDay !== undefined
+      ? [{ id, label, monthlyAmountCents, necessityId, kind, displayOrder, active, note, dueDay: dueDay ?? null }] : [];
   });
 
   const debts = records._Debts.flatMap((record) => {
@@ -230,8 +244,9 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
     const displayOrder = read('_Debts', record, 'display_order', integerSchema, 'Ganzzahl', issues);
     const active = read('_Debts', record, 'active', booleanSchema, 'boolescher Wert TRUE/FALSE', issues);
     const note = readOptionalText('_Debts', record, 'note', issues);
-    return id !== undefined && name !== undefined && kind !== undefined && monthlyPaymentCents !== undefined && displayOrder !== undefined && active !== undefined
-      ? [{ id, name, kind, monthlyPaymentCents, displayOrder, active, note }] : [];
+    const dueDay = readOptionalDay('_Debts', record, 'due_day', issues);
+    return id !== undefined && name !== undefined && kind !== undefined && monthlyPaymentCents !== undefined && displayOrder !== undefined && active !== undefined && dueDay !== undefined
+      ? [{ id, name, kind, monthlyPaymentCents, displayOrder, active, note, dueDay: dueDay ?? null }] : [];
   });
 
   const debtSnapshots = records._DebtSnapshots.flatMap((record) => {
@@ -330,6 +345,7 @@ export function validateFinanceWorkbook(workbook: TabularWorkbook): FinanceValid
       asOf,
       currency,
       monthlyIncomeCents,
+      salaryDay: salaryDay ?? null,
       accounts,
       accountSnapshots,
       pockets,

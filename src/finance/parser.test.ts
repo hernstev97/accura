@@ -150,4 +150,43 @@ describe('Finance Data Schema v1 parser', () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.issues).toContainEqual(expect.objectContaining({ tab: '_PocketSnapshots', message: 'Aktueller Snapshot fehlt.' }));
   });
+
+  it('parses salary_day and due_day optional columns correctly', () => {
+    const raw = workbook();
+    const result = validateFinanceWorkbook(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.salaryDay).toBe(25);
+    expect(result.data.budgetItems[0]?.dueDay).toBe(1);
+    expect(result.data.budgetItems[2]?.dueDay).toBeNull();
+    expect(result.data.debts[0]?.dueDay).toBe(20);
+  });
+
+  it('remains backwards-compatible when salary_day or due_day columns are omitted', () => {
+    const raw = workbook();
+    raw._Meta[0] = ['schema_version', 'as_of', 'currency', 'monthly_income'];
+    raw._Meta[1] = [1, '2026-08-08', 'EUR', 2591.32];
+    raw._BudgetItems[0] = ['id', 'label', 'monthly_amount', 'necessity_id', 'kind', 'display_order', 'active', 'note'];
+    raw._BudgetItems[1] = ['housing', 'Wohnen', 1000, 'essential', 'expense', 1, true, ''];
+    const result = validateFinanceWorkbook(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.salaryDay).toBeNull();
+    expect(result.data.budgetItems[0]?.dueDay).toBeNull();
+  });
+
+  it('rejects invalid day values for salary_day and due_day', () => {
+    const raw = workbook();
+    raw._Meta[1]![4] = 32;
+    raw._BudgetItems[1]![8] = 0;
+    raw._Debts[1]![7] = 'invalid';
+    const result = validateFinanceWorkbook(raw);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ tab: '_Meta', row: 2, column: 'salary_day', expected: 'Ganzzahl von 1 bis 31 oder leer' }),
+      expect.objectContaining({ tab: '_BudgetItems', row: 2, column: 'due_day', expected: 'Ganzzahl von 1 bis 31 oder leer' }),
+      expect.objectContaining({ tab: '_Debts', row: 2, column: 'due_day', expected: 'Ganzzahl von 1 bis 31 oder leer' }),
+    ]));
+  });
 });
