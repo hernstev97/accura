@@ -1670,7 +1670,7 @@ dialog.adaptive-dialog::backdrop { background: color-mix(in srgb, var(--color-sc
 
 .money-value__blur {
   display: inline-block;
-  filter: blur(7px);
+  filter: blur(calc(7em / 32));
   opacity: 0.78;
   transform: translateZ(0);
   will-change: filter;
