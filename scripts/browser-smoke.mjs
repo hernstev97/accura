@@ -861,6 +861,15 @@ try {
   assert.match(await mobile.page.locator('.pocket-collection').innerText(), /Technik/);
   await assertConcentric(mobile.page, '.pocket-collection', '.pocket-collection .pocket', 'Pockets ausgeklappt');
 
+  await mobile.page.getByRole('button', { name: 'Demnächst', exact: true }).click();
+  await mobile.page.getByRole('heading', { name: 'Demnächst' }).waitFor();
+  assertSharedFinanceRoles(overviewRoleGeometry, await financeRoleGeometry(mobile.page, '.upcoming-screen'), 'Demnächst');
+  assert.equal(await mobile.page.locator('[data-destination="upcoming"]').getAttribute('data-entrance'), 'first');
+  assert.match(await mobile.page.locator('.upcoming-screen').innerText(), /Bis Gehalt verfügbar/);
+  assert.match(await mobile.page.locator('.upcoming-screen').innerText(), /5 Tage vor Gehalt/);
+  await assertNoOverflow(mobile.page, 'Mobile Demnächst');
+  await assertNoVisibleTextBelow12px(mobile.page, '.upcoming-screen', 'Mobile Demnächst');
+
   await mobile.page.getByRole('button', { name: 'Budget', exact: true }).click();
   const navigationSamples = await navigationTransitionSamples(mobile.page);
   navigationSamples.forEach((sample, index) => assertStableNavigationGeometry(overviewNavigationGeometry, sample, `Indikatorframe ${index}`));
@@ -1046,6 +1055,11 @@ try {
       assert.equal(appBounds.width <= 1120, true);
       assert.equal(Math.abs(appBounds.left - (1440 - appBounds.width) / 2) < 2, true);
     }
+    await test.page.getByRole('button', { name: 'Demnächst', exact: true }).click();
+    await test.page.getByRole('heading', { name: 'Demnächst' }).waitFor();
+    await test.page.waitForTimeout(100);
+    await assertNoOverflow(test.page, `Light Demnächst ${viewport.name}`);
+    await assertLastContentNotObscured(test.page, '.upcoming-screen', `Light Demnächst ${viewport.name}`);
     await test.page.getByRole('button', { name: 'Budget', exact: true }).click();
     await test.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
     await test.page.waitForTimeout(360);

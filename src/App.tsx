@@ -14,10 +14,12 @@ import { OverviewScreen } from './screens/OverviewScreen';
 
 const budgetScreenModule = import('./screens/BudgetScreen');
 const debtScreenModule = import('./screens/DebtScreen');
+const upcomingScreenModule = import('./screens/UpcomingScreen');
 const BudgetScreen = lazy(() => budgetScreenModule.then((module) => ({ default: module.BudgetScreen })));
 const DebtScreen = lazy(() => debtScreenModule.then((module) => ({ default: module.DebtScreen })));
+const UpcomingScreen = lazy(() => upcomingScreenModule.then((module) => ({ default: module.UpcomingScreen })));
 
-const screenNames: Record<Destination, string> = { overview: 'Übersicht', budget: 'Budget', debt: 'Schulden' };
+const screenNames: Record<Destination, string> = { overview: 'Übersicht', upcoming: 'Demnächst', budget: 'Budget', debt: 'Schulden' };
 
 function ScreenLoading({ label = 'Ansicht wird geladen …' }: { label?: string }) {
   return (
@@ -113,6 +115,7 @@ function Screen({ destination }: { destination: Destination }) {
   return (
     <Suspense fallback={<ScreenLoading />}>
       {destination === 'overview' ? <OverviewScreen /> : null}
+      {destination === 'upcoming' ? <UpcomingScreen /> : null}
       {destination === 'budget' ? <BudgetScreen /> : null}
       {destination === 'debt' ? <DebtScreen /> : null}
     </Suspense>
