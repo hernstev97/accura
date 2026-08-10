@@ -174,9 +174,9 @@ After runtime validation and normalization, all financial calculations operate o
 - Free amount after the next relief: current free amount plus the grouped next `free_amount` values.
 - Next salary date: earliest date on or after `as_of` matching configured `salary_day` (clamped to the last day of target month if the target month has fewer days).
 - Next occurrence of recurring payment: earliest date on or after `as_of` matching `due_day` (clamped to target month's last valid day).
-- Pending recurring payments until next salary: active budget items and debts with a specified `due_day` whose next occurrence falls in `[as_of, nextSalaryDate]` (inclusive of salary day).
+- Pending recurring payments until next salary: active budget items and debts with a specified `due_day` whose next occurrence falls in `[as_of, nextSalaryDate)` (strictly before salary day).
 - Safe to spend: `currentlyAvailableMoney - pendingPaymentsUntilNextSalary`.
-- Shortly before salary flag: payment due date falls within 7 calendar days inclusive before `nextSalaryDate`.
+- Shortly before salary flag: payment due date falls within 7 calendar days strictly before `nextSalaryDate`.
 - Dates and labels: localized in the UI from ISO source dates.
 
 The workbook must not contain account totals, pocket totals, free totals, necessity aggregates, reserve totals, payoff totals, or future-cost totals.
