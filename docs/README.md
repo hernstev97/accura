@@ -10,7 +10,7 @@ Diese Seite ist der zentrale Index und damit die Single Source of Truth (SSOT) f
 
 ## Lesepfade
 
-- **Produktinteressierte:** [Überblick](produkt/ueberblick.md) → [Funktionen](produkt/funktionen.md) → [Roadmap](produkt/roadmap.md)
+- **Produktinteressierte:** [Überblick](produkt/ueberblick.md) → [Funktionen](produkt/funktionen.md) → [Markt und Positionierung](produkt/markt-und-positionierung.md) → [Roadmap](produkt/roadmap.md)
 - **Nutzer:** [Funktionen](produkt/funktionen.md) → [Abläufe und Zustände](produkt/ablaeufe-und-zustaende.md) → [Fehlerdiagnose](anleitungen/fehlerdiagnose.md)
 - **Junior-Entwickler:** [Web und PWA](grundlagen/web-und-pwa.md) → [TypeScript und React](grundlagen/typescript-und-react.md) → [Architekturüberblick](architektur/ueberblick.md)
 - **Erfahrene Entwickler:** [Backend und Sicherheit](architektur/backend-und-sicherheit.md) → [Finanz-Domäne](architektur/finanz-domaene.md) → [ADRs](entscheidungen/README.md)
@@ -22,6 +22,7 @@ Diese Seite ist der zentrale Index und damit die Single Source of Truth (SSOT) f
 | --- | --- |
 | Zweck, Zielgruppe, Produktgrenze | [Produktüberblick](produkt/ueberblick.md) |
 | Bedienbare Funktionen | [Funktionen](produkt/funktionen.md) |
+| Datierte Marktaufnahme und subjektive Wettbewerbsbewertung | [Markt und Positionierung](produkt/markt-und-positionierung.md) |
 | Sitzungs-, Sync-, Privacy- und Appearance-Zustände | [Abläufe und Zustände](produkt/ablaeufe-und-zustaende.md) |
 | Erreichter Stand | [Entwicklungsstand](produkt/entwicklungsstand.md) |
 | Now–Next–Later | [Roadmap](produkt/roadmap.md) |
@@ -57,6 +58,7 @@ Diese Seite ist der zentrale Index und damit die Single Source of Truth (SSOT) f
 
 - [Überblick](produkt/ueberblick.md)
 - [Funktionen](produkt/funktionen.md)
+- [Markt und Positionierung](produkt/markt-und-positionierung.md)
 - [Abläufe und Zustände](produkt/ablaeufe-und-zustaende.md)
 - [Entwicklungsstand](produkt/entwicklungsstand.md)
 - [Roadmap](produkt/roadmap.md)

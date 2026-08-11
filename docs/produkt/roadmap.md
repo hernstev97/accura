@@ -4,9 +4,17 @@
 > **Zweck und Lernziel:** Priorisierte Vorhaben klar vom aktuellen Produkt trennen.
 > **Voraussetzungen:** [Entwicklungsstand](entwicklungsstand.md)
 > **Kanonisch für:** Now–Next–Later-Planung.
-> **Verwandte Dokumente:** [Produktüberblick](ueberblick.md), [Testen und Release](../anleitungen/testen-und-release.md)
+> **Verwandte Dokumente:** [Produktüberblick](ueberblick.md), [Markt und Positionierung](markt-und-positionierung.md), [Testen und Release](../anleitungen/testen-und-release.md)
 
 Die Roadmap ist eine Absichtserklärung, kein Funktionsversprechen. „Now“ bedeutet aktuell zu validieren oder abzuschließen, nicht automatisch bereits produktiv verfügbar.
+
+## Strategische Leitplanken
+
+- **Kognitive Entlastung vor Funktionsbreite:** Neue Funktionen müssen finanzielle Gewissheit erhöhen und dürfen verfügbare Mittel, unmittelbare Belastungen und Schuldenentwicklung nicht verdrängen.
+- **Weniger Überraschungen vor mehr Nutzung:** Erfolg wird nicht durch längere Sitzungen, tägliche Serien oder Gamification definiert.
+- **Erklärbarkeit vor scheinbarer Präzision:** Jede zentrale Zahl muss auf Quelldaten, Stichtag und Annahmen zurückführbar sein. Prognosen müssen bestätigt, erwartet und unsicher unterscheidbar machen.
+- **Vertrauen vor Monetarisierung:** Die finanzielle Verletzlichkeit der Zielgruppe darf nicht durch Kredit-, Versicherungs-, Vergleichs- oder Affiliate-Verkauf ausgenutzt werden.
+- **Aktueller Stand vor Vision:** Marktchancen und langfristige Positionierung machen keine Roadmap-Idee zu einer implementierten oder beschlossenen Funktion.
 
 ## Now
 
@@ -34,4 +42,4 @@ Appearance-Grundimplementierung, Accessibility-Pass, Branding, CI, Demnächst un
 
 ## Nicht Teil der Roadmap
 
-Multi-User, Mandantenverwaltung, öffentlicher SaaS-Betrieb, Banktransaktionen und stilles Bearbeiten der Finanzquelle sind keine geplanten Erweiterungen.
+Multi-User, Mandantenverwaltung, öffentlicher SaaS-Betrieb, Banktransaktionen und stilles Bearbeiten der Finanzquelle sind keine geplanten Erweiterungen. Ebenso sind Depot-/Investmentanalyse, Gesamtvermögensverwaltung, Finanzproduktvermittlung, Steuer-/Buchhaltungsfunktionen und Wachstum allein zur Konkurrenz mit universellen Finanzplattformen keine strategischen Ziele.
