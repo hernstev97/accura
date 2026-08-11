@@ -23,7 +23,7 @@ Keine einzelne Prüfung beweist das Produkt. Reine Unit-Tests decken fachliche R
 | `npm run docs:check` | interne Dokumentstruktur, Links und Anker | nein |
 | `npm run docs:check:external` | zusätzlich deduplizierte externe Links | ja, optional |
 
-Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, kontrollierte Worker-Aktualisierung, Chromium-Installierbarkeit, Icon-Safe-Zone, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts, Offline-Reload und Netzrückkehr.
+Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, kontrollierte Worker-Aktualisierung, Chromium-Installierbarkeit, Icon-Safe-Zone, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts, URL-Routing, History, OAuth-Rückweg, Offline-Deep-Link-Reload und Netzrückkehr.
 
 ## Golden Screenshots und Axe
 

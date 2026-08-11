@@ -38,7 +38,7 @@ describe('accura branding contracts', () => {
       name: ACCURA_FULL_NAME,
       short_name: ACCURA_NAME,
       lang: 'de-DE',
-      start_url: '/',
+      start_url: '/?app-launch=pwa',
       scope: '/',
       display: 'standalone',
       orientation: 'portrait-primary',

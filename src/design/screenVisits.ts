@@ -1,16 +1,16 @@
-export type VisitedDestination = 'overview' | 'upcoming' | 'budget' | 'debt';
+import { isDestination, type Destination } from '../navigation/appNavigation';
+
+export type VisitedDestination = Destination;
 
 export const SCREEN_VISITS_SESSION_KEY = 'finance-screen-visits-v1';
 
 type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
-const validDestinations = new Set<VisitedDestination>(['overview', 'upcoming', 'budget', 'debt']);
-
 function parseVisited(value: string | null) {
   if (!value) return new Set<VisitedDestination>();
   try {
     const parsed: unknown = JSON.parse(value);
-    return new Set(Array.isArray(parsed) ? parsed.filter((entry): entry is VisitedDestination => validDestinations.has(entry as VisitedDestination)) : []);
+    return new Set(Array.isArray(parsed) ? parsed.filter(isDestination) : []);
   } catch {
     return new Set<VisitedDestination>();
   }

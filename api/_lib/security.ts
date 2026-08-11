@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
+import { isAppPath, type AppPath } from '../../src/navigation/appNavigation.js';
 import { AppError } from './errors.js';
 
 export const SESSION_COOKIE = 'finance_session';
@@ -24,6 +25,7 @@ const oauthSchema = z.object({
   state: z.string().min(20),
   verifier: z.string().min(43),
   nonce: z.string().min(20),
+  returnPath: z.custom<AppPath>(isAppPath).default('/'),
   iat: z.number().int(),
   exp: z.number().int(),
 });
@@ -75,7 +77,11 @@ export function verifySession(token: string, secret: string, now = Date.now()): 
   return parsed.data;
 }
 
-export function createOAuthTransaction(secret: string, now = Date.now()): { token: string; transaction: OAuthTransaction; challenge: string } {
+export function createOAuthTransaction(
+  secret: string,
+  returnPath: AppPath = '/',
+  now = Date.now(),
+): { token: string; transaction: OAuthTransaction; challenge: string } {
   const iat = Math.floor(now / 1000);
   const verifier = randomBytes(48).toString('base64url');
   const transaction: OAuthTransaction = {
@@ -83,6 +89,7 @@ export function createOAuthTransaction(secret: string, now = Date.now()): { toke
     state: randomBytes(32).toString('base64url'),
     verifier,
     nonce: randomBytes(32).toString('base64url'),
+    returnPath,
     iat,
     exp: iat + OAUTH_TTL_SECONDS,
   };

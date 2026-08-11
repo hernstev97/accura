@@ -191,7 +191,7 @@ try {
     display: 'standalone',
     id: '/',
     scope: '/',
-    start_url: '/',
+    start_url: '/?app-launch=pwa',
     theme_color: installColor,
   });
   assert.deepEqual(manifest.icons.map(({ purpose, sizes, src, type }) => ({ purpose, sizes, src, type })), [

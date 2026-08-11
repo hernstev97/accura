@@ -18,6 +18,8 @@ const contentTypes = {
 };
 const apiHits = { callback: 0, session: 0, start: 0 };
 let authenticated = false;
+let oauthReturnPath = '/';
+const allowedReturnPaths = new Set(['/', '/demnaechst', '/budget', '/schulden']);
 
 function sendJson(response, statusCode, body, functionName) {
   response.writeHead(statusCode, {
@@ -52,6 +54,8 @@ async function handleRequest(request, response) {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1');
   if (url.pathname === '/api/auth/google/start') {
     apiHits.start += 1;
+    const requestedReturnPath = url.searchParams.get('return_to');
+    oauthReturnPath = allowedReturnPaths.has(requestedReturnPath) ? requestedReturnPath : '/';
     response.writeHead(302, {
       'Cache-Control': 'no-store',
       Location: '/api/auth/google/callback?code=smoke-code&state=smoke-state',
@@ -69,7 +73,7 @@ async function handleRequest(request, response) {
     authenticated = true;
     response.writeHead(302, {
       'Cache-Control': 'no-store',
-      Location: '/',
+      Location: oauthReturnPath,
       'X-Smoke-Function': 'auth-callback',
     });
     response.end();
@@ -113,8 +117,9 @@ page.setDefaultNavigationTimeout(15_000);
 page.setDefaultTimeout(15_000);
 
 try {
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await page.goto(`${baseUrl}/budget`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  assert.equal(new URL(page.url()).pathname, '/budget', 'Abgemeldeter Deep Link verlor seinen Pfad');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker kontrolliert die Testseite nicht');
@@ -134,8 +139,9 @@ try {
   assert.match(rejectedCallback.headers()['content-type'] ?? '', /^application\/json/);
   assert.doesNotMatch(await rejectedCallback.text(), /<html|<!doctype/i, 'OAuth callback received the cached SPA shell');
 
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await page.goto(`${baseUrl}/budget`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  assert.equal(new URL(page.url()).pathname, '/budget', 'Deep Link ging vor dem Login verloren');
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker verlor vor dem Login die Kontrolle');
 
   const startResponsePromise = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/auth/google/start');
@@ -146,6 +152,7 @@ try {
   await page.getByRole('button', { name: 'Mit Google anmelden' }).click();
   const [startResponse, callbackResponse] = await Promise.all([startResponsePromise, callbackResponsePromise]);
   assert.equal(startResponse.status(), 302);
+  assert.equal(new URL(startResponse.url()).searchParams.get('return_to'), '/budget');
   assert.equal(startResponse.fromServiceWorker(), true, 'Auth start navigation did not pass through the controlling service worker');
   assert.equal(startResponse.headers().location, '/api/auth/google/callback?code=smoke-code&state=smoke-state');
   assert.equal(startResponse.headers()['x-smoke-function'], 'auth-start');
@@ -155,6 +162,7 @@ try {
   assert.equal(callbackResponse.headers()['x-smoke-function'], 'auth-callback');
   assert.equal(callbackResponse.headers()['cache-control'], 'no-store');
   await page.getByRole('heading', { name: 'Google-Tabelle auswählen' }).waitFor();
+  assert.equal(new URL(page.url()).pathname, '/budget', 'OAuth-Rückkehr verlor den validierten Deep Link');
 
   assert.equal(apiHits.start, 1, 'Login navigation did not reach the auth start function');
   assert.equal(apiHits.callback, 2, 'Expected one rejected callback probe and one successful login callback');

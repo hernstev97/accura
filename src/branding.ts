@@ -15,7 +15,7 @@ export const accuraManifest = {
   short_name: ACCURA_NAME,
   description: ACCURA_MANIFEST_DESCRIPTION,
   lang: 'de-DE',
-  start_url: '/',
+  start_url: '/?app-launch=pwa',
   scope: '/',
   display: 'standalone',
   orientation: 'portrait-primary',

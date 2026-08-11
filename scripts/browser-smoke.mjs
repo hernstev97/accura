@@ -86,10 +86,10 @@ async function assertNoOverflow(page, label) {
 }
 
 async function assertTouchTargets(page, label) {
-  const targets = await page.locator('button').evaluateAll((buttons) => buttons.filter((button) => {
-    const style = getComputedStyle(button); const rect = button.getBoundingClientRect();
+  const targets = await page.locator('button, a[href]').evaluateAll((elements) => elements.filter((element) => {
+    const style = getComputedStyle(element); const rect = element.getBoundingClientRect();
     return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
-  }).map((button) => { const rect = button.getBoundingClientRect(); return { height: rect.height, name: button.getAttribute('aria-label') ?? button.textContent?.trim(), width: rect.width }; }));
+  }).map((element) => { const rect = element.getBoundingClientRect(); return { height: rect.height, name: element.getAttribute('aria-label') ?? element.textContent?.trim(), width: rect.width }; }));
   assert.equal(targets.every(({ height, width }) => height >= 47.5 && width >= 47.5), true, `${label} enthält ein Touch-Ziel unter 48px: ${JSON.stringify(targets)}`);
 }
 
@@ -502,6 +502,68 @@ try {
   assert.deepEqual(loading.errors, [], loading.errors.join('\n'));
   await loading.context.close();
 
+  const routing = await statePage('connected');
+  const routes = [
+    { heading: overviewHeading, label: 'Übersicht', path: '/' },
+    { heading: 'Demnächst', label: 'Demnächst', path: '/demnaechst' },
+    { heading: 'Dein Budget', label: 'Budget', path: '/budget' },
+    { heading: 'Dein Weg auf null', label: 'Schulden', path: '/schulden' },
+  ];
+  for (const route of routes) {
+    await routing.page.goto(`${baseUrl}${route.path}`, { waitUntil: 'networkidle' });
+    await routing.page.getByRole('heading', { name: route.heading }).waitFor();
+    assert.equal(new URL(routing.page.url()).pathname, route.path, `${route.label}: Deep Link verlor den Pfad`);
+    assert.equal(await routing.page.getByRole('link', { name: route.label, exact: true }).getAttribute('aria-current'), 'page');
+    await routing.page.reload({ waitUntil: 'networkidle' });
+    await routing.page.getByRole('heading', { name: route.heading }).waitFor();
+    assert.equal(new URL(routing.page.url()).pathname, route.path, `${route.label}: Reload verlor den Pfad`);
+  }
+
+  await routing.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await routing.page.getByRole('heading', { name: overviewHeading }).waitFor();
+  await routing.page.getByRole('link', { name: 'Demnächst', exact: true }).click();
+  await routing.page.getByRole('link', { name: 'Budget', exact: true }).click();
+  await routing.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
+  const historyLengthBeforeRepeat = await routing.page.evaluate(() => history.length);
+  await routing.page.getByRole('link', { name: 'Budget', exact: true }).click();
+  assert.equal(await routing.page.evaluate(() => history.length), historyLengthBeforeRepeat, 'Aktiver Link erzeugte einen doppelten History-Eintrag');
+  await routing.page.getByRole('link', { name: 'Schulden', exact: true }).click();
+  await routing.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
+  await routing.page.goBack();
+  await routing.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
+  assert.equal(new URL(routing.page.url()).pathname, '/budget');
+  assert.equal(await routing.page.locator('[data-destination="budget"]').getAttribute('data-entrance'), 'visited');
+  await routing.page.goBack();
+  await routing.page.getByRole('heading', { name: 'Demnächst' }).waitFor();
+  assert.equal(new URL(routing.page.url()).pathname, '/demnaechst');
+  await routing.page.goForward();
+  await routing.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
+  assert.equal(new URL(routing.page.url()).pathname, '/budget');
+
+  await routing.page.goto(`${baseUrl}/unbekannt?source=deep-link#status`, { waitUntil: 'networkidle' });
+  await routing.page.getByRole('heading', { name: overviewHeading }).waitFor();
+  const fallbackUrl = new URL(routing.page.url());
+  assert.deepEqual(
+    { hash: fallbackUrl.hash, pathname: fallbackUrl.pathname, search: fallbackUrl.search },
+    { hash: '#status', pathname: '/', search: '?source=deep-link' },
+    'Ungültige Route wurde nicht kontrolliert ersetzt',
+  );
+
+  await routing.page.evaluate(() => localStorage.setItem('finance-last-destination-v1', 'budget'));
+  await routing.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await routing.page.getByRole('heading', { name: overviewHeading }).waitFor();
+  assert.equal(new URL(routing.page.url()).pathname, '/', 'Explizites Root wurde durch den letzten Screen überschrieben');
+  await routing.page.evaluate(() => localStorage.setItem('finance-last-destination-v1', 'budget'));
+  await routing.page.goto(`${baseUrl}/?app-launch=pwa`, { waitUntil: 'networkidle' });
+  await routing.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
+  assert.equal(new URL(routing.page.url()).pathname, '/budget', 'PWA-Kaltstart stellte den letzten Screen nicht wieder her');
+  assert.equal(new URL(routing.page.url()).searchParams.has('app-launch'), false, 'PWA-Startmarker blieb in der URL');
+  await routing.page.goBack();
+  await routing.page.getByRole('heading', { name: overviewHeading }).waitFor();
+  assert.equal(new URL(routing.page.url()).pathname, '/', 'PWA-Startmarker erzeugte einen Zwischenzustand in der History');
+  assert.deepEqual(routing.errors, [], routing.errors.join('\n'));
+  await routing.context.close();
+
   const picker = await statePage('no-spreadsheet');
   await picker.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await picker.page.getByRole('button', { name: 'Google-Tabelle auswählen' }).click();
@@ -874,7 +936,7 @@ try {
   assert.match(await mobile.page.locator('.pocket-collection').innerText(), /Technik/);
   await assertConcentric(mobile.page, '.pocket-collection', '.pocket-collection .pocket', 'Pockets ausgeklappt');
 
-  await mobile.page.getByRole('button', { name: 'Demnächst', exact: true }).click();
+  await mobile.page.getByRole('link', { name: 'Demnächst', exact: true }).click();
   await mobile.page.getByRole('heading', { name: 'Demnächst' }).waitFor();
   assertSharedFinanceRoles(overviewRoleGeometry, await financeRoleGeometry(mobile.page, '.upcoming-screen'), 'Demnächst');
   assert.equal(await mobile.page.locator('[data-destination="upcoming"]').getAttribute('data-entrance'), 'first');
@@ -883,7 +945,7 @@ try {
   await assertNoOverflow(mobile.page, 'Mobile Demnächst');
   await assertNoVisibleTextBelow12px(mobile.page, '.upcoming-screen', 'Mobile Demnächst');
 
-  await mobile.page.getByRole('button', { name: 'Budget', exact: true }).click();
+  await mobile.page.getByRole('link', { name: 'Budget', exact: true }).click();
   const navigationSamples = await navigationTransitionSamples(mobile.page);
   navigationSamples.forEach((sample, index) => assertStableNavigationGeometry(overviewNavigationGeometry, sample, `Indikatorframe ${index}`));
   await mobile.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
@@ -953,7 +1015,7 @@ try {
   await assertNoVisibleTextBelow12px(mobile.page, '.budget-screen', 'Mobiles Budget');
   await mobile.page.screenshot({ path: '/tmp/finance-budget.png', fullPage: true });
 
-  await mobile.page.getByRole('button', { name: 'Schulden', exact: true }).click();
+  await mobile.page.getByRole('link', { name: 'Schulden', exact: true }).click();
   await mobile.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
   assertSharedFinanceRoles(overviewRoleGeometry, await financeRoleGeometry(mobile.page, '.debt-screen'), 'Schulden');
   assert.equal(await mobile.page.locator('[data-destination="debt"]').getAttribute('data-entrance'), 'first');
@@ -989,17 +1051,17 @@ try {
     labels.forEach((label) => [...document.querySelectorAll('.bottom-navigation__item')].find((item) => item.textContent.includes(label))?.click());
   });
   await mobile.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
-  assert.equal(await mobile.page.getByRole('button', { name: 'Schulden', exact: true }).getAttribute('aria-current'), 'page');
+  assert.equal(await mobile.page.getByRole('link', { name: 'Schulden', exact: true }).getAttribute('aria-current'), 'page');
   assert.equal(await mobile.page.locator('[data-destination="debt"]').getAttribute('data-rapid-tap-probe'), 'same-screen');
   assertStableNavigationGeometry(overviewNavigationGeometry, await navigationGeometry(mobile.page), 'Schnelle Navigation');
 
-  await mobile.page.getByRole('button', { name: 'Übersicht', exact: true }).click();
+  await mobile.page.getByRole('link', { name: 'Übersicht', exact: true }).click();
   await mobile.page.getByRole('heading', { name: overviewHeading }).waitFor();
   const revisitedOverview = mobile.page.locator('[data-destination="overview"]');
   assert.equal(await revisitedOverview.getAttribute('data-entrance'), 'visited');
   assert.equal(await revisitedOverview.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
   assert.equal(await mobile.page.locator('.screen-transition').count(), 0, 'Veralteter Screen-Transition-Container ist noch vorhanden');
-  await mobile.page.getByRole('button', { name: 'Budget', exact: true }).click();
+  await mobile.page.getByRole('link', { name: 'Budget', exact: true }).click();
   await mobile.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
   const revisitedBudget = mobile.page.locator('[data-destination="budget"]');
   assert.equal(await revisitedBudget.getAttribute('data-entrance'), 'visited');
@@ -1068,19 +1130,19 @@ try {
       assert.equal(appBounds.width <= 1120, true);
       assert.equal(Math.abs(appBounds.left - (1440 - appBounds.width) / 2) < 2, true);
     }
-    await test.page.getByRole('button', { name: 'Demnächst', exact: true }).click();
+    await test.page.getByRole('link', { name: 'Demnächst', exact: true }).click();
     await test.page.getByRole('heading', { name: 'Demnächst' }).waitFor();
     await test.page.waitForTimeout(100);
     await assertNoOverflow(test.page, `Light Demnächst ${viewport.name}`);
     await assertLastContentNotObscured(test.page, '.upcoming-screen', `Light Demnächst ${viewport.name}`);
-    await test.page.getByRole('button', { name: 'Budget', exact: true }).click();
+    await test.page.getByRole('link', { name: 'Budget', exact: true }).click();
     await test.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
     await test.page.waitForTimeout(360);
     await assertRingCenterFits(test.page, '.budget-screen .circular-allocation', `Budgetring ${viewport.name}`);
     await assertNoOverflow(test.page, `Light Budget ${viewport.name}`);
     await assertLastContentNotObscured(test.page, '.budget-screen', `Light Budget ${viewport.name}`);
     await test.page.screenshot({ path: `/tmp/finance-light-${viewport.name}-budget.png`, fullPage: true });
-    await test.page.getByRole('button', { name: 'Schulden', exact: true }).click();
+    await test.page.getByRole('link', { name: 'Schulden', exact: true }).click();
     await test.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
     await test.page.locator('.debt-progress .app-button').click();
     await test.page.waitForTimeout(560);
@@ -1116,13 +1178,13 @@ try {
       await dark.page.locator('.overview-screen .circular-allocation__button').click();
       await dark.page.screenshot({ path: '/tmp/finance-dark-412x915-overview-detailed.png', fullPage: true });
     }
-    await dark.page.getByRole('button', { name: 'Budget', exact: true }).click();
+    await dark.page.getByRole('link', { name: 'Budget', exact: true }).click();
     await dark.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
     await dark.page.waitForTimeout(360);
     await assertRingCenterFits(dark.page, '.budget-screen .circular-allocation', `Dark Budgetring ${viewport.name}`);
     await assertNoOverflow(dark.page, `Dark Budget ${viewport.name}`);
     await dark.page.screenshot({ path: `/tmp/finance-dark-${viewport.name}-budget.png`, fullPage: true });
-    await dark.page.getByRole('button', { name: 'Schulden', exact: true }).click();
+    await dark.page.getByRole('link', { name: 'Schulden', exact: true }).click();
     await dark.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
     await dark.page.locator('.debt-progress .app-button').click();
     await dark.page.waitForTimeout(560);
@@ -1145,7 +1207,7 @@ try {
   const reducedStatusTrigger = reduced.locator('.overview-screen .circular-allocation__button');
   await reducedStatusTrigger.click();
   assert.equal(await reducedStatusTrigger.getAttribute('aria-pressed'), 'true');
-  await reduced.getByRole('button', { name: 'Budget', exact: true }).click();
+  await reduced.getByRole('link', { name: 'Budget', exact: true }).click();
   assert.equal(await reduced.locator('[data-destination="budget"]').getAttribute('data-entrance'), 'reduced');
   assert.equal(await reduced.locator('.budget-chart').getAttribute('data-animation-active'), 'false');
   await reduced.getByRole('tab', { name: 'Notwendigkeit' }).click();
@@ -1172,11 +1234,11 @@ try {
   await assertAdaptiveNavigation(forced, 412, 'Forced Colors Übersicht');
   await assertNoOverflow(forced, 'Forced Colors Übersicht');
   await assertNoVisibleTextBelow12px(forced, '.overview-screen', 'Forced Colors Übersicht');
-  await forced.getByRole('button', { name: 'Budget', exact: true }).click();
+  await forced.getByRole('link', { name: 'Budget', exact: true }).click();
   await forced.getByRole('heading', { name: 'Dein Budget' }).waitFor();
   await forced.getByRole('tab', { name: 'Notwendigkeit' }).press('End');
   await assertNoOverflow(forced, 'Forced Colors Budget');
-  await forced.getByRole('button', { name: 'Schulden', exact: true }).click();
+  await forced.getByRole('link', { name: 'Schulden', exact: true }).click();
   await forced.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
   await forced.locator('.debt-progress .app-button').click();
   await assertChartsHaveLayout(forced, 'Forced Colors Schulden');

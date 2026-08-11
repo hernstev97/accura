@@ -77,6 +77,10 @@ Nach grünen Prüfungen über den eigentümerkontrollierten Vercel-Workflow depl
 - Tabellenprüfung, erster Sync und manueller Refresh;
 - Wechsel auf eine zweite Testtabelle und zurück;
 - Offline-Reload nach erfolgreichem Sync;
+- `/`, `/demnaechst`, `/budget` und `/schulden` jeweils direkt in einem neuen Browserkontext sowie nach Reload;
+- unbekannten Pfad prüfen: kontrollierter Wechsel auf `/`, keine API- oder Asset-Umleitung auf die App-Shell;
+- Browser-Zurück/Vorwärts über alle vier Hauptansichten und OAuth-Rückkehr zum vorherigen Pfad;
+- installierte Android-PWA kalt aus jedem zuletzt verwendeten Hauptscreen starten und mehrfach systemseitig zurücknavigieren;
 - Logout gegenüber erneuter Anmeldung;
 - Disconnect löscht Serververbindung und lokalen Finance-Cache;
 - Wiederverbinden und erneute Auswahl;
