@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   assertCsrf,
@@ -39,12 +40,35 @@ describe('server security primitives', () => {
 
   it('validates OAuth state, signed transaction age, and PKCE material', () => {
     const now = Date.UTC(2026, 7, 8);
-    const { token, transaction, challenge } = createOAuthTransaction(sessionSecret, now);
+    const { token, transaction, challenge } = createOAuthTransaction(sessionSecret, '/budget', now);
     expect(challenge).toHaveLength(43);
     expect(transaction.verifier.length).toBeGreaterThanOrEqual(43);
-    expect(verifyOAuthTransaction(token, transaction.state, sessionSecret, now + 1000).nonce).toBe(transaction.nonce);
+    expect(verifyOAuthTransaction(token, transaction.state, sessionSecret, now + 1000)).toMatchObject({
+      nonce: transaction.nonce,
+      returnPath: '/budget',
+    });
     expect(() => verifyOAuthTransaction(token, 'wrong-state', sessionSecret, now)).toThrow(/state/i);
     expect(() => verifyOAuthTransaction(token, transaction.state, sessionSecret, now + 11 * 60 * 1000)).toThrow(/abgelaufen/i);
+
+    const [encodedPayload, signature] = token.split('.');
+    const tamperedPayload = JSON.parse(Buffer.from(encodedPayload!, 'base64url').toString('utf8')) as Record<string, unknown>;
+    tamperedPayload.returnPath = 'https://evil.example';
+    const tamperedEncoded = Buffer.from(JSON.stringify(tamperedPayload)).toString('base64url');
+    const tamperedSignature = Buffer.from(createHmac('sha256', sessionSecret).update(tamperedEncoded).digest()).toString('base64url');
+    expect(() => verifyOAuthTransaction(`${tamperedEncoded}.${tamperedSignature}`, transaction.state, sessionSecret, now)).toThrow(/ungültig/i);
+    expect(() => verifyOAuthTransaction(`${token}${signature}`, transaction.state, sessionSecret, now)).toThrow(/ungültig/i);
+  });
+
+  it('accepts signed in-flight OAuth transactions created before return paths existed', () => {
+    const now = Date.UTC(2026, 7, 8);
+    const { token, transaction } = createOAuthTransaction(sessionSecret, '/', now);
+    const [encodedPayload] = token.split('.');
+    const legacyPayload = JSON.parse(Buffer.from(encodedPayload!, 'base64url').toString('utf8')) as Record<string, unknown>;
+    delete legacyPayload.returnPath;
+    const legacyEncoded = Buffer.from(JSON.stringify(legacyPayload)).toString('base64url');
+    const legacySignature = Buffer.from(createHmac('sha256', sessionSecret).update(legacyEncoded).digest()).toString('base64url');
+
+    expect(verifyOAuthTransaction(`${legacyEncoded}.${legacySignature}`, transaction.state, sessionSecret, now).returnPath).toBe('/');
   });
 
   it('requires both a same-origin request and matching CSRF header', () => {

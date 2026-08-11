@@ -12,7 +12,7 @@ Alle Endpunkte sind same-origin Vercel Functions, antworten mit `Cache-Control: 
 
 | Methode | Pfad | Auth/CSRF | Erfolg |
 | --- | --- | --- | --- |
-| `GET` | `/api/auth/google/start` | nein | 302 zu Google, setzt OAuth-Transaktionscookie |
+| `GET` | `/api/auth/google/start?return_to=/budget` | nein | 302 zu Google, setzt OAuth-Transaktionscookie |
 | `GET` | `/api/auth/google/callback` | OAuth-Cookie, Query `code`/`state` | 302 zur App, setzt Session-Cookie |
 | `GET` | `/api/session` | optionales Session-Cookie | Sitzungsstatus |
 | `GET` | `/api/finance` | Session | validierter Finance-Snapshot |
@@ -22,6 +22,8 @@ Alle Endpunkte sind same-origin Vercel Functions, antworten mit `Cache-Control: 
 | `POST` | `/api/connection/disconnect` | Session + CSRF + Origin | Grant best-effort widerrufen, Verbindung gelöscht |
 
 Nicht erlaubte Methoden ergeben 405 und einen `Allow`-Header.
+
+`return_to` am OAuth-Start ist optional und akzeptiert exakt `/`, `/demnaechst`, `/budget` oder `/schulden`. Jeder andere Wert fällt auf `/` zurück. Der validierte Pfad wird in der signierten OAuth-Transaktion gebunden; der Callback übernimmt keinen freien Redirectparameter. Erfolg und Fehler einer verifizierten Transaktion kehren zu diesem Pfad zurück, ältere Transaktionen ohne Feld sowie unverifizierbare Callbacks zu `/`.
 
 ## `GET /api/session`
 
@@ -105,7 +107,7 @@ Logout löscht nur das Session-Cookie. Disconnect versucht Google-Widerruf, lös
 }
 ```
 
-`details` ist optional. Relevante Codes sind `method_not_allowed`, `unauthenticated`, `forbidden`, `csrf_failed`, `connection_missing`, `spreadsheet_missing`, `invalid_request`, `spreadsheet_inaccessible`, `invalid_spreadsheet_type`, `invalid_finance_schema`, `reconnect_required`, `google_token_error`, `sheets_read_failed` und `internal_error`. OAuth-Callbackfehler werden als sicher allowgelisteter `auth_error`-Queryparameter zur App umgeleitet.
+`details` ist optional. Relevante Codes sind `method_not_allowed`, `unauthenticated`, `forbidden`, `csrf_failed`, `connection_missing`, `spreadsheet_missing`, `invalid_request`, `spreadsheet_inaccessible`, `invalid_spreadsheet_type`, `invalid_finance_schema`, `reconnect_required`, `google_token_error`, `sheets_read_failed` und `internal_error`. OAuth-Callbackfehler werden als sicher allowgelisteter `auth_error`-Queryparameter zum verifizierten internen Rückweg oder ersatzweise zu `/` umgeleitet.
 
 ## Implementierung und Tests
 

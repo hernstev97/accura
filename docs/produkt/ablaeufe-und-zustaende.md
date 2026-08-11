@@ -28,6 +28,9 @@
 | Appearance-Entwurf | Vorschau im Dialog, noch nicht gespeichert | anwenden oder abbrechen |
 | Appearance angewandt | Tokens und optionale Vorschau lokal gespeichert | weiter nutzen/resetten |
 | Bild entfernt | Vorschau aus IndexedDB gelöscht; Nicht-Bild-Palette aktiv | neues Bild wählen oder Palette nutzen |
+| Expliziter App-Pfad | adressierter Hauptscreen nach verfügbarem Datenstand | normal verwenden |
+| PWA-Kaltstart | zuletzt verwendeter gültiger Hauptscreen, sonst Übersicht | normal verwenden |
+| Ungültiger Pfad | URL wird ohne zusätzlichen History-Eintrag auf `/` ersetzt | Übersicht verwenden |
 
 ## Sitzungs- und Synchronisierungsautomat
 
@@ -53,6 +56,12 @@ stateDiagram-v2
 ```
 
 Implementierung und Tests: [FinanceDataProvider](../../src/data/FinanceDataProvider.tsx), [Provider-Tests](../../src/data/FinanceDataProvider.test.ts), [Verbindungsansichten](../../src/App.tsx), [Offline-Smoke-Test](../../scripts/offline-smoke.mjs).
+
+## Navigation und Wiederherstellung
+
+Explizite Pfade, Reload sowie Zurück/Vorwärts werden immer aus der aktuellen URL bestimmt. Nur der Manifest-Start `/?app-launch=pwa` darf die lokal gespeicherte letzte Destination lesen; der Marker wird dabei per Replace durch den kanonischen Pfad ersetzt. Dadurch bleibt `/` bei normalen Aufrufen eindeutig die Übersicht und die History erhält keinen künstlichen Zwischeneintrag. Lokale Unterzustände innerhalb eines Screens sind nicht Teil dieses Vertrags.
+
+Bei Anmeldung oder erneuter Google-Verbindung sendet der Client nur einen der vier kanonischen Pfade als Rückweg. Der Server validiert ihn, bindet ihn an die signierte OAuth-Transaktion und verwendet ihn nach Erfolg oder einem verifizierten Callbackfehler erneut. Nicht erlaubte Werte fallen auf `/` zurück.
 
 ## Abmelden und Trennen
 

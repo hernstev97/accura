@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react';
 import type { FinanceDataV1, FinanceValidationIssue } from '../finance/types';
 import { createFinanceViewModel, type FinanceViewModel } from '../finance/viewModel';
+import { safeAppReturnPath } from '../navigation/appNavigation';
 import { clearCachedFinanceData, loadCachedFinanceData, saveCachedFinanceData } from './financeCache';
 import { FinanceApiError, productionFinanceApi, type FinanceApi, type FinanceSession } from './financeApi';
 import { launchGooglePicker, selectSpreadsheetWithPicker, type PickerLauncher } from './googlePicker';
@@ -197,7 +198,15 @@ export function FinanceDataProvider({
         if (!active) return;
         if (!session.authenticated) {
           const authError = new URLSearchParams(window.location.search).get('auth_error');
-          if (authError) window.history.replaceState({}, '', window.location.pathname);
+          if (authError) {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.delete('auth_error');
+            window.history.replaceState(
+              window.history.state,
+              '',
+              `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+            );
+          }
           const message = authError === 'user_not_allowed'
             ? 'Dieses Google-Konto ist nicht für die App freigeschaltet.'
             : authError ? 'Die Google-Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.' : undefined;
@@ -294,7 +303,10 @@ export function FinanceDataProvider({
     }
   }, [api]);
 
-  const signIn = useCallback(() => { window.location.assign('/api/auth/google/start'); }, []);
+  const signIn = useCallback(() => {
+    const parameters = new URLSearchParams({ return_to: safeAppReturnPath(window.location.pathname) });
+    window.location.assign(`/api/auth/google/start?${parameters.toString()}`);
+  }, []);
   const viewModel = useMemo(() => state.data ? createFinanceViewModel(state.data) : null, [state.data]);
   const value = useMemo<FinanceContextValue>(() => ({ ...state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn }), [state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn]);
 

@@ -81,10 +81,14 @@ try {
   assert.match(offlineInfo, /lokal auf diesem Gerät verfügbar/);
   assert.doesNotMatch(offlineInfo, /Jetzt aktualisieren|Andere Tabelle auswählen|Abmelden blendet Finanzdaten aus/);
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Budget', exact: true }).click();
+  await page.getByRole('link', { name: 'Budget', exact: true }).click();
   await page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
-  await page.getByRole('button', { name: 'Schulden', exact: true }).click();
+  await page.getByRole('link', { name: 'Schulden', exact: true }).click();
   await page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
+  await page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
+  assert.equal(new URL(page.url()).pathname, '/schulden', 'Offline-Reload verlor den Deep-Link-Pfad');
+  assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Offline-Deep-Link wurde nicht vom Service Worker kontrolliert');
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker ging bei der Offline-Navigation verloren');
 
   const recoveredFinanceResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/finance' && response.ok());

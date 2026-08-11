@@ -6,12 +6,14 @@ import { initializeAppearanceBeforeRender } from './appearance/appearanceStore';
 import { FinanceDataProvider } from './data/FinanceDataProvider';
 import { productionFinanceApi } from './data/financeApi';
 import type { PickerLauncher } from './data/googlePicker';
+import { initializeNavigationBeforeRender } from './navigation/appNavigation';
 import { PrivacyProvider } from './privacy/PrivacyProvider';
 import { initializePrivacyBeforeRender } from './privacy/privacyStore';
 import './design/tokens.css';
 import './styles.css';
 
 const initialAppearance = initializeAppearanceBeforeRender();
+const initialDestination = initializeNavigationBeforeRender();
 const initialPrivacy = initializePrivacyBeforeRender();
 
 let financeApi = productionFinanceApi;
@@ -26,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
     <PrivacyProvider initialEnabled={initialPrivacy}>
       <AppearanceProvider initialSnapshot={initialAppearance}>
         <FinanceDataProvider api={financeApi} pickerLauncher={mockPicker}>
-          <App />
+          <App initialDestination={initialDestination} />
         </FinanceDataProvider>
       </AppearanceProvider>
     </PrivacyProvider>
