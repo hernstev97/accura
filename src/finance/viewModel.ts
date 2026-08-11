@@ -10,6 +10,7 @@ import {
   selectLatestPocketSnapshot,
   selectNecessityTotalsCents,
   selectBudgetAllocationCents,
+  selectBudgetStatusCents,
   selectOverviewAllocationCents,
   selectNextDebtReliefMilestone,
   selectNextFreeMoneyCents,
@@ -39,10 +40,39 @@ const eventList = new Intl.ListFormat('de-DE', { style: 'long', type: 'conjuncti
 
 export type FinanceViewModel = ReturnType<typeof createFinanceViewModel>;
 
+type BudgetStatusBase = {
+  balance: number;
+  balanceCents: number;
+  planned: number;
+  plannedCents: number;
+  utilizationBasisPoints: number | null;
+};
+
+export type BudgetStatus =
+  | (BudgetStatusBase & { kind: 'empty' })
+  | (BudgetStatusBase & { kind: 'within-budget' })
+  | (BudgetStatusBase & { kind: 'overdrawn'; deficit: number; deficitCents: number });
+
 export function createFinanceViewModel(data: FinanceDataV1) {
   const necessityTotals = selectNecessityTotalsCents(data);
   const overviewAllocation = selectOverviewAllocationCents(data);
   const budgetAllocation = selectBudgetAllocationCents(data);
+  const selectedBudgetStatus = selectBudgetStatusCents(data);
+  const commonBudgetStatus = {
+    balance: centsToEuros(selectedBudgetStatus.balanceCents),
+    balanceCents: selectedBudgetStatus.balanceCents,
+    planned: centsToEuros(selectedBudgetStatus.plannedCents),
+    plannedCents: selectedBudgetStatus.plannedCents,
+    utilizationBasisPoints: selectedBudgetStatus.utilizationBasisPoints,
+  };
+  const budgetStatus: BudgetStatus = selectedBudgetStatus.kind === 'overdrawn'
+    ? {
+        kind: 'overdrawn',
+        deficit: centsToEuros(selectedBudgetStatus.deficitCents),
+        deficitCents: selectedBudgetStatus.deficitCents,
+        ...commonBudgetStatus,
+      }
+    : { kind: selectedBudgetStatus.kind, ...commonBudgetStatus };
   const accounts = data.accounts.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((account) => ({
     ...account,
     balance: centsToEuros(selectLatestAccountSnapshot(data, account.id)?.balanceCents ?? 0),
@@ -137,6 +167,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     accounts,
     pockets,
     budgetCategories,
+    budgetStatus,
     necessityGroups: (Object.keys(necessityPresentation) as NecessityId[]).map((id) => ({
       id,
       ...necessityPresentation[id],

@@ -43,7 +43,32 @@ export const selectFreeMoneyCents = (data: FinanceDataV1) => data.monthlyIncomeC
 
 export const selectFreePercentageBasisPoints = (data: FinanceDataV1) => data.monthlyIncomeCents === 0
   ? 0
-  : Math.round((selectFreeMoneyCents(data) * 10_000) / data.monthlyIncomeCents);
+  : Math.round((selectFreeMoneyCents(data) / data.monthlyIncomeCents) * 10_000);
+
+type BudgetStatusBase = {
+  balanceCents: number;
+  plannedCents: number;
+  utilizationBasisPoints: number | null;
+};
+
+export type BudgetStatusCents =
+  | (BudgetStatusBase & { kind: 'empty' })
+  | (BudgetStatusBase & { kind: 'within-budget' })
+  | (BudgetStatusBase & { kind: 'overdrawn'; deficitCents: number });
+
+export function selectBudgetStatusCents(data: FinanceDataV1): BudgetStatusCents {
+  const activeItems = data.budgetItems.filter(({ active }) => active);
+  const plannedCents = sumCents(activeItems.map(({ monthlyAmountCents }) => monthlyAmountCents));
+  const balanceCents = data.monthlyIncomeCents - plannedCents;
+  const utilizationBasisPoints = data.monthlyIncomeCents > 0
+    ? Math.round((plannedCents / data.monthlyIncomeCents) * 10_000)
+    : null;
+  const common = { balanceCents, plannedCents, utilizationBasisPoints };
+
+  if (activeItems.length === 0) return { kind: 'empty', ...common };
+  if (balanceCents < 0) return { kind: 'overdrawn', deficitCents: -balanceCents, ...common };
+  return { kind: 'within-budget', ...common };
+}
 
 export type OverviewAllocationCents = {
   expensesCents: number;

@@ -19,6 +19,9 @@ export const percentFormatter = new Intl.NumberFormat('de-DE', {
 
 export const formatCurrency = (value: number) => currencyFormatter.format(value);
 
+export const formatCurrencyParts = (value: number, compact = false) =>
+  (compact ? compactCurrencyFormatter : currencyFormatter).formatToParts(value);
+
 export const formatCurrencyValue = (value: number, privacyMode = false, compact = false) => {
   if (privacyMode) return 'Betrag ausgeblendet';
   return compact ? compactCurrencyFormatter.format(value) : currencyFormatter.format(value);
@@ -40,5 +43,4 @@ const DIGIT_SHAPES: Record<string, string> = {
 export function maskMoneyShape(formatted: string): string {
   return formatted.replace(/\d/g, (digit) => DIGIT_SHAPES[digit] ?? 'x');
 }
-
 

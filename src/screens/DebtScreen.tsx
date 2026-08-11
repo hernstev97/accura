@@ -29,6 +29,8 @@ export function DebtScreen() {
   const reliefChartAnimationActive = useChartAnimation(reduceMotion, 'initial', 360);
   const currentDebt = data.debtBalanceMilestones[0];
   const payoffMilestone = data.debtBalanceMilestones.at(-1);
+  const hasDebtProgress = data.debtBalanceMilestones.length > 0;
+  const hasFutureRelief = data.debtReliefMilestones.some(({ event }) => event !== null);
   const targetLabel = payoffMilestone ? `Planmäßig schuldenfrei im ${payoffMilestone.label}` : 'Aktuelle Schuldenübersicht';
   const reliefTargetLabel = data.debtReliefMilestones.at(-1)?.monthLabel ?? 'später';
   const remainingPaymentLabel = `${data.meta.remainingPaymentCount} ${data.meta.remainingPaymentCount === 1 ? 'verbleibende Rate' : 'verbleibende Raten'}`;
@@ -45,12 +47,23 @@ export function DebtScreen() {
     }));
   };
 
+  if (data.debts.length === 0) {
+    return (
+      <ScreenEntrance className="debt-screen" destination="debt" labelledBy="debt-title">
+        <ScreenHeader id="debt-title" supporting="Aktueller Datenstand" title="Dein Weg auf null" />
+        <InlineNotice icon={<Icon name="check" size={22} />} title="Keine aktiven Schulden" tone="positive">
+          <p>Im aktuellen Datenstand sind keine aktiven Schulden hinterlegt.</p>
+        </InlineNotice>
+      </ScreenEntrance>
+    );
+  }
+
   return (
     <ScreenEntrance className="debt-screen" destination="debt" labelledBy="debt-title">
       <ScreenHeader id="debt-title" supporting={targetLabel} title="Dein Weg auf null" />
 
       <FinancialHero
-        action={<AppButton onClick={openDebtProgress} size="small" variant="tonal">Restschuldverlauf öffnen</AppButton>}
+        action={hasDebtProgress ? <AppButton onClick={openDebtProgress} size="small" variant="tonal">Restschuldverlauf öffnen</AppButton> : undefined}
         className="financial-hero--allocation"
         id="debt-hero"
         label="Ablösesumme heute"
@@ -87,7 +100,7 @@ export function DebtScreen() {
       </SurfaceSection>
 
       <ChartFrame
-        action={(
+        action={hasDebtProgress ? (
           <AppButton
             aria-controls="debt-progress-details"
             aria-expanded={progressExpanded}
@@ -98,91 +111,100 @@ export function DebtScreen() {
           >
             {progressExpanded ? 'Verlauf schließen' : 'Verlauf anzeigen'}
           </AppButton>
-        )}
+        ) : undefined}
         className={`debt-progress ${progressExpanded ? 'is-expanded' : ''}`}
         id="debt-progress"
         subtitle="Bei planmäßiger Zahlung"
         title="Restschuld"
       >
-        <div className="debt-progress__summary">
-          <div><span>Heute</span><strong className="financial-value"><MoneyValue value={currentDebt?.balance ?? data.totals.payoffToday} /></strong></div>
-          <span className="debt-progress__direction" aria-hidden="true"><Icon name="trend" size={22} /></span>
-          <div><span>Ziel</span><strong>{payoffMilestone?.shortLabel}</strong></div>
-        </div>
+        {hasDebtProgress ? (
+          <>
+            <div className="debt-progress__summary">
+              <div><span>Heute</span><strong className="financial-value"><MoneyValue value={currentDebt?.balance ?? data.totals.payoffToday} /></strong></div>
+              <span className="debt-progress__direction" aria-hidden="true"><Icon name="trend" size={22} /></span>
+              <div><span>Ziel</span><strong>{payoffMilestone?.shortLabel}</strong></div>
+            </div>
 
-        <div
-          aria-describedby="debt-progress-summary"
-          aria-labelledby="debt-progress-title"
-          className="debt-chart"
-          data-animation-active={balanceChartAnimationActive}
-          role="img"
-          style={{ height: progressExpanded ? 292 : 144 }}
-        >
-          <AreaChart
-            accessibilityLayer
-            data={data.debtBalanceMilestones}
-            margin={progressExpanded ? { top: 14, right: 8, bottom: 8, left: 0 } : { top: 8, right: 4, bottom: 0, left: 4 }}
-            responsive
-            style={{ width: '100%', maxWidth: '100%', height: '100%' }}
-          >
-            <defs>
-              <linearGradient id="debtArea" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.38} />
-                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            {progressExpanded ? <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 6" vertical={false} /> : null}
-            {progressExpanded ? (
-              <XAxis axisLine={false} dataKey="shortLabel" interval="preserveStartEnd" minTickGap={18} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickLine={false} />
-            ) : <XAxis dataKey="shortLabel" hide />}
-            {progressExpanded ? (
-              <YAxis axisLine={false} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(value) => privacyMode ? maskMoneyShape(compactCurrencyFormatter.format(Number(value))) : compactCurrencyFormatter.format(Number(value))} tickLine={false} width={68} />
-            ) : <YAxis hide />}
-            <Tooltip
-              content={(props) => (
-                <FinanceChartTooltip
-                  {...props}
-                  formatTitle={(_, payload) => String((payload[0]?.payload as { label?: string } | undefined)?.label ?? '')}
-                  valueLabel="Restschuld"
+            <div
+              aria-describedby="debt-progress-summary"
+              aria-labelledby="debt-progress-title"
+              className="debt-chart"
+              data-animation-active={balanceChartAnimationActive}
+              role="img"
+              style={{ height: progressExpanded ? 292 : 144 }}
+            >
+              <AreaChart
+                accessibilityLayer
+                data={data.debtBalanceMilestones}
+                margin={progressExpanded ? { top: 14, right: 8, bottom: 8, left: 0 } : { top: 8, right: 4, bottom: 0, left: 4 }}
+                responsive
+                style={{ width: '100%', maxWidth: '100%', height: '100%' }}
+              >
+                <defs>
+                  <linearGradient id="debtArea" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.38} />
+                    <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                {progressExpanded ? <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 6" vertical={false} /> : null}
+                {progressExpanded ? (
+                  <XAxis axisLine={false} dataKey="shortLabel" interval="preserveStartEnd" minTickGap={18} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickLine={false} />
+                ) : <XAxis dataKey="shortLabel" hide />}
+                {progressExpanded ? (
+                  <YAxis axisLine={false} tick={{ fill: 'var(--color-on-surface-variant)', fontSize: 12 }} tickFormatter={(value) => privacyMode ? maskMoneyShape(compactCurrencyFormatter.format(Number(value))) : compactCurrencyFormatter.format(Number(value))} tickLine={false} width={68} />
+                ) : <YAxis hide />}
+                <Tooltip
+                  content={(props) => (
+                    <FinanceChartTooltip
+                      {...props}
+                      formatTitle={(_, payload) => String((payload[0]?.payload as { label?: string } | undefined)?.label ?? '')}
+                      valueLabel="Restschuld"
+                    />
+                  )}
+                  isAnimationActive={balanceChartAnimationActive}
                 />
-              )}
-              isAnimationActive={balanceChartAnimationActive}
-            />
-            <Area
-              animationDuration={reduceMotion ? 0 : 360}
-              dataKey="balance"
-              fill="url(#debtArea)"
-              isAnimationActive={!reduceMotion}
-              name="Restschuld"
-              stroke="var(--color-primary)"
-              strokeWidth={3}
-              type="monotone"
-            />
-          </AreaChart>
-        </div>
+                <Area
+                  animationDuration={reduceMotion ? 0 : 360}
+                  dataKey="balance"
+                  fill="url(#debtArea)"
+                  isAnimationActive={!reduceMotion}
+                  name="Restschuld"
+                  stroke="var(--color-primary)"
+                  strokeWidth={3}
+                  type="monotone"
+                />
+              </AreaChart>
+            </div>
 
-        <div className="debt-milestones" hidden={!progressExpanded} id="debt-progress-details">
-          {data.debtBalanceMilestones.map((milestone) => (
-            <div key={milestone.date}><span>{milestone.label}</span><strong className="financial-value"><MoneyValue value={milestone.balance} /></strong></div>
-          ))}
-        </div>
-        <p className="sr-only" id="debt-progress-summary">
-          Restschuldverlauf: {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrencyValue(milestone.balance, privacyMode)}. `)}
-        </p>
+            <div className="debt-milestones" hidden={!progressExpanded} id="debt-progress-details">
+              {data.debtBalanceMilestones.map((milestone) => (
+                <div key={milestone.date}><span>{milestone.label}</span><strong className="financial-value"><MoneyValue value={milestone.balance} /></strong></div>
+              ))}
+            </div>
+            <p className="sr-only" id="debt-progress-summary">
+              Restschuldverlauf: {data.debtBalanceMilestones.map((milestone) => `${milestone.label}: ${formatCurrencyValue(milestone.balance, privacyMode)}. `)}
+            </p>
+          </>
+        ) : (
+          <InlineNotice title="Kein Restschuldverlauf hinterlegt" tone="info">
+            <p>Für die aktiven Schulden sind im aktuellen Datenstand keine Restschuldmeilensteine hinterlegt.</p>
+          </InlineNotice>
+        )}
       </ChartFrame>
 
       <ChartFrame
         className="relief-flow"
-        footer={(
+        footer={hasFutureRelief ? (
           <InlineNotice icon={<Icon name="calendar" size={22} />} title="Planungsannahme" tone="info">
             <p>Einkommen und alle anderen Ausgaben bleiben unverändert.</p>
           </InlineNotice>
-        )}
+        ) : undefined}
         id="debt-relief"
         subtitle={`Stufenweise bis ${reliefTargetLabel}`}
         title="Mehr frei durch auslaufende Raten"
       >
-        <div
+        {hasFutureRelief ? <>
+          <div
           aria-describedby="relief-summary"
           aria-labelledby="debt-relief-title"
           className="relief-chart"
@@ -215,25 +237,29 @@ export function DebtScreen() {
               type="stepAfter"
             />
           </LineChart>
-        </div>
-        <p className="sr-only" id="relief-summary">
-          Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}: {data.debtReliefMilestones.map((milestone) => `${milestone.label}: ${formatCurrencyValue(milestone.freeAmount, privacyMode)} frei. `)}
-        </p>
+          </div>
+          <p className="sr-only" id="relief-summary">
+            Stufendiagramm des monatlich frei verfügbaren Gelds von aktuell bis {reliefTargetLabel}: {data.debtReliefMilestones.map((milestone) => `${milestone.label}: ${formatCurrencyValue(milestone.freeAmount, privacyMode)} frei. `)}
+          </p>
 
-        <div className="milestone-flow entrance-group" aria-label="Auslaufende Raten">
-          {data.debtReliefMilestones.filter((milestone) => milestone.event).map((milestone, index) => (
-            <article className="milestone-row" key={milestone.date}>
-              <span className="milestone-row__marker"><Icon name="milestone" size={18} /><small>{index + 1}</small></span>
-              <div>
-                <span>{milestone.eventDetail}</span>
-                <strong>{milestone.event}</strong>
-              </div>
-              <p><strong className="financial-value"><MoneyValue value={milestone.freeAmount} /></strong><span>frei · {milestone.label}</span></p>
-            </article>
-          ))}
-        </div>
+          <div className="milestone-flow entrance-group" aria-label="Auslaufende Raten">
+            {data.debtReliefMilestones.filter((milestone) => milestone.event).map((milestone, index) => (
+              <article className="milestone-row" key={milestone.date}>
+                <span className="milestone-row__marker"><Icon name="milestone" size={18} /><small>{index + 1}</small></span>
+                <div>
+                  <span>{milestone.eventDetail}</span>
+                  <strong>{milestone.event}</strong>
+                </div>
+                <p><strong className="financial-value"><MoneyValue value={milestone.freeAmount} /></strong><span>frei · {milestone.label}</span></p>
+              </article>
+            ))}
+          </div>
+        </> : (
+          <InlineNotice title="Keine künftige Entlastung hinterlegt" tone="info">
+            <p>Im aktuellen Datenstand sind keine zukünftigen Entlastungsereignisse hinterlegt.</p>
+          </InlineNotice>
+        )}
       </ChartFrame>
     </ScreenEntrance>
   );
 }
-

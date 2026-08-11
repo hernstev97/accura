@@ -54,7 +54,7 @@ Die Layoutgeometrie folgt einer 4-Pixel-Basis. Typische Außenradien sind Hero 3
 
 ## Typografie
 
-Google Sans Flex v22 wird lokal/offline als variable Schrift mit Latin und Latin Extended eingebunden. Sichtbare Rollen verwenden `ROND: 100`, automatische optische Größe und tabellarische Ziffern für Geld. Produktinformation liegt nicht unter 12 px; Geldwerte werden nicht abgeschnitten und umbrechen nicht. Herkunft und SIL OFL 1.1 stehen unter [Fonts](../fonts/README.md).
+Google Sans Flex v22 wird lokal/offline als variable Schrift mit Latin und Latin Extended eingebunden. Sichtbare Rollen verwenden `ROND: 100`, automatische optische Größe und tabellarische Ziffern für Geld. Produktinformation liegt nicht unter 12 px. Geldwerte bleiben in normalen UI-Flächen vollständig und exakt: Hero- und Kennzahlenwerte bleiben einschließlich Währung einzeilig und skalieren innerhalb ihrer festen Wertfläche kontinuierlich mit der formatierten Länge; andere enge Flächen verwenden kontrollierte Umbruchstellen zwischen Zahlengruppen und vor der Währung. Nur direkte Diagrammlabel und Achsen dürfen kompakt runden; Tooltip und zugängliche Zusammenfassung behalten den exakten Betrag. Herkunft und SIL OFL 1.1 stehen unter [Fonts](../fonts/README.md).
 
 ## Motion und Barrierefreiheit
 
