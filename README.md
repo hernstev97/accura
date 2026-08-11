@@ -1,6 +1,8 @@
 # accura
 
-`accura` ist eine private, deutschsprachige Finanzübersicht als installierbare Web-App (PWA). Genau eine freigegebene Person verbindet eine selbst kontrollierte Google-Tabelle. Die App liest und validiert die Daten, verändert die Tabelle aber nicht. Ein zuletzt erfolgreich geladener Datenstand bleibt lokal offline verfügbar.
+Accura schafft finanzielle Klarheit für Menschen, die unter engem Budget, Schulden oder mentaler Überforderung leiden. Statt Vermögen zu optimieren, zeigt die App, was wirklich verfügbar ist, was als Nächstes fällig wird und wie sich finanzielle Belastungen entwickeln. Der [Produktüberblick](docs/produkt/ueberblick.md) beschreibt dieses Versprechen und seine bewussten Grenzen.
+
+Heute ist `accura` eine private, deutschsprachige Finanzübersicht als installierbare Web-App (PWA). Genau eine freigegebene Person verbindet eine selbst kontrollierte Google-Tabelle. Die App liest und validiert die Daten, verändert die Tabelle aber nicht. Ein zuletzt erfolgreich geladener Datenstand bleibt lokal offline verfügbar.
 
 Die vier Ansichten zeigen verfügbare Mittel, anstehende Zahlungen bis zum nächsten Gehalt, Monatsbudget und Schuldenverlauf. Ein lokaler Privacy-Modus maskiert sichtbare Geldbeträge; er ist ausdrücklich keine Verschlüsselung.
 
