@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const testPortValue = process.env.PLAYWRIGHT_PORT ?? '5173';
+const testPort = /^\d+$/.test(testPortValue) ? Number(testPortValue) : Number.NaN;
+if (!Number.isInteger(testPort) || testPort < 1 || testPort > 65_535) throw new Error('PLAYWRIGHT_PORT must be a valid TCP port');
+const testBaseUrl = `http://127.0.0.1:${testPort}`;
+
 export default defineConfig({
   testDir: './tests/visual',
   fullyParallel: false,
@@ -18,7 +23,7 @@ export default defineConfig({
   },
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: testBaseUrl,
     deviceScaleFactor: 1,
     locale: 'de-DE',
     serviceWorkers: 'block',
@@ -28,8 +33,8 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
   snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1',
-    url: 'http://127.0.0.1:5173',
+    command: `npm run dev -- --host 127.0.0.1 --port ${testPort} --strictPort`,
+    url: testBaseUrl,
     reuseExistingServer: true,
     timeout: 120_000,
   },

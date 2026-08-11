@@ -1,45 +1,44 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
+import { APP_ROUTES, type Destination } from '../navigation/appNavigation';
 import { Icon, type IconName } from './Icon';
 
-export type Destination = 'overview' | 'upcoming' | 'budget' | 'debt';
-
-const destinations: ReadonlyArray<{ id: Destination; label: string; icon: IconName }> = [
-  { id: 'overview', label: 'Übersicht', icon: 'overview' },
-  { id: 'upcoming', label: 'Demnächst', icon: 'calendar' },
-  { id: 'budget', label: 'Budget', icon: 'budget' },
-  { id: 'debt', label: 'Schulden', icon: 'debt' },
-];
+const icons: Record<Destination, IconName> = {
+  overview: 'overview',
+  upcoming: 'calendar',
+  budget: 'budget',
+  debt: 'debt',
+};
 
 type AdaptiveNavigationProps = {
-  onSelect: (destination: Destination) => void;
+  onNavigate: (destination: Destination, event: MouseEvent<HTMLAnchorElement>) => void;
   selectedId: Destination;
 };
 
-export function AdaptiveNavigation({ onSelect, selectedId }: AdaptiveNavigationProps) {
-  const selectedIndex = Math.max(0, destinations.findIndex(({ id }) => id === selectedId));
+export function AdaptiveNavigation({ onNavigate, selectedId }: AdaptiveNavigationProps) {
+  const selectedIndex = Math.max(0, APP_ROUTES.findIndex(({ destination }) => destination === selectedId));
   return (
     <nav
       aria-label="Hauptnavigation"
       className="adaptive-navigation bottom-navigation"
       data-selected-index={selectedIndex}
-      style={{ '--navigation-offset': `${selectedIndex * 100}%`, '--navigation-count': destinations.length } as CSSProperties}
+      style={{ '--navigation-offset': `${selectedIndex * 100}%`, '--navigation-count': APP_ROUTES.length } as CSSProperties}
     >
       <span className="adaptive-navigation__track bottom-navigation__track">
         <span aria-hidden="true" className="adaptive-navigation__indicator-slot bottom-navigation__indicator-slot">
           <span className="adaptive-navigation__indicator bottom-navigation__indicator" data-testid="navigation-indicator" />
         </span>
-        {destinations.map((item) => (
-          <button
-            aria-current={selectedId === item.id ? 'page' : undefined}
-            aria-label={item.label}
+        {APP_ROUTES.map((route) => (
+          <a
+            aria-current={selectedId === route.destination ? 'page' : undefined}
+            aria-label={route.label}
             className="adaptive-navigation__item bottom-navigation__item"
-            key={item.id}
-            onClick={() => onSelect(item.id)}
-            type="button"
+            href={route.path}
+            key={route.destination}
+            onClick={(event) => onNavigate(route.destination, event)}
           >
-            <span className="adaptive-navigation__icon bottom-navigation__icon"><Icon name={item.icon} /></span>
-            <span className="adaptive-navigation__label bottom-navigation__label">{item.label}</span>
-          </button>
+            <span className="adaptive-navigation__icon bottom-navigation__icon"><Icon name={icons[route.destination]} /></span>
+            <span className="adaptive-navigation__label bottom-navigation__label">{route.label}</span>
+          </a>
         ))}
       </span>
     </nav>

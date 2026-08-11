@@ -20,6 +20,7 @@ flowchart TD
   P --> A[AppearanceProvider]
   A --> F[FinanceDataProvider]
   F --> APP[App / MotionConfig]
+  MAIN --> ROUTES[Navigation initialisieren]
   APP --> BAR[Top App Bar + Privacy + Einstellungen]
   APP --> STATE[ConnectionStateScreen]
   APP --> CONTENT[Screen + Suspense]
@@ -34,7 +35,11 @@ Implementierung und Tests: [src/main.tsx](../../src/main.tsx), [src/App.tsx](../
 
 ## Navigation und Laden
 
-`App` hält ein `Destination`-Union im lokalen State. Es gibt bewusst keinen React Router und keine URL-pro-Ziel-Navigation. Das passt zur kleinen, privaten App, bedeutet aber: Browser-Zurück und Deep Links wechseln keine Finanzansicht. Beim Zielwechsel scrollt die Seite nach oben und der Hauptbereich erhält Fokus. Budget, Schulden und Demnächst werden mit `lazy`/`Suspense` nachgeladen.
+Die zentrale Routendefinition unter `src/navigation/` ordnet `overview`, `upcoming`, `budget` und `debt` den Pfaden `/`, `/demnaechst`, `/budget` und `/schulden` zu. Vor dem ersten React-Render wird der aktuelle Pfad synchron aufgelöst und bei einem einzelnen abschließenden Slash kanonisiert. Unbekannte Pfade werden im bestehenden History-Eintrag auf `/` ersetzt. Eine zusätzliche Router-Abhängigkeit ist für diese vier statischen Ziele bewusst nicht nötig.
+
+Die Hauptnavigation besteht aus echten Links. Unmodifizierte interne Klicks verwenden `history.pushState`; `popstate` bildet Browser- und Android-/PWA-Zurück/Vorwärts wieder auf den React-State ab. Klicknavigation scrollt nach oben, während History-Navigation die browserseitige Scrollwiederherstellung nicht überschreibt. Nach einem Screenwechsel erhält der Hauptbereich weiterhin Fokus ohne Scrollsprung. Budget, Schulden und Demnächst werden mit `lazy`/`Suspense` nachgeladen.
+
+Die URL gilt auch während Connection States. Der zuletzt tatsächlich mit Finanzdaten angezeigte Screen wird als einzelne validierte Destination unter `finance-last-destination-v1` in `localStorage` gespeichert. Dieser Wert wird ausschließlich beim markierten PWA-Kaltstart `/?app-launch=pwa` gelesen; explizite Pfade, Reload und History haben immer Vorrang. Der Marker wird vor dem Rendern durch den kanonischen Zielpfad ersetzt.
 
 Unter 840 Pixeln erscheint eine safe-area-fähige Bottom-Navigation, ab 840 Pixeln dieselbe semantische `nav` als 96-Pixel-Rail. Der DOM-Leseablauf bleibt gleich. Content-Lanes und Grids wachsen an 600-, 840- und 1200-Pixel-Grenzen; 320 Pixel Reflow bleibt ein explizites Qualitätsziel.
 
@@ -56,7 +61,8 @@ Gemeinsame Rollen sind unter anderem `ScreenHeader`, `FinancialHero`, `Allocatio
 
 ## Begründung, Grenzen und Nachweis
 
-Siehe [ADR 0006](../entscheidungen/0006-provider-selektoren-und-view-model.md) und [ADR 0008](../entscheidungen/0008-material-design-und-dynamische-farben.md). Die Navigation ist nicht URL-adressierbar; lazy Module brauchen einen Ladefallback; Portals benötigen sorgfältiges Fokusmanagement.
+Siehe [ADR 0006](../entscheidungen/0006-provider-selektoren-und-view-model.md) und [ADR 0008](../entscheidungen/0008-material-design-und-dynamische-farben.md). Lazy Module brauchen einen Ladefallback; Portals benötigen sorgfältiges Fokusmanagement. URL-Routing persistiert bewusst keine lokalen Unterzustände wie Diagrammauswahl oder aufgeklappte Details.
 
 - Implementierung: [src/components](../../src/components), [src/styles.css](../../src/styles.css), [src/styles](../../src/styles)
+- Routing: [src/navigation/appNavigation.ts](../../src/navigation/appNavigation.ts)
 - Tests: [src/design](../../src/design), [tests/visual/finance-ui.spec.ts](../../tests/visual/finance-ui.spec.ts)

@@ -20,8 +20,8 @@ sequenceDiagram
   participant G as Google OAuth
   participant P as PostgreSQL
   U->>B: Mit Google anmelden
-  B->>A: GET /api/auth/google/start
-  A->>A: State, Nonce, PKCE-Verifier erzeugen
+  B->>A: GET /api/auth/google/start?return_to=/budget
+  A->>A: Rückweg allowlisten; State, Nonce, PKCE-Verifier erzeugen
   A-->>B: signiertes HttpOnly-Transaktionscookie + Redirect
   B->>G: Authorization Request mit Challenge
   G-->>B: Code + State an Callback
@@ -31,8 +31,10 @@ sequenceDiagram
   G-->>A: ID-, Access- und Refresh-Token
   A->>A: Nonce, Signatur, Audience, verifizierte Allowlist-Mail prüfen
   A->>P: Refresh-Token AES-256-GCM-verschlüsselt upserten
-  A-->>B: signiertes HttpOnly-Session-Cookie + Redirect
+  A-->>B: signiertes HttpOnly-Session-Cookie + Redirect zum gebundenen Rückweg
 ```
+
+`return_to` akzeptiert ausschließlich `/`, `/demnaechst`, `/budget` oder `/schulden`. Der validierte Pfad liegt im HMAC-signierten OAuth-Transaktionscookie und kann im Callback weder durch Queryparameter noch durch eine externe URL ersetzt werden. Fehlt er in einer vor dem Deployment begonnenen Transaktion, gilt rückwärtskompatibel `/`. Nur nach verifizierter Transaktion darf auch ein OAuth-Fehler zum gebundenen Pfad zurückkehren; andernfalls wird `/` verwendet.
 
 Implementierung und Tests: [api/auth/google/start.ts](../../api/auth/google/start.ts), [api/auth/google/callback.ts](../../api/auth/google/callback.ts), [api/_lib/security.ts](../../api/_lib/security.ts), [src/server/security.test.ts](../../src/server/security.test.ts), [scripts/server-esm.test.mjs](../../scripts/server-esm.test.mjs).
 
