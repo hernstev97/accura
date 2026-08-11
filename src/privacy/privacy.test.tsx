@@ -19,6 +19,8 @@ const parsed = validateFinanceWorkbook(anonymousWorkbook as TabularWorkbook);
 if (!parsed.success) throw new Error('Anonymous workbook is invalid');
 const baseData = parsed.data;
 
+const visibleText = (markup: string) => markup.replace(/<!-- -->|<[^>]+>/g, '');
+
 const mockApi: FinanceApi = {
   getSession: async () => ({ authenticated: false }),
   getFinance: async () => { throw new Error('not implemented'); },
@@ -71,7 +73,7 @@ describe('ACC-62 Privacy Mode', () => {
         <MoneyValue value={1234.56} />
       </PrivacyProvider>
     );
-    expect(html).toContain('1.234,56');
+    expect(visibleText(html)).toContain('1.234,56');
     expect(html).not.toContain('money-value--masked');
     expect(html).not.toContain('Betrag ausgeblendet');
   });

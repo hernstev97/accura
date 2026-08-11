@@ -42,7 +42,7 @@ export function UpcomingScreen() {
         label="Bis Gehalt verfügbar"
         supporting={upcoming.nextSalaryDateLabel ? `Frei bis zum Gehaltseingang am ${upcoming.nextSalaryDateLabel}` : 'Kein Gehaltstag in der Tabelle hinterlegt'}
         tone={isNegativeSafeToSpend ? 'attention' : 'positive'}
-        value={<><MoneyValue value={safeToSpend} /> <span className="financial-hero__value-unit">frei</span></>}
+        value={<MoneyValue value={safeToSpend} />}
         visual={(
           <div className="debt-hero-status" aria-label={`${upcoming.payments.length} ${upcoming.payments.length === 1 ? 'Fälligkeit' : 'Fälligkeiten'}`} role="img">
             <span className="debt-hero-status__icon" aria-hidden="true"><Icon name="calendar" size={26} /></span>
@@ -123,4 +123,3 @@ export function UpcomingScreen() {
     </ScreenEntrance>
   );
 }
-

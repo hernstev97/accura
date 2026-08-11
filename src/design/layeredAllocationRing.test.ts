@@ -116,4 +116,13 @@ describe('layered allocation ring geometry', () => {
   it('builds localized accessible text from the authoritative cent values', () => {
     expect(describeAllocationRing([segment('Frei', 14_132)], 259_132)).toMatch(/Monatseinkommen 2\.591,32\s*€.*Frei: 141,32\s*€/);
   });
+
+  it('keeps an overdrawn deficit in accessible text without drawing a negative arc', () => {
+    const segments = [segment('Geplant', 120_000), segment('Fehlbetrag', -20_000)];
+    const arcs = createLayeredArcSegments(segments, 100_000);
+
+    expect(arcs.map(({ id }) => id)).toEqual(['Geplant']);
+    expectValidGeometry(arcs);
+    expect(describeAllocationRing(segments, 100_000)).toMatch(/Fehlbetrag: -200,00\s*€/);
+  });
 });

@@ -1,6 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { installFinanceApiMocks, installPickerMock } from '../../scripts/fixtures/anonymous-finance-data.mjs';
+import {
+  denseOverviewFinanceData,
+  emptyCollectionsFinanceData,
+  extremeOverdrawnFinanceData,
+} from '../../scripts/fixtures/finance-edge-cases.mjs';
 
 type Theme = 'light' | 'dark';
 type FinanceDestination = 'overview' | 'upcoming' | 'budget' | 'debt';
@@ -21,6 +26,7 @@ async function preparePage(
   theme: Theme = 'light',
   fixGreetingTime = false,
   initialPath = '/',
+  financeData?: typeof extremeOverdrawnFinanceData,
 ) {
   if (fixGreetingTime) await page.clock.setFixedTime(defaultVisualTime);
   await context.setOffline(false);
@@ -36,7 +42,7 @@ async function preparePage(
     });
     await page.route('**/api/**', (route) => route.abort('internetdisconnected'));
   } else {
-    await installFinanceApiMocks(page, state);
+    await installFinanceApiMocks(page, state, financeData);
   }
   await page.goto(initialPath, { waitUntil: 'networkidle' });
   await page.evaluate(() => {
@@ -63,6 +69,69 @@ async function capture(page: Page, name: string) {
 async function expectNoAxeViolations(page: Page, label: string) {
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(result.violations, `${label}: ${JSON.stringify(result.violations, null, 2)}`).toEqual([]);
+}
+
+function trackRuntimeErrors(page: Page) {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(`Konsole: ${message.text()}`);
+  });
+  page.on('pageerror', (error) => errors.push(`Laufzeit: ${error.message}`));
+  return errors;
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const overflow = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+}
+
+async function expectMoneyValuesInsideContainers(page: Page) {
+  const overflowing = await page.locator('.money-value').evaluateAll((values) => values.flatMap((value, index) => {
+    const container = value.closest([
+      '.financial-hero__value',
+      '.metric-card__value',
+      '.financial-hero',
+      '.metric-card',
+      '.allocation-legend__item',
+      '.data-list__item',
+      '.data-list__footer',
+      '.pocket',
+      '.milestone-row',
+      '.finance-chart-tooltip',
+    ].join(','));
+    if (!container) return [];
+    const valueRect = value.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const tolerance = 1;
+    return valueRect.left < containerRect.left - tolerance || valueRect.right > containerRect.right + tolerance
+      ? [{
+          index,
+          value: value.textContent,
+          container: container.className,
+          containerWidth: containerRect.width,
+          valueWidth: valueRect.width,
+        }]
+      : [];
+  }));
+  expect(overflowing).toEqual([]);
+}
+
+async function expectPrimaryMoneyValuesOnOneLine(page: Page) {
+  const valueMetrics = await page
+    .locator('.financial-hero__value > .money-value, .metric-card__value > .money-value')
+    .evaluateAll((values) => values.map((value) => {
+      const style = getComputedStyle(value);
+      return {
+        height: value.getBoundingClientRect().height,
+        lineHeight: Number.parseFloat(style.lineHeight),
+        whiteSpace: style.whiteSpace,
+      };
+    }));
+  expect(valueMetrics.every(({ height, lineHeight, whiteSpace }) =>
+    whiteSpace === 'nowrap' && height <= lineHeight + 1)).toBe(true);
 }
 
 async function expectCompactHeroRingBesideCopy(page: Page, destination: 'overview' | 'budget') {
@@ -242,3 +311,209 @@ test('WCAG AA connection states and dialogs', async ({ browser }) => {
   await expectNoAxeViolations(page, 'Disconnect-Dialog');
   await context.close();
 });
+
+test('320 extreme values, negative balances, and an overdrawn budget stay exact and readable', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', true, '/', extremeOverdrawnFinanceData);
+  await page.getByRole('heading', { name: overviewHeading }).waitFor();
+
+  await expect(page.getByRole('heading', { name: 'Budgetsaldo' })).toBeVisible();
+  await expect(page.getByText('Budget liegt über dem Einkommen')).toBeVisible();
+  await expect(page.getByText('Negative Kontostände berücksichtigt')).toBeVisible();
+  await expect(page.getByText('-111.111.101,11 €', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('#overview-hero')).toHaveClass(/financial-hero--attention/);
+  await expect(page.locator('#overview-hero [data-testid="allocation-center-value"]')).toHaveText('190,0 %');
+  await expect(page.locator('#overview-hero [data-testid="allocation-accessible-summary"]')).toContainText('Fehlbetrag: -111.111.101,11 €');
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+
+  await openDestination(page, 'upcoming');
+  await expect(page.getByText('Ausstehende Zahlungen übersteigen Guthaben')).toBeVisible();
+  await expect(page.locator('#upcoming-hero .financial-hero__value')).not.toContainText(/frei/i);
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+
+  await openDestination(page, 'budget');
+  await expect(page.getByText('Budgetsaldo', { exact: true })).toBeVisible();
+  await expect(page.locator('#budget-hero')).toHaveClass(/financial-hero--attention/);
+  await expect(page.locator('#budget-hero [data-testid="allocation-center-value"]')).toHaveText('190,0 %');
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+
+  await openDestination(page, 'debt');
+  await expect(page.getByText('765.432.109,87 €', { exact: true }).first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+});
+
+test('412 maximum safe cent values still fit hero and metric slots on one line', async ({ page, context }) => {
+  const maximumSafeFinanceData = structuredClone(extremeOverdrawnFinanceData);
+  maximumSafeFinanceData.monthlyIncomeCents = Number.MAX_SAFE_INTEGER;
+  maximumSafeFinanceData.accounts = maximumSafeFinanceData.accounts.slice(0, 1);
+  maximumSafeFinanceData.accountSnapshots = [{
+    ...maximumSafeFinanceData.accountSnapshots[0],
+    balanceCents: Number.MAX_SAFE_INTEGER,
+  }];
+  maximumSafeFinanceData.pockets = [];
+  maximumSafeFinanceData.pocketSnapshots = [];
+  maximumSafeFinanceData.budgetItems = [];
+  maximumSafeFinanceData.reliefMilestones = [];
+
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'light', true, '/', maximumSafeFinanceData);
+
+  const overviewHeroValue = page.locator('#overview-hero .financial-hero__value');
+  await expect(overviewHeroValue).toHaveText('90.071.992.547.409,90 €');
+  await expect(overviewHeroValue).not.toContainText(/frei/i);
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+
+  await openDestination(page, 'budget');
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+});
+
+test('320 empty finance collections show explanations instead of empty lists and charts', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', true, '/', emptyCollectionsFinanceData);
+
+  await expect(page.getByText('Noch keine Konten')).toBeVisible();
+  await expect(page.getByText('Noch keine Pockets')).toBeVisible();
+  await expect(page.locator('#account-list [role="list"]')).toHaveCount(0);
+  await expect(page.locator('#pocket-list article')).toHaveCount(0);
+
+  await openDestination(page, 'upcoming');
+  await expect(page.getByText('Keine anstehenden Abzüge')).toBeVisible();
+
+  await openDestination(page, 'budget');
+  await expect(page.getByText('Noch keine Budgetpositionen', { exact: true })).toBeVisible();
+  await expect(page.locator('.budget-chart')).toHaveCount(0);
+
+  await openDestination(page, 'debt');
+  await expect(page.getByText('Keine aktiven Schulden', { exact: true })).toBeVisible();
+  await expect(page.locator('#debt-hero, .debt-chart, .relief-chart')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
+test('320 dense overview progressively exposes every account and pocket', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', true, '/', denseOverviewFinanceData);
+
+  const accountButton = page.getByRole('button', { name: 'Alle 12 zeigen' });
+  const pocketButton = page.getByRole('button', { name: 'Alle 18 zeigen' });
+  const totalBefore = await page.locator('#account-list .data-list__footer').textContent();
+  const heroBefore = await page.locator('#overview-hero .financial-hero__value').textContent();
+  await expect(page.locator('#account-list [role="listitem"]')).toHaveCount(5);
+  await expect(page.locator('#pocket-list .pocket')).toHaveCount(6);
+  await expect(accountButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(pocketButton).toHaveAttribute('aria-expanded', 'false');
+
+  await accountButton.click();
+  const collapseAccountsButton = page.locator('#accounts').getByRole('button', { name: 'Weniger zeigen' });
+  await expect(collapseAccountsButton).toBeFocused();
+  await expect(collapseAccountsButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#account-list [role="listitem"]')).toHaveCount(12);
+  await expect(page.locator('#account-list .data-list__footer')).toHaveText(totalBefore ?? '');
+
+  await pocketButton.click();
+  const collapsePocketsButton = page.locator('#pockets').getByRole('button', { name: 'Weniger zeigen' });
+  await expect(collapsePocketsButton).toBeFocused();
+  await expect(collapsePocketsButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#pocket-list .pocket')).toHaveCount(18);
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+
+  await collapseAccountsButton.click();
+  await expect(page.locator('#account-list [role="listitem"]')).toHaveCount(5);
+  await expect(page.getByRole('button', { name: 'Alle 12 zeigen' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Alle 12 zeigen' })).toHaveAttribute('aria-expanded', 'false');
+
+  await collapsePocketsButton.click();
+  await expect(page.locator('#pocket-list .pocket')).toHaveCount(6);
+  await expect(page.getByRole('button', { name: 'Alle 18 zeigen' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Alle 18 zeigen' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#account-list .data-list__footer')).toHaveText(totalBefore ?? '');
+  await expect(page.locator('#overview-hero .financial-hero__value')).toHaveText(heroBefore ?? '');
+});
+
+test('320 all-zero pockets keep their empty explanation and remain expandable', async ({ page, context }) => {
+  const allZeroPocketsFinanceData = structuredClone(denseOverviewFinanceData);
+  allZeroPocketsFinanceData.pocketSnapshots = allZeroPocketsFinanceData.pocketSnapshots.map((snapshot) => ({
+    ...snapshot,
+    balanceCents: 0,
+  }));
+
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', true, '/', allZeroPocketsFinanceData);
+
+  await expect(page.getByText('Alle Pockets sind leer', { exact: true })).toBeVisible();
+  await expect(page.locator('#pocket-list .pocket')).toHaveCount(0);
+  const expandButton = page.getByRole('button', { name: 'Alle 18 zeigen' });
+  await expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+  await expandButton.click();
+  await expect(page.locator('#pocket-list .pocket')).toHaveCount(18);
+  await expect(page.getByRole('button', { name: 'Weniger zeigen' })).toHaveAttribute('aria-expanded', 'true');
+  await expectNoHorizontalOverflow(page);
+});
+
+test('320 active debts without milestones show both targeted empty chart states', async ({ page, context }) => {
+  const debtsWithoutMilestonesFinanceData = structuredClone(extremeOverdrawnFinanceData);
+  debtsWithoutMilestonesFinanceData.debtMilestones = [];
+  debtsWithoutMilestonesFinanceData.reliefMilestones = [];
+
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', false, '/schulden', debtsWithoutMilestonesFinanceData);
+  await openDestination(page, 'debt');
+
+  await expect(page.getByText('Kein Restschuldverlauf hinterlegt', { exact: true })).toBeVisible();
+  await expect(page.getByText('Keine künftige Entlastung hinterlegt', { exact: true })).toBeVisible();
+  await expect(page.locator('.debt-chart, .relief-chart')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
+for (const theme of ['light', 'dark'] as const) {
+  for (const scenario of [
+    { name: 'edge-extreme-overview', destination: 'overview' as const, data: extremeOverdrawnFinanceData },
+    { name: 'edge-extreme-budget', destination: 'budget' as const, data: extremeOverdrawnFinanceData },
+    { name: 'edge-empty-overview', destination: 'overview' as const, data: emptyCollectionsFinanceData },
+    { name: 'edge-empty-budget', destination: 'budget' as const, data: emptyCollectionsFinanceData },
+    { name: 'edge-empty-debt', destination: 'debt' as const, data: emptyCollectionsFinanceData },
+    { name: 'edge-dense-overview-expanded', destination: 'overview' as const, data: denseOverviewFinanceData, expand: true },
+  ]) {
+    test(`412 ${theme} ${scenario.name}`, async ({ page, context }) => {
+      const runtimeErrors = trackRuntimeErrors(page);
+      await page.setViewportSize({ width: 412, height: 915 });
+      await preparePage(page, context, 'connected', theme, scenario.destination === 'overview', destinationPaths[scenario.destination], scenario.data);
+      await openDestination(page, scenario.destination);
+      await expect(page.locator('html')).toHaveAttribute('data-theme-resolved', theme);
+      if (scenario.expand) {
+        await page.getByRole('button', { name: 'Alle 12 zeigen' }).click();
+        await page.getByRole('button', { name: 'Alle 18 zeigen' }).click();
+      }
+      await expectNoHorizontalOverflow(page);
+      await expectMoneyValuesInsideContainers(page);
+      await expectPrimaryMoneyValuesOnOneLine(page);
+      await capture(page, `412-${theme}-${scenario.name}.png`);
+      expect(runtimeErrors).toEqual([]);
+    });
+  }
+
+  for (const scenario of [
+    { name: 'extreme', data: extremeOverdrawnFinanceData },
+    { name: 'empty', data: emptyCollectionsFinanceData },
+    { name: 'dense', data: denseOverviewFinanceData },
+  ]) {
+    test(`412 ${theme} WCAG AA ${scenario.name} edge fixture`, async ({ page, context }) => {
+      await page.setViewportSize({ width: 412, height: 915 });
+      await preparePage(page, context, 'connected', theme, true, '/', scenario.data);
+      await expectNoAxeViolations(page, `${theme} ${scenario.name}`);
+    });
+  }
+}
