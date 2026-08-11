@@ -1,0 +1,42 @@
+# Quellcode-Karte
+
+> **Zielgruppe:** Neue und erfahrene Entwickler.
+> **Zweck und Lernziel:** Zuständiges Modul für eine Änderung schnell finden.
+> **Voraussetzungen:** [Architekturüberblick](../architektur/ueberblick.md)
+> **Kanonisch für:** Repository-Verzeichnisse und Modulzuständigkeiten.
+> **Verwandte Dokumente:** [Frontend](../architektur/frontend.md), [API](api.md), [Tests und Qualität](../architektur/tests-und-qualitaet.md)
+
+| Pfad | Verantwortung |
+| --- | --- |
+| `index.html` | Browserdokument, Root, frühe Metadaten |
+| `src/main.tsx` | Service Worker, Pre-Render-Initialisierung, Providerreihenfolge |
+| `src/App.tsx` | App-Shell, Connection States, Zielnavigation, Lazy Loading |
+| `src/screens/` | vier Finance-Ansichten |
+| `src/components/` | gemeinsame UI-, Dialog-, Navigation-, Privacy- und Diagrammrollen |
+| `src/data/` | Browser-API, Picker, Finance-Provider, IndexedDB-Finance-Cache |
+| `src/finance/` | Schemaheader, Parser, Laufzeitschema, Typen, Selektoren, Upcoming, View-Model |
+| `src/appearance/` | Präferenz, Paletten, Tokens, Worker und Wallpaper-IndexedDB |
+| `src/privacy/` | lokaler Privacy-Store und Context |
+| `src/design/` | zentrale CSS-Tokens, Schriftimport, Diagramm-/Motion-Helfer |
+| `src/styles/` | Basis, Shell, Primitives, Screens, Zustände, Responsive Regeln |
+| `src/mocks/` | ausschließlich anonyme Entwicklungsdaten und Mock-API |
+| `api/` | Vercel Function Entry Points |
+| `api/_lib/` | Konfiguration, HTTP, Security, Google, Repository, Finance-Service |
+| `migrations/` | PostgreSQL-Migrationen |
+| `scripts/` | Node-ESM-, Browser-, Offline- und Service-Worker-Smokes sowie Docs-Check |
+| `tests/visual/` | Playwright Golden-/Axe-Spezifikation und Referenzbilder |
+| `public/` | Icons und statische PWA-Assets |
+| `.github/workflows/ci.yml` | bestehende GitHub-CI |
+| `docs/` | deutschsprachige SSOT-Dokumentation |
+
+## Wert von der Zelle zur Komponente
+
+Für einen Geldwert beginnt die Spur in einem Header aus [src/finance/schema.ts](../../src/finance/schema.ts), läuft über [src/finance/parser.ts](../../src/finance/parser.ts) in einen Cent-Typ aus [src/finance/types.ts](../../src/finance/types.ts), wird in [src/finance/selectors.ts](../../src/finance/selectors.ts) gewählt/aggregiert, in [src/finance/viewModel.ts](../../src/finance/viewModel.ts) präsentationsfertig und über [src/data/FinanceDataProvider.tsx](../../src/data/FinanceDataProvider.tsx) an einen Screen gereicht. [src/components/MoneyValue.tsx](../../src/components/MoneyValue.tsx) formatiert und maskiert den Wert.
+
+## Änderungshinweise
+
+- Tabellenvertrag: zuerst Schema-Referenz, Typen, Parser/Laufzeitschema und Tests gemeinsam prüfen.
+- Neue Geldanzeige: View-Model/Formatierung und `MoneyValue` verwenden, damit Privacy greift.
+- Neue API-Aktion: Methode, Auth, Origin/CSRF, Zod-Grenze und öffentliche Fehlerform berücksichtigen.
+- Neue Appearance-Eigenschaft: versioniertes Speicherparsing, Pre-Render und Cross-Tab-Verhalten berücksichtigen.
+- Neue Dokumentseite: im [zentralen Index](../README.md) und in der Themenmatrix aufnehmen.
