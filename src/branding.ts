@@ -7,8 +7,10 @@ export const ACCURA_DESCRIPTION = 'accura bündelt Einnahmen, Ausgaben, Budgets,
 export const ACCURA_MANIFEST_DESCRIPTION = 'Persönlicher Überblick über Einnahmen, Ausgaben, Budgets, Ersparnisse und Schulden.';
 export const ACCURA_THEME_COLOR = '#f7f9fe';
 export const ACCURA_DARK_THEME_COLOR = '#111418';
+export const ACCURA_INSTALL_COLOR = '#455e91';
 
 export const accuraManifest = {
+  id: '/',
   name: ACCURA_FULL_NAME,
   short_name: ACCURA_NAME,
   description: ACCURA_MANIFEST_DESCRIPTION,
@@ -17,8 +19,8 @@ export const accuraManifest = {
   scope: '/',
   display: 'standalone',
   orientation: 'portrait-primary',
-  background_color: ACCURA_THEME_COLOR,
-  theme_color: ACCURA_THEME_COLOR,
+  background_color: ACCURA_INSTALL_COLOR,
+  theme_color: ACCURA_INSTALL_COLOR,
   categories: ['finance', 'productivity'],
   icons: [
     { src: '/icons/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "smoke": "node scripts/run-smoke-tests.mjs",
     "smoke:auth-sw": "node scripts/auth-sw-smoke.mjs",
+    "smoke:pwa": "node scripts/pwa-smoke.mjs",
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "smoke:offline": "node scripts/offline-smoke.mjs",
     "test": "npm run test:server-esm && vitest run",

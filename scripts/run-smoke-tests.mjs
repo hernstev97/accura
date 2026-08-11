@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { anonymousFinanceResponse, anonymousSession } from './fixtures/anonymous-finance-data.mjs';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const distRoot = join(projectRoot, 'dist');
@@ -26,7 +27,11 @@ function runCommand(command, args, env = {}) {
 console.log('--- Starting Auth & SW Smoke Test ---');
 await runCommand('node', ['scripts/auth-sw-smoke.mjs']);
 
-// 2. Start static preview server for offline and browser smoke tests
+// 2. Run manifest, installability, icon, theme, and two-generation PWA smoke test.
+console.log('--- Starting PWA Lifecycle Smoke Test ---');
+await runCommand('node', ['scripts/pwa-smoke.mjs']);
+
+// 3. Start static preview server for offline and browser smoke tests
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -40,6 +45,22 @@ const contentTypes = {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+  if (url.pathname === '/api/session') {
+    response.writeHead(200, { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify(anonymousSession));
+    return;
+  }
+  if (url.pathname === '/api/finance') {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    response.writeHead(200, { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify(anonymousFinanceResponse));
+    return;
+  }
+  if (url.pathname.startsWith('/api/')) {
+    response.writeHead(404, { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify({ error: { code: 'not_found' } }));
+    return;
+  }
   const relativePath = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
   let filePath = join(distRoot, relativePath);
   if (!filePath.startsWith(distRoot)) {

@@ -16,6 +16,8 @@ Die kleine React-App benötigt schnellen statischen Build, installierbaren Offli
 
 Vite baut das Frontend, `vite-plugin-pwa` erzeugt Manifest/Service Worker, und Vercel hostet root-`api/` TypeScript Functions sowie statische Assets.
 
+Neue Worker verwenden den Prompt-Modus. Sie bleiben wartend, bis die Person das sichtbare Update bestätigt; erst dann folgen `SKIP_WAITING`, Kontrollübernahme und genau ein Reload. API-Routen bleiben unabhängig davon `NetworkOnly`.
+
 ## Begründung
 
 Die Kombination ist repositorynah, benötigt keinen separaten Serverprozess und hält Browser/API unter einer Origin.
@@ -28,7 +30,7 @@ Separates Express-Backend, Next.js oder reine Client-App. Sie erhöhen Betriebsf
 
 ### Positiv
 
-Kleine Deploymentstruktur, same-origin Cookies/CSRF, PWA-Buildintegration.
+Kleine Deploymentstruktur, same-origin Cookies/CSRF, PWA-Buildintegration und kontrollierte Versionswechsel ohne ungefragte Unterbrechung.
 
 ### Negativ
 
@@ -36,5 +38,5 @@ Lokal ist `vercel dev` für den Realfluss nötig; Functions sind kurzlebig und n
 
 ## Implementierung und Tests
 
-- Implementierung: [vite.config.ts](../../vite.config.ts), [api](../../api)
-- Tests: [scripts/auth-sw-smoke.mjs](../../scripts/auth-sw-smoke.mjs), [scripts/server-esm.test.mjs](../../scripts/server-esm.test.mjs)
+- Implementierung: [vite.config.ts](../../vite.config.ts), [PwaUpdateNotice](../../src/components/PwaUpdateNotice.tsx), [api](../../api)
+- Tests: [scripts/pwa-smoke.mjs](../../scripts/pwa-smoke.mjs), [scripts/auth-sw-smoke.mjs](../../scripts/auth-sw-smoke.mjs), [scripts/server-esm.test.mjs](../../scripts/server-esm.test.mjs)

@@ -86,13 +86,70 @@ try {
   await page.getByRole('button', { name: 'Schulden', exact: true }).click();
   await page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker ging bei der Offline-Navigation verloren');
+
+  const recoveredFinanceResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/finance' && response.ok());
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.locator('.sync-status__copy strong').getByText('Wird aktualisiert …', { exact: true }).waitFor();
+  const recoveryResponse = await recoveredFinanceResponse;
+  assert.equal(recoveryResponse.fromServiceWorker(), true, 'Online-Rückkehr umging den kontrollierenden Service Worker');
+  await page.locator('.sync-status__copy strong').getByText('Aktuell', { exact: true }).waitFor();
+  assert.equal(await page.locator('[data-destination="debt"]').isVisible(), true, 'Online-Rückkehr verlor die aktive Ansicht');
+  assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Online-Rückkehr verlor die Service-Worker-Kontrolle');
+  const recoveredCache = await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('finance-overview', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const transaction = database.transaction('last-good', 'readonly');
+      const getRequest = transaction.objectStore('last-good').get('finance-data-v1');
+      getRequest.onerror = () => reject(getRequest.error);
+      getRequest.onsuccess = () => {
+        resolve(getRequest.result ?? null);
+        database.close();
+      };
+    };
+  }));
+  assert.equal(recoveredCache?.refreshedAt, '2026-08-08T10:00:00.000Z', 'Erfolgreiche Online-Rückkehr wurde nicht lokal gespeichert');
+
   const unexpectedErrors = errors.filter((error) => {
     const expectedOfflineSessionFailure = new URL(error.url || baseUrl).pathname === '/api/session'
       && /ERR_(?:FAILED|INTERNET_DISCONNECTED)/.test(error.message);
     return !expectedOfflineSessionFailure;
   });
   assert.deepEqual(unexpectedErrors, [], unexpectedErrors.map(({ message, url }) => `${message} (${url})`).join('\n'));
-  console.log('Offline-Smoke-Test bestanden: App-Shell, lokales Google Sans Flex, Palette-Worker, gespeichertes Material-You-Theme und letzter gültiger normalisierter Datenstand laden offline.');
+
+  const coldContext = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'de-DE', serviceWorkers: 'allow' });
+  const coldPage = await coldContext.newPage();
+  const coldErrors = [];
+  coldPage.on('console', (message) => {
+    if (message.type() === 'error') coldErrors.push({ message: `Konsole: ${message.text()}`, url: message.location().url });
+  });
+  coldPage.on('pageerror', (error) => coldErrors.push({ message: `Laufzeit: ${error.message}`, url: '' }));
+  try {
+    await installFinanceApiMocks(coldPage, 'signed-out');
+    await coldPage.goto(baseUrl, { waitUntil: 'networkidle' });
+    await coldPage.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+    await coldPage.evaluate(() => navigator.serviceWorker.ready);
+    await coldPage.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await coldPage.unrouteAll({ behavior: 'wait' });
+    await coldContext.setOffline(true);
+    await coldPage.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
+    await coldPage.getByRole('heading', { name: 'Noch kein lokaler Datenstand' }).waitFor();
+    assert.equal(await coldPage.getByRole('button', { name: /Google|anmelden|aktualisieren/i }).count(), 0, 'Leerer Offline-Start bietet eine nicht ausführbare Netzwerkaktion an');
+    assert.equal(await coldPage.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Leerer Offline-Start verlor die Service-Worker-Kontrolle');
+    const unexpectedColdErrors = coldErrors.filter((error) => {
+      const expectedOfflineSessionFailure = new URL(error.url || baseUrl).pathname === '/api/session'
+        && /ERR_(?:FAILED|INTERNET_DISCONNECTED)/.test(error.message);
+      return !expectedOfflineSessionFailure;
+    });
+    assert.deepEqual(unexpectedColdErrors, [], unexpectedColdErrors.map(({ message, url }) => `${message} (${url})`).join('\n'));
+  } finally {
+    await coldContext.setOffline(false);
+    await coldContext.close();
+  }
+
+  console.log('Offline-Smoke-Test bestanden: Warmstart, leerer Offline-Start, lokales Theme und letzter gültiger Datenstand sowie automatische Online-Rückkehr funktionieren.');
 } finally {
   await context.setOffline(false);
   await context.close();

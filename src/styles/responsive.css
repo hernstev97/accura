@@ -67,6 +67,15 @@
   .inline-notice__action {
     grid-column: 2;
   }
+
+  .pwa-update-notice__actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .pwa-update-notice__actions .app-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 360px) {
