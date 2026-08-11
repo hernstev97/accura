@@ -17,6 +17,7 @@
 | `src/finance/` | Schemaheader, Parser, Laufzeitschema, Typen, Selektoren, Upcoming, View-Model |
 | `src/appearance/` | Präferenz, Paletten, Tokens, Worker und Wallpaper-IndexedDB |
 | `src/privacy/` | lokaler Privacy-Store und Context |
+| `src/navigation/` | kanonische App-Pfade, History-/Startauflösung und letzte Destination |
 | `src/design/` | zentrale CSS-Tokens, Schriftimport, Diagramm-/Motion-Helfer |
 | `src/styles/` | Basis, Shell, Primitives, Screens, Zustände, Responsive Regeln |
 | `src/mocks/` | ausschließlich anonyme Entwicklungsdaten und Mock-API |
@@ -26,6 +27,7 @@
 | `scripts/` | Node-ESM-, Browser-, Offline- und Service-Worker-Smokes sowie Docs-Check |
 | `tests/visual/` | Playwright Golden-/Axe-Spezifikation und Referenzbilder |
 | `public/` | Icons und statische PWA-Assets |
+| `vercel.json` | SPA-Deep-Link-Rewrite unter explizitem Ausschluss von `/api` |
 | `.github/workflows/ci.yml` | bestehende GitHub-CI |
 | `docs/` | deutschsprachige SSOT-Dokumentation |
 

@@ -1,6 +1,6 @@
 import { MotionConfig } from 'motion/react';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { AdaptiveNavigation, type Destination } from './components/AdaptiveNavigation';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { AdaptiveNavigation } from './components/AdaptiveNavigation';
 import { AccuraLogo } from './components/AccuraLogo';
 import { AppButton } from './components/AppButton';
 import { ConnectionStateLayout } from './components/ConnectionStateLayout';
@@ -12,6 +12,13 @@ import { SettingsEntry } from './components/SettingsDialog';
 import { SyncStatusBanner } from './components/SyncStatusBanner';
 import { ValidationIssues } from './components/ValidationIssues';
 import { useFinanceData } from './data/FinanceDataProvider';
+import {
+  appLabelForDestination,
+  appPathForDestination,
+  resolveBrowserHistoryNavigation,
+  writeStoredDestination,
+  type Destination,
+} from './navigation/appNavigation';
 import { OverviewScreen } from './screens/OverviewScreen';
 
 const budgetScreenModule = import('./screens/BudgetScreen');
@@ -20,8 +27,6 @@ const upcomingScreenModule = import('./screens/UpcomingScreen');
 const BudgetScreen = lazy(() => budgetScreenModule.then((module) => ({ default: module.BudgetScreen })));
 const DebtScreen = lazy(() => debtScreenModule.then((module) => ({ default: module.DebtScreen })));
 const UpcomingScreen = lazy(() => upcomingScreenModule.then((module) => ({ default: module.UpcomingScreen })));
-
-const screenNames: Record<Destination, string> = { overview: 'Übersicht', upcoming: 'Demnächst', budget: 'Budget', debt: 'Schulden' };
 
 function ScreenLoading({ label = 'Ansicht wird geladen …' }: { label?: string }) {
   return (
@@ -124,18 +129,38 @@ function Screen({ destination }: { destination: Destination }) {
   );
 }
 
-function App() {
+type AppProps = {
+  initialDestination: Destination;
+};
+
+function App({ initialDestination }: AppProps) {
   const finance = useFinanceData();
-  const [destination, setDestination] = useState<Destination>('overview');
+  const [destination, setDestination] = useState<Destination>(initialDestination);
   const mainRef = useRef<HTMLElement>(null);
   const hasData = Boolean(finance.data && finance.viewModel);
 
-  const selectDestination = (nextDestination: Destination) => {
+  const navigate = useCallback((nextDestination: Destination, event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const nextPath = appPathForDestination(nextDestination);
+    if (window.location.pathname !== nextPath) window.history.pushState(window.history.state, '', nextPath);
     setDestination((currentDestination) => nextDestination === currentDestination ? currentDestination : nextDestination);
     window.scrollTo({ top: 0, behavior: 'auto' });
-  };
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => setDestination(resolveBrowserHistoryNavigation());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (hasData) writeStoredDestination(destination);
+  }, [destination, hasData]);
 
   useEffect(() => { mainRef.current?.focus({ preventScroll: true }); }, [destination, hasData]);
+
+  const screenName = appLabelForDestination(destination);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -144,7 +169,7 @@ function App() {
           <header className="top-app-bar">
             <div className="screen-identity">
               <AccuraLogo className="brand-mark" />
-              <div><span>accura</span><strong>{hasData ? screenNames[destination] : 'Verbindung'}</strong></div>
+              <div><span>accura</span><strong>{hasData ? screenName : 'Verbindung'}</strong></div>
             </div>
             <div className="top-app-bar__actions">
               <PrivacyToggle />
@@ -153,10 +178,10 @@ function App() {
           </header>
           <PwaUpdateNotice />
           {hasData ? <SyncStatusBanner /> : null}
-          <main aria-label={hasData ? screenNames[destination] : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>
+          <main aria-label={hasData ? screenName : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>
             {hasData ? <Screen destination={destination} /> : <ConnectionStateScreen />}
           </main>
-          {hasData ? <AdaptiveNavigation onSelect={selectDestination} selectedId={destination} /> : null}
+          {hasData ? <AdaptiveNavigation onNavigate={navigate} selectedId={destination} /> : null}
         </div>
       </div>
     </MotionConfig>

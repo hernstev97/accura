@@ -231,6 +231,7 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
+  text-decoration: none;
   transition: color var(--motion-fast) var(--motion-emphasized);
 }
 

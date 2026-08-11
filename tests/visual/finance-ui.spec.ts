@@ -3,10 +3,16 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { installFinanceApiMocks, installPickerMock } from '../../scripts/fixtures/anonymous-finance-data.mjs';
 
 type Theme = 'light' | 'dark';
-type FinanceDestination = 'overview' | 'budget' | 'debt';
+type FinanceDestination = 'overview' | 'upcoming' | 'budget' | 'debt';
 type FinanceState = 'connected' | 'signed-out' | 'no-spreadsheet' | 'validation-error' | 'reconnect';
 const defaultVisualTime = new Date('2026-08-09T06:00:00Z');
 const overviewHeading = /^(?:Guten Morgen|Guten Tag|Guten Abend|Gute Nacht)$/;
+const destinationPaths: Record<FinanceDestination, string> = {
+  overview: '/',
+  upcoming: '/demnaechst',
+  budget: '/budget',
+  debt: '/schulden',
+};
 
 async function preparePage(
   page: Page,
@@ -14,6 +20,7 @@ async function preparePage(
   state: FinanceState | 'offline-empty' = 'connected',
   theme: Theme = 'light',
   fixGreetingTime = false,
+  initialPath = '/',
 ) {
   if (fixGreetingTime) await page.clock.setFixedTime(defaultVisualTime);
   await context.setOffline(false);
@@ -31,7 +38,7 @@ async function preparePage(
   } else {
     await installFinanceApiMocks(page, state);
   }
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.goto(initialPath, { waitUntil: 'networkidle' });
   await page.evaluate(() => {
     document.documentElement.style.setProperty('--color-system-accent-source', '#2F667A');
     document.documentElement.style.setProperty('--color-on-system-accent-source', '#FFFFFF');
@@ -40,9 +47,13 @@ async function preparePage(
 }
 
 async function openDestination(page: Page, destination: FinanceDestination) {
-  const headings = { overview: overviewHeading, budget: 'Dein Budget', debt: 'Dein Weg auf null' } as const;
-  if (destination !== 'overview') await page.getByRole('button', { name: destination === 'budget' ? 'Budget' : 'Schulden', exact: true }).click();
+  const headings = { overview: overviewHeading, upcoming: 'Demnächst', budget: 'Dein Budget', debt: 'Dein Weg auf null' } as const;
+  const labels = { overview: 'Übersicht', upcoming: 'Demnächst', budget: 'Budget', debt: 'Schulden' } as const;
+  if (new URL(page.url()).pathname !== destinationPaths[destination]) {
+    await page.getByRole('link', { name: labels[destination], exact: true }).click();
+  }
   await page.getByRole('heading', { name: headings[destination] }).waitFor();
+  expect(new URL(page.url()).pathname).toBe(destinationPaths[destination]);
 }
 
 async function capture(page: Page, name: string) {
@@ -95,7 +106,7 @@ for (const scenario of [
 ]) {
   test(`412 light ${scenario.name}`, async ({ page, context }) => {
     await page.setViewportSize({ width: 412, height: 915 });
-    await preparePage(page, context, 'connected', 'light', scenario.destination === 'overview');
+    await preparePage(page, context, 'connected', 'light', scenario.destination === 'overview', destinationPaths[scenario.destination]);
     await openDestination(page, scenario.destination);
     await scenario.interact?.(page);
     if (scenario.destination === 'overview' || scenario.destination === 'budget') {
@@ -168,7 +179,7 @@ for (const scenario of [
 ]) {
   test(`412 dark ${scenario.name}`, async ({ page, context }) => {
     await page.setViewportSize({ width: 412, height: 915 });
-    await preparePage(page, context, 'connected', 'dark', scenario.destination === 'overview');
+    await preparePage(page, context, 'connected', 'dark', scenario.destination === 'overview', destinationPaths[scenario.destination]);
     await openDestination(page, scenario.destination);
     await capture(page, `412-dark-${scenario.name}.png`);
   });
@@ -195,7 +206,7 @@ for (const viewport of [{ width: 768, height: 1024 }, { width: 1440, height: 100
     for (const destination of ['overview', 'budget', 'debt'] as const) {
       test(`${viewport.width} ${theme} ${destination}`, async ({ page, context }) => {
         await page.setViewportSize(viewport);
-        await preparePage(page, context, 'connected', theme, destination === 'overview');
+        await preparePage(page, context, 'connected', theme, destination === 'overview', destinationPaths[destination]);
         await openDestination(page, destination);
         await capture(page, `${viewport.width}-${theme}-${destination}.png`);
       });
@@ -206,7 +217,7 @@ for (const viewport of [{ width: 768, height: 1024 }, { width: 1440, height: 100
 test('WCAG AA finance screens', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await preparePage(page, context);
-  for (const destination of ['overview', 'budget', 'debt'] as const) {
+  for (const destination of ['overview', 'upcoming', 'budget', 'debt'] as const) {
     await openDestination(page, destination);
     await expectNoAxeViolations(page, destination);
   }

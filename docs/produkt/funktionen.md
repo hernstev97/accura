@@ -8,6 +8,8 @@
 
 ## Hauptansichten
 
+Die vier Hauptansichten sind direkt über `/`, `/demnaechst`, `/budget` und `/schulden` adressierbar. Navigation und Browser-/PWA-Zurück/Vorwärts aktualisieren URL und sichtbaren Screen gemeinsam; Reload und Deep Links behalten die adressierte Ansicht.
+
 ### Übersicht
 
 Die Übersicht zeigt verfügbare Mittel, die Aufteilung des Monatseinkommens, aktive Konten, zugehörige Pockets, den Datenstand und die nächste planmäßige Entlastung. Detail- und Standarddarstellung lassen sich umschalten. Werte stammen aus dem normalisierten Snapshot, nicht aus live berechneten Google-Zellen.

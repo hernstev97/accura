@@ -87,10 +87,12 @@ const server = createServer(async (request, response) => {
 
 await new Promise((resolve, reject) => {
   server.once('error', reject);
-  server.listen(4173, '127.0.0.1', resolve);
+  server.listen(0, '127.0.0.1', resolve);
 });
 
-const smokeUrl = 'http://127.0.0.1:4173';
+const address = server.address();
+if (!address || typeof address === 'string') throw new Error('Smoke server did not expose a TCP address');
+const smokeUrl = `http://127.0.0.1:${address.port}`;
 
 try {
   console.log('--- Starting Offline Smoke Test ---');
