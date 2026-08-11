@@ -1,9 +1,13 @@
-# Bundled font
+# Eingebettete Schrift: Google Sans Flex
 
-The PWA bundles **Google Sans Flex v22** (last modified 2026-07-30) from the official [Google Fonts family](https://fonts.google.com/specimen/Google+Sans+Flex). The repository consumes the Google Fonts files through the version-pinned `@fontsource-variable/google-sans-flex` package, whose metadata identifies `https://github.com/google/fonts` as the upstream source and preserves the original font binaries.
+> **Zielgruppe:** Entwickler, Designer und Lizenzprüfer.
+> **Zweck und Lernziel:** Herkunft, Einbindung und Lizenz der lokalen Schrift nachvollziehen.
+> **Voraussetzungen:** Keine.
+> **Kanonisch für:** Schriftquelle und Lizenzhinweis.
+> **Verwandte Dokumente:** [Appearance und Designsystem](../architektur/appearance-und-designsystem.md), [OFL-Lizenz](Google-Sans-Flex-OFL.txt)
 
-`src/design/googleSansFlex.css` includes the full-axis Latin and Latin Extended WOFF2 subsets. Vite fingerprints them and Workbox precaches them with the app shell, so no runtime font request leaves the device and the family remains available offline.
+`accura` bindet Google Sans Flex v22 über das npm-Paket `@fontsource-variable/google-sans-flex` lokal ein. Die benötigten WOFF2-Dateien werden beim Build Teil des Offline-App-Shells; es findet kein Laufzeitabruf von Google Fonts statt. Der CSS-Einstieg liegt in [src/design/googleSansFlex.css](../../src/design/googleSansFlex.css).
 
-The application uses the official family name, not an unofficial “Google Sans Rounded” font. Rounded terminals are produced with the variable settings `ROND: 100`, `wdth: 100`, automatic optical sizing, and role-specific `wght` values.
+Die Schrift steht unter der SIL Open Font License 1.1. Der unveränderte Lizenztext liegt in [Google-Sans-Flex-OFL.txt](Google-Sans-Flex-OFL.txt) und muss bei Weiterverteilung erhalten bleiben. Paketversion und Abhängigkeit sind in [package.json](../../package.json) beziehungsweise [package-lock.json](../../package-lock.json) festgehalten.
 
-Copyright 2015 Google LLC. The font is licensed under the SIL Open Font License 1.1; the retained license is in [Google-Sans-Flex-OFL.txt](./Google-Sans-Flex-OFL.txt).
+Alle sichtbaren Rollen verwenden die vollständig gerundete Achseneinstellung `ROND: 100`; optische Größe bleibt automatisch. Typografische Rollen und Accessibility-Grenzen sind kanonisch unter [Appearance und Designsystem](../architektur/appearance-und-designsystem.md#typografie) beschrieben.
