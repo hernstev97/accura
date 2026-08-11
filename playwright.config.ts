@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const testPort = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? '5173', 10);
+const testPortValue = process.env.PLAYWRIGHT_PORT ?? '5173';
+const testPort = /^\d+$/.test(testPortValue) ? Number(testPortValue) : Number.NaN;
 if (!Number.isInteger(testPort) || testPort < 1 || testPort > 65_535) throw new Error('PLAYWRIGHT_PORT must be a valid TCP port');
 const testBaseUrl = `http://127.0.0.1:${testPort}`;
 
