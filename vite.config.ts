@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: accuraManifest,
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
@@ -21,7 +21,6 @@ export default defineConfig({
           },
         ],
         clientsClaim: true,
-        skipWaiting: true,
         cleanupOutdatedCaches: true,
       },
     }),

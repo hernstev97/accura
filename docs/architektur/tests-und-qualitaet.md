@@ -18,11 +18,12 @@ Keine einzelne Prüfung beweist das Produkt. Reine Unit-Tests decken fachliche R
 | `npm run lint` | ESLint über das Repository | nein |
 | `npm run build` | TypeScript-Projektbuild und Vite/PWA-Produktionsbuild | nein |
 | `npm run test:visual` | Playwright, 26 committed Chromium-Golden-Screens plus Axe-Szenarien | lokaler Server/Browser |
-| `npm run smoke` | orchestrierte Auth-/Service-Worker-, Browser- und Offline-Smokes | lokale Mocks, keine Google-Secrets |
+| `npm run smoke` | orchestrierte Auth-, PWA-Lifecycle-, Browser- und Offline-Smokes | lokale Mocks, keine Google-Secrets |
+| `npm run smoke:pwa` | Manifest, Chromium-Installierbarkeit, Icons, Theme-Metadaten und Zwei-Versionen-Update | lokaler Server, keine Secrets |
 | `npm run docs:check` | interne Dokumentstruktur, Links und Anker | nein |
 | `npm run docs:check:external` | zusätzlich deduplizierte externe Links | ja, optional |
 
-Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts und Offline-Reload.
+Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, kontrollierte Worker-Aktualisierung, Chromium-Installierbarkeit, Icon-Safe-Zone, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts, Offline-Reload und Netzrückkehr.
 
 ## Golden Screenshots und Axe
 
@@ -36,7 +37,7 @@ Unter `tests/visual/__screenshots__/chromium` liegen 26 Referenzbilder für 412,
 
 ## Fehlerfälle und Grenzen
 
-Golden Screens hängen an Browser-/Fontdeterminismus; Updates dürfen nur nach bewusster visueller Prüfung committed werden. Axe findet nicht jede Barriere. Mock-Smokes beweisen keine echte Google- oder Vercel-Konfiguration. Reale OAuth-, Picker-, Sheets-, PostgreSQL-, Offline- und Disconnect-Abläufe bleiben Betreiber-Abnahme.
+Golden Screens hängen an Browser-/Fontdeterminismus; Updates dürfen nur nach bewusster visueller Prüfung committed werden. Axe findet nicht jede Barriere. Mock-Smokes beweisen keine echte Google- oder Vercel-Konfiguration. Reale OAuth-, Picker-, Sheets-, PostgreSQL- und Disconnect-Abläufe bleiben Betreiber-Abnahme. Desktop-Chromium beweist außerdem nicht die tatsächlich von Android gerenderten Installations-, Launcher-, Task-Switcher- und Splash-Flächen; ACC-7 deckt stattdessen deren Web-Verträge automatisiert ab.
 
 ## Implementierung und Tests
 

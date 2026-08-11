@@ -1,6 +1,5 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { AppearanceProvider } from './appearance/AppearanceProvider';
 import { initializeAppearanceBeforeRender } from './appearance/appearanceStore';
@@ -12,7 +11,6 @@ import { initializePrivacyBeforeRender } from './privacy/privacyStore';
 import './design/tokens.css';
 import './styles.css';
 
-registerSW({ immediate: true });
 const initialAppearance = initializeAppearanceBeforeRender();
 const initialPrivacy = initializePrivacyBeforeRender();
 
@@ -34,4 +32,3 @@ createRoot(document.getElementById('root')!).render(
     </PrivacyProvider>
   </StrictMode>,
 );
-

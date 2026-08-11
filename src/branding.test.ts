@@ -6,6 +6,7 @@ import {
   ACCURA_DARK_THEME_COLOR,
   ACCURA_DESCRIPTION,
   ACCURA_FULL_NAME,
+  ACCURA_INSTALL_COLOR,
   ACCURA_NAME,
   ACCURA_PAGE_TITLE,
   ACCURA_THEME_COLOR,
@@ -33,6 +34,7 @@ function pngDimensions(relativePath: string) {
 describe('accura branding contracts', () => {
   it('defines the intended manifest and purpose-specific icon mapping', () => {
     expect(accuraManifest).toMatchObject({
+      id: '/',
       name: ACCURA_FULL_NAME,
       short_name: ACCURA_NAME,
       lang: 'de-DE',
@@ -40,8 +42,8 @@ describe('accura branding contracts', () => {
       scope: '/',
       display: 'standalone',
       orientation: 'portrait-primary',
-      theme_color: ACCURA_THEME_COLOR,
-      background_color: ACCURA_THEME_COLOR,
+      theme_color: ACCURA_INSTALL_COLOR,
+      background_color: ACCURA_INSTALL_COLOR,
     });
     expect(accuraManifest.icons).toEqual([
       { src: '/icons/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
@@ -68,6 +70,9 @@ describe('accura branding contracts', () => {
     expect(meta('name', 'application-name')).toBe(ACCURA_NAME);
     expect(meta('name', 'apple-mobile-web-app-title')).toBe(ACCURA_NAME);
     expect(meta('name', 'mobile-web-app-capable')).toBe('yes');
+    expect(indexHtml).toContain(`<meta name="theme-color" content="${ACCURA_THEME_COLOR}" media="(prefers-color-scheme: light)" data-theme-fallback="light" />`);
+    expect(indexHtml).toContain(`<meta name="theme-color" content="${ACCURA_DARK_THEME_COLOR}" media="(prefers-color-scheme: dark)" data-theme-fallback="dark" />`);
+    expect(indexHtml).toContain(`<meta name="theme-color" content="${ACCURA_THEME_COLOR}" data-appearance-theme-color="active" />`);
     expect(meta('property', 'og:site_name')).toBe(ACCURA_NAME);
     expect(meta('property', 'og:title')).toBe(ACCURA_PAGE_TITLE);
     expect(meta('property', 'og:description')).toBe(ACCURA_DESCRIPTION);
