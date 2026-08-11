@@ -30,7 +30,7 @@ Appearance-Grundimplementierung, Accessibility-Pass, Branding, CI, Demnächst un
 - Datensparsames Monitoring und strukturierte Betriebsdiagnose.
 - Rate-Limits und Missbrauchsschutz für den privaten Betrieb bewerten.
 - Workbook-Onboarding durch ein anonymes Template und Vorabvalidierung verbessern.
-- PWA-Updates, Cache-Zustand und lokale Löschaktionen transparenter machen.
+- Cache-Zustand und lokale Löschaktionen transparenter machen.
 - Visuelle und barrierefreie Abdeckung seltener Paletten- und Fehlerzustände ergänzen.
 
 ## Later

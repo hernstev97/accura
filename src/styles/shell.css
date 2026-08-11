@@ -66,6 +66,22 @@
   color: var(--color-system-accent);
 }
 
+.pwa-update-notice {
+  width: min(calc(100% - 2 * var(--screen-inset)), 832px);
+  margin: var(--space-2) auto 0;
+}
+
+.pwa-update-notice .inline-notice {
+  min-height: 72px;
+}
+
+.pwa-update-notice__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
 .sync-status {
   width: min(calc(100% - 2 * var(--screen-inset)), 832px);
   margin: var(--space-2) auto 0;

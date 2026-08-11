@@ -12,11 +12,12 @@
 - Übersicht, Demnächst, Budget und Schulden mit adaptiver Bottom-Navigation beziehungsweise Navigation Rail.
 - Google OAuth mit State, Nonce und PKCE; Picker mit `drive.file`; serverseitige Drive-/Sheets-Zugriffe; verschlüsselte Refresh-Tokens in PostgreSQL.
 - Finance Data Schema v1 mit zehn Maschinen-Tabs, Laufzeitvalidierung, Integer-Cents, Fremdschlüsseln, Snapshot-Auswahl, `salary_day` und `due_day`.
-- Last-known-good-Cache in IndexedDB, Offline-App-Shell, manuelle und ereignisgesteuerte Aktualisierung sowie Race-Schutz.
+- Last-known-good-Cache in IndexedDB, Offline-App-Shell, getesteter leerer Offline-Start und Netzrückkehr, manuelle und ereignisgesteuerte Datenaktualisierung sowie Race-Schutz.
+- Kontrollierter PWA-Versionswechsel mit verständlichem „Jetzt neu laden“/„Später“-Hinweis, stabilem Installationsmanifest und automatisierten Android-orientierten Icon-/Systemfarben-Verträgen.
 - Appearance mit Systemmodus, Hell/Dunkel, Browser-Akzent, neun Presets, lokaler Bildanalyse im Worker und lokaler WebP-Vorschau.
 - Lokaler Privacy-Modus einschließlich Tabsynchronisierung und Maskierung von sichtbaren sowie zugänglichen Geldtexten.
 - Wiederverwendbare MD3-Komponenten, Responsive/Reflow, Reduced Motion, Forced Colors, Fokusmanagement und lokale Google-Sans-Flex-Schrift.
-- GitHub-CI für Lint, Unit-Tests, Build und Smoke; aktuell 166 Vitest-Tests plus ein Node-ESM-Test sowie Smoke-, Offline-, Golden- und Axe-Prüfungen.
+- GitHub-CI für Lint, Unit-Tests, Build und Smoke; aktuell 169 Vitest-Tests plus ein Node-ESM-Test sowie PWA-, Offline-, Golden- und Axe-Prüfungen.
 
 ## Historische Meilensteine
 
@@ -26,7 +27,7 @@ Die genaue Commit-Historie bleibt in Git; diese Seite ist kein tägliches Journa
 
 ## Bekannte Abdeckungslücken
 
-Demnächst und Privacy besitzen Unit-/Komponententests, sind aber noch nicht vollständig in Golden-Screenshots und Axe-Szenarien abgebildet. Reale Produktionsabläufe mit persönlichen externen Diensten können im Repository nicht automatisiert bewiesen werden und benötigen eine Eigentümer-Abnahme.
+Demnächst und Privacy besitzen Unit-/Komponententests, sind aber noch nicht vollständig in Golden-Screenshots und Axe-Szenarien abgebildet. Reale Produktionsabläufe mit persönlichen externen Diensten können im Repository nicht automatisiert bewiesen werden und benötigen eine Eigentümer-Abnahme. Androids tatsächlich gerenderter Installationsdialog, Launcher und Splash liegen ebenfalls außerhalb der gewählten Desktop-Chromium-Automation; Manifest, Installierbarkeit, Icon-Pixelverträge und Worker-Update sind automatisiert abgedeckt.
 
 ## Nachweis
 

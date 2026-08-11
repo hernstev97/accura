@@ -25,6 +25,14 @@ npm run smoke
 npm run docs:check:external
 ```
 
+Der PWA-Teil der Smoke-Suite kann gezielt ausgeführt werden:
+
+```bash
+npm run smoke:pwa
+```
+
+Er prüft das gebaute Manifest über Chromium-CDP, Installierbarkeitsfehler, Icon-Pixelverträge, Light/Dark-Systemfarben sowie einen echten Wechsel zwischen zwei Service-Worker-Generationen einschließlich „Später“ und „Jetzt neu laden“. Der Offline-Smoke deckt Warmstart, Start ohne Finance-Cache und die automatische Synchronisierung bei Netzrückkehr ab.
+
 Der externe Check ist wegen Redirects, Rate-Limits und temporärer Netzausfälle nicht blockierend. Der interne Dokumentationscheck ist ebenfalls kein GitHub-CI-Gate, gehört aber zur Dokumentationsabnahme.
 
 ## Golden Screens aktualisieren
@@ -48,6 +56,8 @@ Jedes geänderte Bild einzeln auf Layout, Texte, Theme, Fokuszustand und unerwar
 - Appearance-Entwurf, Anwenden, Abbrechen, Bildentfernung und OS-Moduswechsel;
 - Privacy sichtbar und mit Screenreader-Ausgabe, einschließlich Tabsynchronisierung;
 - Tastatur, Fokus, Reduced Motion, 320-Pixel-Reflow und Forced Colors.
+
+Chromes nativer Installationsdialog, Android-Launcher, Task-Switcher und OS-Splash werden von Desktop-Chromium nicht gerendert. ACC-7 akzeptiert hierfür ausdrücklich die automatisierten Manifest-, Farb-, Icon- und Installierbarkeitsverträge; eine spätere Realgeräte- oder Emulatorprobe bleibt optional und ist kein Gate dieser Abnahme.
 
 ## Release-Entscheidung
 
