@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:mock": "VITE_USE_MOCK_API=true vite",
+    "docs:check": "node scripts/docs-check.mjs",
+    "docs:check:external": "node scripts/docs-check.mjs --external",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "smoke": "node scripts/run-smoke-tests.mjs",
