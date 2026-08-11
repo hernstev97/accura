@@ -1,0 +1,46 @@
+# Tests und Qualität
+
+> **Zielgruppe:** Entwickler und Release-Verantwortliche.
+> **Zweck und Lernziel:** Vorhandene Prüfarten, CI-Grenze und bekannte Abdeckungslücken verstehen.
+> **Voraussetzungen:** [Lokale Entwicklung](../anleitungen/lokale-entwicklung.md)
+> **Kanonisch für:** Testaufteilung, Golden Screenshots, Accessibility und bestehende GitHub-CI.
+> **Verwandte Dokumente:** [Testen und Release](../anleitungen/testen-und-release.md), [Entwicklungsstand](../produkt/entwicklungsstand.md)
+
+## Mentales Modell
+
+Keine einzelne Prüfung beweist das Produkt. Reine Unit-Tests decken fachliche Regeln und Stores schnell ab; Node-ESM prüft reale Server-Modulauflösung; Build und Lint prüfen statische Verträge; Browser-Smoke prüft die gebaute Anwendung; Golden Screens vergleichen definierte UI-Zustände; Axe sucht automatisiert häufige Accessibility-Verstöße.
+
+## Vorhandene Prüfungen
+
+| Befehl | Inhalt | Netzwerk/Secrets |
+| --- | --- | --- |
+| `npm test` | Node-ESM-Test und alle Vitest-Dateien unter `src/**/*.test.{ts,tsx}` | keine externen Dienste |
+| `npm run lint` | ESLint über das Repository | nein |
+| `npm run build` | TypeScript-Projektbuild und Vite/PWA-Produktionsbuild | nein |
+| `npm run test:visual` | Playwright, 26 committed Chromium-Golden-Screens plus Axe-Szenarien | lokaler Server/Browser |
+| `npm run smoke` | orchestrierte Auth-/Service-Worker-, Browser- und Offline-Smokes | lokale Mocks, keine Google-Secrets |
+| `npm run docs:check` | interne Dokumentstruktur, Links und Anker | nein |
+| `npm run docs:check:external` | zusätzlich deduplizierte externe Links | ja, optional |
+
+Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts und Offline-Reload.
+
+## Golden Screenshots und Axe
+
+Unter `tests/visual/__screenshots__/chromium` liegen 26 Referenzbilder für 412, 768 und 1440 Pixel, Light/Dark, die ursprünglichen drei Finance-Screens sowie ausgewählte Dialog- und Fehlerzustände. Screenshots sind Regressionstests, keine kanonische Produktdokumentation.
+
+`@axe-core/playwright` prüft automatisierbare WCAG-Probleme. Das ersetzt weder Tastatur-, Screenreader- noch visuelle manuelle Prüfung. Demnächst und Privacy sind noch nicht vollständig in Golden- und Axe-Matrix enthalten; diese Lücke steht in [Now](../produkt/roadmap.md#now).
+
+## GitHub-CI
+
+`.github/workflows/ci.yml` läuft für Pushes nach `master` und Pull Requests. Die Jobs prüfen Lint, Unit-Tests, Build und Smoke-Tests. Der lokale Dokumentationscheck wird bewusst nicht in diese Datei oder `npm test` aufgenommen. Externe Links sind aufgrund temporärer Netzfehler nie Release-Gate.
+
+## Fehlerfälle und Grenzen
+
+Golden Screens hängen an Browser-/Fontdeterminismus; Updates dürfen nur nach bewusster visueller Prüfung committed werden. Axe findet nicht jede Barriere. Mock-Smokes beweisen keine echte Google- oder Vercel-Konfiguration. Reale OAuth-, Picker-, Sheets-, PostgreSQL-, Offline- und Disconnect-Abläufe bleiben Betreiber-Abnahme.
+
+## Implementierung und Tests
+
+- CI: [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
+- Unit-Konfiguration: [vite.config.ts](../../vite.config.ts)
+- Smoke-Orchestrierung: [scripts/run-smoke-tests.mjs](../../scripts/run-smoke-tests.mjs)
+- Visual/Axe: [tests/visual/finance-ui.spec.ts](../../tests/visual/finance-ui.spec.ts)
