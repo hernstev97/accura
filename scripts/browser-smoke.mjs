@@ -345,6 +345,14 @@ async function themeSnapshot(page) {
   });
 }
 
+async function assertActiveThemeColor(page, label) {
+  const { active, pageColor } = await page.evaluate(() => ({
+    active: document.querySelector('meta[data-appearance-theme-color]')?.getAttribute('content') ?? '',
+    pageColor: getComputedStyle(document.documentElement).getPropertyValue('--color-page').trim(),
+  }));
+  assert.equal(active.toUpperCase(), pageColor.toUpperCase(), `${label}: aktives theme-color folgt nicht der Page-Farbe`);
+}
+
 async function openSettings(page) {
   await page.getByLabel('Einstellungen öffnen').click();
   const dialog = page.getByRole('dialog', { name: 'Informationen' });
@@ -579,19 +587,24 @@ try {
   await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
   await colors.waitFor({ state: 'detached' });
   assert.equal((await themeSnapshot(appearance.page)).resolved, 'dark', 'Explizit dunkel überschreibt den OS-Modus nicht');
+  await assertActiveThemeColor(appearance.page, 'Explizit Dark bei hellem OS');
+  await appearance.page.emulateMedia({ colorScheme: 'dark' });
   colors = await openColors(appearance.page);
   await colors.locator('.appearance-control-group').getByRole('radio', { name: 'Hell', exact: true }).check();
   await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
   await colors.waitFor({ state: 'detached' });
   assert.equal((await themeSnapshot(appearance.page)).resolved, 'light', 'Explizit hell überschreibt den OS-Modus nicht');
+  await assertActiveThemeColor(appearance.page, 'Explizit Light bei dunklem OS');
   colors = await openColors(appearance.page);
   await colors.locator('.appearance-control-group').getByRole('radio', { name: 'System', exact: true }).check();
   await colors.getByRole('button', { name: 'Anwenden', exact: true }).click();
   await colors.waitFor({ state: 'detached' });
   await appearance.page.emulateMedia({ colorScheme: 'dark' });
   await appearance.page.waitForFunction(() => document.documentElement.dataset.themeResolved === 'dark');
+  await assertActiveThemeColor(appearance.page, 'System Dark');
   await appearance.page.emulateMedia({ colorScheme: 'light' });
   await appearance.page.waitForFunction(() => document.documentElement.dataset.themeResolved === 'light');
+  await assertActiveThemeColor(appearance.page, 'System Light');
 
   colors = await openColors(appearance.page);
   await colors.locator('.appearance-source-picker').getByRole('radio', { name: 'Bild', exact: true }).check();

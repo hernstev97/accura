@@ -7,6 +7,7 @@ import { ConnectionStateLayout } from './components/ConnectionStateLayout';
 import { Icon } from './components/Icon';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { PrivacyToggle } from './components/PrivacyToggle';
+import { PwaUpdateNotice } from './components/PwaUpdateNotice';
 import { SettingsEntry } from './components/SettingsDialog';
 import { SyncStatusBanner } from './components/SyncStatusBanner';
 import { ValidationIssues } from './components/ValidationIssues';
@@ -150,6 +151,7 @@ function App() {
               <SettingsEntry />
             </div>
           </header>
+          <PwaUpdateNotice />
           {hasData ? <SyncStatusBanner /> : null}
           <main aria-label={hasData ? screenNames[destination] : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>
             {hasData ? <Screen destination={destination} /> : <ConnectionStateScreen />}
