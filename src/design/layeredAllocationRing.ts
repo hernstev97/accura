@@ -1,4 +1,4 @@
-import { formatCurrencyValue } from '../lib/format';
+import { formatCurrencyCentsValue } from '../lib/format';
 
 export type AllocationRingSegment = {
   amountCents: number;
@@ -151,6 +151,6 @@ export function createLayeredArcSegments(segments: AllocationRingSegment[], tota
 export function describeAllocationRing(segments: AllocationRingSegment[], totalCents: number, privacyMode = false) {
   const parts = segments
     .filter(({ amountCents }) => Number.isSafeInteger(amountCents))
-    .map(({ amountCents, label }) => `${label}: ${formatCurrencyValue(amountCents / 100, privacyMode)}`);
-  return `Monatseinkommen ${formatCurrencyValue(totalCents / 100, privacyMode)}. ${parts.join('. ')}.`;
+    .map(({ amountCents, label }) => `${label}: ${formatCurrencyCentsValue(amountCents, privacyMode)}`);
+  return `Monatseinkommen ${formatCurrencyCentsValue(totalCents, privacyMode)}. ${parts.join('. ')}.`;
 }

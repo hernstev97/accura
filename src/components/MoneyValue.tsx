@@ -1,13 +1,24 @@
 import { Fragment, type CSSProperties } from 'react';
-import { compactCurrencyFormatter, currencyFormatter, formatCurrencyParts, maskMoneyShape } from '../lib/format';
+import {
+  compactCurrencyFormatter,
+  currencyFormatter,
+  formatCurrencyCents,
+  formatCurrencyCentsParts,
+  formatCurrencyParts,
+  maskMoneyShape,
+} from '../lib/format';
 import { usePrivacy } from '../privacy/PrivacyProvider';
 
-export type MoneyValueProps = {
-  value: number;
+type MoneyValueOptions = {
   compact?: boolean;
   className?: string;
   maskedPlaceholder?: string;
 };
+
+export type MoneyValueProps = MoneyValueOptions & (
+  | { value: number; valueCents?: never }
+  | { value?: never; valueCents: number }
+);
 
 type MoneyValueStyle = CSSProperties & {
   '--money-value-fit-size': string;
@@ -30,9 +41,7 @@ function createMoneyValueStyle(formatted: string): MoneyValueStyle {
   };
 }
 
-function CurrencyParts({ compact, value }: { compact: boolean; value: number }) {
-  const parts = formatCurrencyParts(value, compact);
-
+function CurrencyParts({ parts }: { parts: Intl.NumberFormatPart[] }) {
   return parts.map((part, index) => {
     const nextPart = parts[index + 1];
     const breakAfter = part.type === 'group';
@@ -47,41 +56,43 @@ function CurrencyParts({ compact, value }: { compact: boolean; value: number }) 
   });
 }
 
-export function MoneyValue({ value, compact = false, className = '', maskedPlaceholder }: MoneyValueProps) {
+export function MoneyValue({ value, valueCents, compact = false, className = '', maskedPlaceholder }: MoneyValueProps) {
   const { privacyMode } = usePrivacy();
+  const usesCents = valueCents !== undefined;
+  const resolvedValue = usesCents ? valueCents / 100 : value;
+  const exactParts = usesCents ? formatCurrencyCentsParts(valueCents) : formatCurrencyParts(resolvedValue, false);
+  const visibleParts = compact
+    ? usesCents ? formatCurrencyCentsParts(valueCents, true) : formatCurrencyParts(resolvedValue, true)
+    : exactParts;
+  const exactFormatted = usesCents ? formatCurrencyCents(valueCents) : currencyFormatter.format(resolvedValue);
+  const visibleFormatted = compact ? compactCurrencyFormatter.format(resolvedValue) : exactFormatted;
 
   if (privacyMode) {
-    const formatted = compact ? compactCurrencyFormatter.format(value) : currencyFormatter.format(value);
-    const defaultPlaceholder = maskMoneyShape(formatted);
-    const placeholder = maskedPlaceholder ?? defaultPlaceholder;
+    const maskedParts = visibleParts.map((part) => ({ ...part, value: maskMoneyShape(part.value) }));
 
     return (
       <span
-        aria-label="Betrag ausgeblendet"
         className={`money-value money-value--masked ${className}`.trim()}
-        role="text"
-        style={createMoneyValueStyle(formatted)}
+        style={createMoneyValueStyle(visibleFormatted)}
       >
+        <span className="sr-only">Betrag ausgeblendet</span>
         <span aria-hidden="true" className="money-value__blur">
-          {placeholder}
+          {maskedPlaceholder ?? <CurrencyParts parts={maskedParts} />}
         </span>
       </span>
     );
   }
 
-  const exactFormatted = currencyFormatter.format(value);
-  const visibleFormatted = compact ? compactCurrencyFormatter.format(value) : exactFormatted;
-  const resolvedClassName = `money-value ${value < 0 ? 'money-value--negative' : ''} ${className}`.trim();
+  const negative = usesCents ? valueCents < 0 : resolvedValue < 0;
+  const resolvedClassName = `money-value ${negative ? 'money-value--negative' : ''} ${className}`.trim();
   return (
     <span
-      aria-label={compact ? exactFormatted : undefined}
       className={resolvedClassName}
-      role={compact ? 'text' : undefined}
       style={createMoneyValueStyle(visibleFormatted)}
     >
       {compact ? (
-        <span aria-hidden="true"><CurrencyParts compact value={value} /></span>
-      ) : <CurrencyParts compact={false} value={value} />}
+        <><span className="sr-only">{exactFormatted}</span><span aria-hidden="true"><CurrencyParts parts={visibleParts} /></span></>
+      ) : <CurrencyParts parts={exactParts} />}
     </span>
   );
 }

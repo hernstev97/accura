@@ -97,6 +97,16 @@ describe('cent-based finance selectors', () => {
       kind: 'overdrawn',
       utilizationBasisPoints: null,
     });
+    expect(selectFreePercentageBasisPoints({ ...data, monthlyIncomeCents: 0 })).toBeNull();
+
+    const negativeEmptyBudget = { ...data, monthlyIncomeCents: -12_345, budgetItems: [] };
+    expect(selectBudgetStatusCents(negativeEmptyBudget)).toEqual({
+      kind: 'empty',
+      balanceCents: -12_345,
+      plannedCents: 0,
+      utilizationBasisPoints: null,
+    });
+    expect(selectFreePercentageBasisPoints(negativeEmptyBudget)).toBeNull();
   });
 
   it('calculates percentages for large safe cent values without unsafe intermediate multiplication', () => {
@@ -185,8 +195,11 @@ describe('cent-based finance selectors', () => {
     expect(view.meta.asOfLabel).toBe('08.08.2026');
     expect(view.meta.monthLabel).toBe('August 2026');
     expect(view.totals.currentCash).toBe(1350.75);
+    expect(view.totals.currentCashCents).toBe(135_075);
     expect(view.nextDebtRelief).toMatchObject({ eventLabel: 'Coolblue', monthlyRelief: 164, freeAfter: 305.32 });
+    expect(view.nextDebtRelief).toMatchObject({ monthlyReliefCents: 16_400, freeAfterCents: 30_532 });
     expect(view.debtBalanceMilestones.map(({ balance }) => balance)).toEqual([14322.93, 13000, 8000, 0]);
+    expect(view.debtBalanceMilestones.map(({ balanceCents }) => balanceCents)).toEqual([1_432_293, 1_300_000, 800_000, 0]);
     expect(view.budgetStatus).toEqual({
       kind: 'within-budget',
       balance: 141.32,

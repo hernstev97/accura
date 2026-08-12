@@ -88,50 +88,75 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
 }
 
-async function expectMoneyValuesInsideContainers(page: Page) {
-  const overflowing = await page.locator('.money-value').evaluateAll((values) => values.flatMap((value, index) => {
-    const container = value.closest([
-      '.financial-hero__value',
-      '.metric-card__value',
-      '.financial-hero',
-      '.metric-card',
-      '.allocation-legend__item',
-      '.data-list__item',
-      '.data-list__footer',
-      '.pocket',
-      '.milestone-row',
-      '.finance-chart-tooltip',
-    ].join(','));
-    if (!container) return [];
-    const valueRect = value.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    const tolerance = 1;
-    return valueRect.left < containerRect.left - tolerance || valueRect.right > containerRect.right + tolerance
-      ? [{
-          index,
-          value: value.textContent,
+async function expectMoneyValuesInsideContainers(page: Page, minimumCount = 1) {
+  const inspected = await page.locator('.money-value').evaluateAll((values) => {
+    const unmatched: object[] = [];
+    const overflowing: object[] = [];
+    values.forEach((value, index) => {
+      const container = value.closest([
+        '.financial-hero__value',
+        '.metric-card__value',
+        '.financial-hero',
+        '.metric-card',
+        '.allocation-legend__item',
+        '.data-list__item',
+        '.data-list__footer',
+        '.pocket',
+        '.milestone-row',
+        '.debt-milestones > div',
+        '.debt-progress__summary > div',
+        '.finance-chart-tooltip',
+        '.inline-notice',
+      ].join(','));
+      const identity = {
+        index,
+        value: value.textContent,
+        className: value.className,
+        parent: value.parentElement?.className ?? value.parentElement?.tagName ?? null,
+      };
+      if (!container) {
+        unmatched.push(identity);
+        return;
+      }
+      const valueRect = value.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const tolerance = 1;
+      if (valueRect.left < containerRect.left - tolerance || valueRect.right > containerRect.right + tolerance) {
+        overflowing.push({
+          ...identity,
           container: container.className,
           containerWidth: containerRect.width,
+          valueLeft: valueRect.left,
+          valueRight: valueRect.right,
           valueWidth: valueRect.width,
-        }]
-      : [];
-  }));
-  expect(overflowing).toEqual([]);
+        });
+      }
+    });
+    return { count: values.length, overflowing, unmatched };
+  });
+  expect(inspected.count).toBeGreaterThanOrEqual(minimumCount);
+  expect(inspected.unmatched).toEqual([]);
+  expect(inspected.overflowing).toEqual([]);
 }
 
-async function expectPrimaryMoneyValuesOnOneLine(page: Page) {
+async function expectPrimaryMoneyValuesOnOneLine(page: Page, minimumCount = 1) {
   const valueMetrics = await page
     .locator('.financial-hero__value > .money-value, .metric-card__value > .money-value')
     .evaluateAll((values) => values.map((value) => {
       const style = getComputedStyle(value);
       return {
+        value: value.textContent,
+        className: value.className,
+        parent: value.parentElement?.className ?? value.parentElement?.tagName ?? null,
         height: value.getBoundingClientRect().height,
         lineHeight: Number.parseFloat(style.lineHeight),
         whiteSpace: style.whiteSpace,
       };
     }));
-  expect(valueMetrics.every(({ height, lineHeight, whiteSpace }) =>
-    whiteSpace === 'nowrap' && height <= lineHeight + 1)).toBe(true);
+  const offenders = valueMetrics.filter(({ height, lineHeight, whiteSpace }) =>
+    whiteSpace !== 'nowrap' || !Number.isFinite(lineHeight) || height > lineHeight + 1);
+  expect(valueMetrics.length).toBeGreaterThanOrEqual(minimumCount);
+  expect(offenders).toEqual([]);
 }
 
 async function expectCompactHeroRingBesideCopy(page: Page, destination: 'overview' | 'budget') {
@@ -367,13 +392,39 @@ test('412 maximum safe cent values still fit hero and metric slots on one line',
   await preparePage(page, context, 'connected', 'light', true, '/', maximumSafeFinanceData);
 
   const overviewHeroValue = page.locator('#overview-hero .financial-hero__value');
-  await expect(overviewHeroValue).toHaveText('90.071.992.547.409,90 €');
+  await expect(overviewHeroValue).toHaveText('90.071.992.547.409,91 €');
   await expect(overviewHeroValue).not.toContainText(/frei/i);
   await expectNoHorizontalOverflow(page);
   await expectMoneyValuesInsideContainers(page);
   await expectPrimaryMoneyValuesOnOneLine(page);
 
   await openDestination(page, 'budget');
+  await expectNoHorizontalOverflow(page);
+  await expectMoneyValuesInsideContainers(page);
+  await expectPrimaryMoneyValuesOnOneLine(page);
+});
+
+test('320 negative income without budget items remains an empty deficit state', async ({ page, context }) => {
+  const negativeEmptyBudgetData = structuredClone(emptyCollectionsFinanceData);
+  negativeEmptyBudgetData.monthlyIncomeCents = -12_345;
+
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', true, '/', negativeEmptyBudgetData);
+
+  await expect(page.getByRole('heading', { name: 'Budgetsaldo' })).toBeVisible();
+  await expect(page.locator('#overview-hero')).toHaveClass(/financial-hero--attention/);
+  await expect(page.locator('#overview-hero [data-testid="allocation-center-value"]')).toHaveText('–');
+  await expect(page.locator('#overview-hero [data-testid="allocation-accessible-summary"]')).toContainText('Fehlbetrag: -123,45 €');
+  await expect(page.getByText('Monatseinkommen ist negativ')).toBeVisible();
+  await expect(page.getByText('Frei verfügbar', { exact: true })).toHaveCount(0);
+
+  await openDestination(page, 'budget');
+  await expect(page.locator('#budget-hero')).toHaveClass(/financial-hero--attention/);
+  await expect(page.locator('#budget-hero')).toContainText('Negatives Monatseinkommen');
+  await expect(page.locator('#budget-hero [data-testid="allocation-center-value"]')).toHaveText('–');
+  await expect(page.locator('.metric-card').filter({ hasText: 'Budgetsaldo' })).toHaveClass(/metric-card--attention/);
+  await expect(page.getByText('Monatseinkommen ist negativ')).toBeVisible();
+  await expect(page.getByText('Noch keine Budgetpositionen', { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectMoneyValuesInsideContainers(page);
   await expectPrimaryMoneyValuesOnOneLine(page);
@@ -498,21 +549,26 @@ for (const theme of ['light', 'dark'] as const) {
         await page.getByRole('button', { name: 'Alle 18 zeigen' }).click();
       }
       await expectNoHorizontalOverflow(page);
-      await expectMoneyValuesInsideContainers(page);
-      await expectPrimaryMoneyValuesOnOneLine(page);
+      const minimumMoneyValues = scenario.name === 'edge-empty-debt' ? 0 : 1;
+      await expectMoneyValuesInsideContainers(page, minimumMoneyValues);
+      await expectPrimaryMoneyValuesOnOneLine(page, minimumMoneyValues);
       await capture(page, `412-${theme}-${scenario.name}.png`);
       expect(runtimeErrors).toEqual([]);
     });
   }
 
   for (const scenario of [
-    { name: 'extreme', data: extremeOverdrawnFinanceData },
-    { name: 'empty', data: emptyCollectionsFinanceData },
-    { name: 'dense', data: denseOverviewFinanceData },
+    { name: 'extreme overview', destination: 'overview' as const, data: extremeOverdrawnFinanceData },
+    { name: 'extreme budget', destination: 'budget' as const, data: extremeOverdrawnFinanceData },
+    { name: 'empty overview', destination: 'overview' as const, data: emptyCollectionsFinanceData },
+    { name: 'empty budget', destination: 'budget' as const, data: emptyCollectionsFinanceData },
+    { name: 'empty debt', destination: 'debt' as const, data: emptyCollectionsFinanceData },
+    { name: 'dense overview', destination: 'overview' as const, data: denseOverviewFinanceData },
   ]) {
     test(`412 ${theme} WCAG AA ${scenario.name} edge fixture`, async ({ page, context }) => {
       await page.setViewportSize({ width: 412, height: 915 });
-      await preparePage(page, context, 'connected', theme, true, '/', scenario.data);
+      await preparePage(page, context, 'connected', theme, scenario.destination === 'overview', destinationPaths[scenario.destination], scenario.data);
+      await openDestination(page, scenario.destination);
       await expectNoAxeViolations(page, `${theme} ${scenario.name}`);
     });
   }

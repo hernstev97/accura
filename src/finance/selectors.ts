@@ -41,8 +41,8 @@ export const selectPlannedReserveCents = (data: FinanceDataV1) => sumCents(
 
 export const selectFreeMoneyCents = (data: FinanceDataV1) => data.monthlyIncomeCents - selectPlannedAmountCents(data);
 
-export const selectFreePercentageBasisPoints = (data: FinanceDataV1) => data.monthlyIncomeCents === 0
-  ? 0
+export const selectFreePercentageBasisPoints = (data: FinanceDataV1) => data.monthlyIncomeCents <= 0
+  ? null
   : Math.round((selectFreeMoneyCents(data) / data.monthlyIncomeCents) * 10_000);
 
 type BudgetStatusBase = {

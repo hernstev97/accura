@@ -26,32 +26,33 @@ export function OverviewScreen() {
   const [allocationDetailed, setAllocationDetailed] = useState(false);
   const [showAllAccounts, setShowAllAccounts] = useState(false);
   const [showAllPockets, setShowAllPockets] = useState(false);
-  const freeMoney = data.totals.freeMoney;
+  const freeMoneyCents = data.totals.freeMoneyCents;
   const freePercentage = data.totals.freePercentage;
-  const overdrawnBudgetStatus = data.budgetStatus.kind === 'overdrawn' ? data.budgetStatus : null;
-  const budgetOverdrawn = overdrawnBudgetStatus !== null;
+  const budgetEmpty = data.budgetStatus.kind === 'empty';
+  const budgetHasDeficit = data.budgetStatus.balanceCents < 0;
+  const budgetDeficitCents = budgetHasDeficit ? -data.budgetStatus.balanceCents : 0;
   const allocation = data.allocations.overview;
   const segments: AllocationRingSegment[] = [
     { id: 'expenses', label: 'Ausgaben', amountCents: allocation.expensesCents, color: 'var(--color-system-accent)' },
     { id: 'reserves', label: 'Rücklagen', amountCents: allocation.reservesCents, color: 'var(--color-tertiary)' },
     {
       id: 'free',
-      label: budgetOverdrawn ? 'Fehlbetrag' : 'Frei',
+      label: budgetHasDeficit ? 'Fehlbetrag' : 'Frei',
       amountCents: allocation.freeCents,
-      color: budgetOverdrawn ? 'var(--chart-deficit)' : 'var(--chart-free)',
+      color: budgetHasDeficit ? 'var(--chart-deficit)' : 'var(--chart-free)',
     },
   ];
-  const fundedPockets = data.pockets.filter((pocket) => pocket.balance !== 0);
+  const fundedPockets = data.pockets.filter((pocket) => pocket.balanceCents !== 0);
   const visibleAccounts = showAllAccounts ? data.accounts : data.accounts.slice(0, ACCOUNT_PREVIEW_LIMIT);
   const visiblePockets = showAllPockets ? data.pockets : fundedPockets.slice(0, POCKET_PREVIEW_LIMIT);
   const hasHiddenAccounts = data.accounts.length > ACCOUNT_PREVIEW_LIMIT;
   const hasHiddenPockets = data.pockets.length > visiblePockets.length || showAllPockets;
-  const hasNegativeBalance = data.accounts.some(({ balance }) => balance < 0) || data.pockets.some(({ balance }) => balance < 0);
-  const ringCenterValue = budgetOverdrawn
-    ? overdrawnBudgetStatus.utilizationBasisPoints === null
+  const hasNegativeBalance = data.accounts.some(({ balanceCents }) => balanceCents < 0) || data.pockets.some(({ balanceCents }) => balanceCents < 0);
+  const ringCenterValue = budgetHasDeficit
+    ? data.budgetStatus.utilizationBasisPoints === null
       ? '–'
-      : `${percentFormatter.format(overdrawnBudgetStatus.utilizationBasisPoints / 100)} %`
-    : `${percentFormatter.format(freePercentage)} %`;
+      : `${percentFormatter.format(data.budgetStatus.utilizationBasisPoints / 100)} %`
+    : freePercentage === null ? '–' : `${percentFormatter.format(freePercentage)} %`;
   const accountsSupporting = data.accounts.length === 0
     ? 'Keine aktiven Konten'
     : hasHiddenAccounts && !showAllAccounts
@@ -84,23 +85,25 @@ export function OverviewScreen() {
             color: segment.color,
             id: segment.id,
             label: segment.label,
-            value: <MoneyValue value={segment.amountCents / 100} />,
+            value: <MoneyValue valueCents={segment.amountCents} />,
           }))} />
         )}
         id="overview-hero"
-        label={budgetOverdrawn ? 'Budgetsaldo' : 'Frei verfügbar'}
-        supporting={budgetOverdrawn
-          ? 'Geplante Beträge übersteigen das Monatseinkommen'
-          : <>von <MoneyValue value={data.meta.monthlyIncome} /> Einkommen im Monat</>}
-        tone={budgetOverdrawn ? 'attention' : 'positive'}
-        value={<MoneyValue value={freeMoney} />}
+        label={budgetHasDeficit ? 'Budgetsaldo' : 'Frei verfügbar'}
+        supporting={budgetHasDeficit
+          ? budgetEmpty ? 'Das Monatseinkommen liegt unter null' : 'Geplante Beträge übersteigen das Monatseinkommen'
+          : <>von <MoneyValue valueCents={data.meta.monthlyIncomeCents} /> Einkommen im Monat</>}
+        tone={budgetHasDeficit ? 'attention' : 'positive'}
+        value={<MoneyValue valueCents={freeMoneyCents} />}
         visual={(
           <LayeredAllocationRing
-            centerLabel={budgetOverdrawn ? 'verplant' : 'Frei'}
+            centerLabel={budgetHasDeficit ? budgetEmpty ? 'Saldo' : 'verplant' : 'Frei'}
             centerSupporting="vom Einkommen"
             centerValue={ringCenterValue}
             detailed={allocationDetailed}
-            interactiveLabel={allocationDetailed ? 'Kompakte Aufteilung anzeigen' : 'Ausgaben, Rücklagen und freien Betrag anzeigen'}
+            interactiveLabel={allocationDetailed
+              ? 'Kompakte Aufteilung anzeigen'
+              : budgetHasDeficit ? 'Ausgaben, Rücklagen und Fehlbetrag anzeigen' : 'Ausgaben, Rücklagen und freien Betrag anzeigen'}
             onDetailedChange={setAllocationDetailed}
             segments={segments}
             totalCents={allocation.incomeCents}
@@ -109,13 +112,15 @@ export function OverviewScreen() {
       />
 
       <MetricGrid label="Schnellübersicht">
-        <MetricCard label="Jetzt verfügbar" tone={data.totals.currentCash < 0 ? 'attention' : 'accent'} value={<MoneyValue value={data.totals.currentCash} />} />
-        <MetricCard label="Rücklagen geplant" supporting="Bewusst für später reserviert" value={<MoneyValue value={data.totals.plannedReserves} />} />
+        <MetricCard label="Jetzt verfügbar" tone={data.totals.currentCashCents < 0 ? 'attention' : 'accent'} value={<MoneyValue valueCents={data.totals.currentCashCents} />} />
+        <MetricCard label="Rücklagen geplant" supporting="Bewusst für später reserviert" value={<MoneyValue valueCents={data.totals.plannedReservesCents} />} />
       </MetricGrid>
 
-      {budgetOverdrawn ? (
-        <InlineNotice icon={<Icon name="info" size={22} />} title="Budget liegt über dem Einkommen" tone="danger">
-          <p>Geplante Ausgaben und Rücklagen übersteigen das Monatseinkommen um <MoneyValue value={overdrawnBudgetStatus.deficit} />.</p>
+      {budgetHasDeficit ? (
+        <InlineNotice icon={<Icon name="info" size={22} />} title={budgetEmpty ? 'Monatseinkommen ist negativ' : 'Budget liegt über dem Einkommen'} tone="danger">
+          <p>{budgetEmpty
+            ? <>Das Monatseinkommen liegt um <MoneyValue valueCents={budgetDeficitCents} /> unter null. Es sind noch keine Budgetpositionen hinterlegt.</>
+            : <>Geplante Ausgaben und Rücklagen übersteigen das Monatseinkommen um <MoneyValue valueCents={budgetDeficitCents} />.</>}</p>
         </InlineNotice>
       ) : null}
 
@@ -130,14 +135,14 @@ export function OverviewScreen() {
           <>
             <p>{data.nextDebtRelief.eventLabel} {data.nextDebtRelief.eventCount === 1 ? 'endet' : 'enden'} im {data.nextDebtRelief.monthLabel}.</p>
             <strong className="inline-notice__financial">
-              Danach voraussichtlich <MoneyValue value={data.nextDebtRelief.freeAfter} /> {data.nextDebtRelief.freeAfter < 0 ? 'Budgetsaldo' : 'frei'}
+              Danach voraussichtlich <MoneyValue valueCents={data.nextDebtRelief.freeAfterCents} /> {data.nextDebtRelief.freeAfterCents < 0 ? 'Budgetsaldo' : 'frei'}
             </strong>
-            <p><MoneyValue value={data.nextDebtRelief.monthlyRelief} /> mehr pro Monat.</p>
+            <p><MoneyValue valueCents={data.nextDebtRelief.monthlyReliefCents} /> mehr pro Monat.</p>
           </>
         ) : (
           <>
             <p>Keine weitere Entlastung geplant.</p>
-            <strong className="inline-notice__financial">Aktuell <MoneyValue value={freeMoney} /> {freeMoney < 0 ? 'Budgetsaldo' : 'frei'}</strong>
+            <strong className="inline-notice__financial">Aktuell <MoneyValue valueCents={freeMoneyCents} /> {freeMoneyCents < 0 ? 'Budgetsaldo' : 'frei'}</strong>
           </>
         )}
       </InlineNotice>
@@ -162,7 +167,7 @@ export function OverviewScreen() {
         <div id="account-list">
           {data.accounts.length > 0 ? (
             <DataList
-              footer={<><span>Gesamt</span><strong className="financial-value"><MoneyValue value={data.totals.currentCash} /></strong></>}
+              footer={<><span>Gesamt</span><strong className="financial-value"><MoneyValue valueCents={data.totals.currentCashCents} /></strong></>}
               label="Konten"
             >
               {visibleAccounts.map((account) => (
@@ -171,7 +176,7 @@ export function OverviewScreen() {
                   key={account.id}
                   supporting={account.kind === 'bank' ? 'Bankkonto' : account.kind === 'cash' ? 'Bargeld' : 'Zahlungskonto'}
                   title={account.name}
-                  value={<MoneyValue value={account.balance} />}
+                  value={<MoneyValue valueCents={account.balanceCents} />}
                 />
               ))}
             </DataList>
@@ -212,9 +217,9 @@ export function OverviewScreen() {
               <p>Sie werden auf Wunsch trotzdem vollständig angezeigt.</p>
             </InlineNotice>
           ) : visiblePockets.map((pocket) => (
-              <article className={`pocket ${pocket.balance === 0 ? 'pocket--empty' : ''}`} key={pocket.id}>
+              <article className={`pocket ${pocket.balanceCents === 0 ? 'pocket--empty' : ''}`} key={pocket.id}>
                 <span>{pocket.name}</span>
-                <strong className="financial-value"><MoneyValue value={pocket.balance} /></strong>
+                <strong className="financial-value"><MoneyValue valueCents={pocket.balanceCents} /></strong>
               </article>
             ))}
         </div>
