@@ -1,6 +1,7 @@
 import {
   selectCurrentAccountTotalCents,
   selectCurrentPayoffCents,
+  selectDebtBalanceMilestoneTotals,
   selectFreeMoneyCents,
   selectFreePercentageBasisPoints,
   selectFutureDebtReliefMilestones,
@@ -96,7 +97,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       id: debt.id,
       name: debt.name,
       kind: debt.kind,
-      supportingText: /\bdkb\b/i.test(debt.name)
+      supportingText: debt.kind === 'loan'
         ? 'Kredit mit monatlicher Rate'
         : debt.note,
       monthlyPayment: centsToEuros(debt.monthlyPaymentCents),
@@ -105,12 +106,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       payoffBalanceCents,
     };
   });
-  const activeDebtIds = new Set(data.debts.filter(({ active }) => active).map(({ id }) => id));
-  const milestoneTotals = new Map<string, number>();
-  data.debtMilestones.filter(({ debtId }) => activeDebtIds.has(debtId)).forEach(({ date, balanceCents }) => {
-    milestoneTotals.set(date, (milestoneTotals.get(date) ?? 0) + balanceCents);
-  });
-  const debtBalanceMilestones = [...milestoneTotals.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, balanceCents]) => ({
+  const debtBalanceMilestones = selectDebtBalanceMilestoneTotals(data).map(({ date, balanceCents }) => ({
     date,
     label: longMonth.format(dateForFormatting(date)),
     shortLabel: shortMonth.format(dateForFormatting(date)),

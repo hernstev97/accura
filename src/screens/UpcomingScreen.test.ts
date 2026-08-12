@@ -16,9 +16,9 @@ describe('UpcomingScreen view model integration', () => {
     expect(upcoming.salaryDay).toBe(25);
     expect(upcoming.nextSalaryDate).toBe('2026-08-25');
     expect(upcoming.nextSalaryDateLabel).toBe('25.08.2026');
-    expect(upcoming.totalPending).toBe(320.22);
-    expect(upcoming.totalPendingCents).toBe(32022);
-    expect(upcoming.safeToSpend).toBe(1030.53); // 1350.75 cash - 320.22 pending = 1030.53
+    expect(upcoming.totalPending).toBe(350);
+    expect(upcoming.totalPendingCents).toBe(35000);
+    expect(upcoming.safeToSpend).toBe(1000.75); // 1350.75 cash - 350 pending = 1000.75
     expect(upcoming.payments).toHaveLength(2);
 
     expect(upcoming.payments[0]).toMatchObject({
@@ -33,9 +33,9 @@ describe('UpcomingScreen view model integration', () => {
     });
 
     expect(upcoming.payments[1]).toMatchObject({
-      id: 'dkb',
-      name: 'DKB',
-      amount: 220.22,
+      id: 'primary-loan',
+      name: 'Ratenkredit',
+      amount: 250,
       dueDay: 20,
       dueDate: '2026-08-20',
       dueDateLabel: '20.08.2026',
@@ -79,8 +79,8 @@ describe('UpcomingScreen view model integration', () => {
     const viewModel = createFinanceViewModel(highPendingData);
     const upcoming = viewModel.upcoming;
 
-    expect(upcoming.totalPending).toBe(2320.22);
-    expect(upcoming.safeToSpend).toBe(-969.47); // 1350.75 - 2320.22 = -969.47
+    expect(upcoming.totalPending).toBe(2350);
+    expect(upcoming.safeToSpend).toBe(-999.25); // 1350.75 - 2350 = -999.25
   });
 
   it('excludes payments that occur on payday from upcoming.payments and totalPending', () => {
@@ -106,6 +106,6 @@ describe('UpcomingScreen view model integration', () => {
     const upcoming = viewModel.upcoming;
 
     expect(upcoming.payments.find((p) => p.id === 'payday-bill')).toBeUndefined();
-    expect(upcoming.totalPending).toBe(320.22);
+    expect(upcoming.totalPending).toBe(350);
   });
 });

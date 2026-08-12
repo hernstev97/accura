@@ -16,8 +16,8 @@ describe('Finance Data Schema v1 parser', () => {
     expect(result.data.accountSnapshots[1]?.balanceCents).toBe(120_025);
     expect(result.data.budgetItems[0]?.monthlyAmountCents).toBe(100_000);
     expect(result.data.debtSnapshots[0]).toMatchObject({
-      remainingPaymentCount: 86,
-      remainingScheduledTotalCents: 1_893_914,
+      remainingPaymentCount: 60,
+      remainingScheduledTotalCents: 1_500_000,
     });
   });
 

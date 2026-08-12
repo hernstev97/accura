@@ -71,6 +71,38 @@ Das View-Model erzeugt die vier Screenmodelle gemeinsam; dadurch teilen UI und T
 
 Die Demnächst-Logik nimmt monatliche Wiederholung an und berücksichtigt weder einmalige Termine noch Feiertags-/Bankarbeitstagverschiebungen. Negative `safeToSpendCents` sind möglich und werden nicht künstlich auf null begrenzt. Dasselbe gilt für reale negative Konto- und Pocketstände sowie den daraus abgeleiteten aktuellen Gesamtbestand.
 
+## Referenzprüfung und synthetische Regression
+
+Die fachliche Prüfung gegen die private Referenztabelle wurde außerhalb des Repositorys durchgeführt. Weder die realen Beträge noch Gläubigernamen, Tabellen-IDs, Zelladressen oder ein rekonstruierbarer Auszug der privaten Tabelle werden hier dokumentiert. Das Repository enthält ausschließlich die vollständig synthetische Fixture [anonymousWorkbook.ts](../../src/mocks/anonymousWorkbook.ts).
+
+Die Regressionstests bilden dieselben Rechenregeln mit erfundenen Werten ab:
+
+| Anzeige | Tabellenquelle | Rechenweg / Invariante |
+| --- | --- | --- |
+| Monatseinkommen | `_Meta.monthly_income` | direkter, auf Integer-Cents normalisierter Wert |
+| Geplant | aktive `_BudgetItems.monthly_amount` | Summe aller aktiven Budgetpositionen |
+| Rücklagen | aktive `_BudgetItems` mit `kind=reserve` | Summe der aktiven Rücklagen |
+| Ausgaben | aktive `_BudgetItems` ohne Rücklagen | Geplant minus Rücklagen |
+| Frei/Budgetsaldo | `_Meta` und `_BudgetItems` | Einkommen minus Geplant |
+| Budgetanteil frei | `_Meta` und `_BudgetItems` | freier Betrag geteilt durch Einkommen, in Basis Points gerundet |
+| Jetzt verfügbar | aktive `_Accounts` und `_AccountSnapshots` | jüngster Snapshot je aktivem Konto, dann Summe |
+| Pockets | aktive `_Pockets` und `_PocketSnapshots` | jüngster Snapshot je aktivem Pocket; nur Aufschlüsselung |
+| Demnächst offen | aktive Budgetpositionen und Schulden mit Fälligkeit | Summe ab Stichtag bis ausschließlich zum nächsten Gehaltstag |
+| Sicher verfügbar | Kontosumme und Demnächst | Kontosumme minus offene Zahlungen |
+| Ablösesumme heute | aktive `_Debts` und `_DebtSnapshots.payoff_balance` | jüngster Snapshot je aktiver Schuld, dann Summe |
+| Noch planmäßig zu zahlen | `_DebtSnapshots.remaining_scheduled_total` | Summe über aktive Schulden |
+| Zukünftige Mehrkosten | `_DebtSnapshots` | planmäßige Summe minus Ablösesumme |
+| Verbleibende Raten | `_DebtSnapshots.remaining_payments` | Anzahl verbleibender Einzelzahlungen summiert |
+| Nächste Entlastung | `_ReliefMilestones` | erste Entlastung nach dem Stichtag |
+| Danach frei | Budgetsaldo und nächste Entlastung | Budgetsaldo plus nächste Monatsentlastung |
+| Nach allen Raten frei | Budgetsaldo und `_ReliefMilestones` | Budgetsaldo plus alle künftigen Monatsentlastungen |
+
+Konten und Pockets sind zwei Sichten auf dasselbe Geld. Deshalb fließt ausschließlich die Kontosumme in „Jetzt verfügbar“ und „Sicher verfügbar“ ein. Pockets werden separat dargestellt und niemals zur Kontosumme addiert. Umbuchungen zwischen Konto und Pocket erzeugen dadurch kein zusätzliches Vermögen.
+
+Der Restschuldverlauf beginnt am fachlichen Stichtag mit der Ablösesumme aus den DebtSnapshots. Jede spätere `_DebtMilestones`-Zeile aktualisiert genau eine Schuld; die letzten bekannten Werte aller übrigen aktiven Schulden werden weitergetragen. Der synthetische Test in [selectors.test.ts](../../src/finance/selectors.test.ts) friert diese Regel ein und verhindert, dass ein einzelner Gläubiger-Meilenstein als gesamte Restschuld dargestellt wird.
+
+Die bei der Referenzprüfung entdeckten Abweichungsklassen waren falsche Quellverweise für Monatsraten und Entlastungen sowie fehlende Null-Meilensteine beendeter Ratenfinanzierungen. Die private Tabelle wurde nach ausdrücklicher Freigabe korrigiert und anschließend erneut gelesen. Konkrete private Werte und Zellpositionen bleiben absichtlich außerhalb der öffentlichen Dokumentation.
+
 ## Begründung
 
 Siehe [ADR 0002](../entscheidungen/0002-versionierte-domaenengrenze-und-integer-cents.md), [ADR 0006](../entscheidungen/0006-provider-selektoren-und-view-model.md) und [ADR 0010](../entscheidungen/0010-gehaltsbezogene-faelligkeitsprojektion.md).

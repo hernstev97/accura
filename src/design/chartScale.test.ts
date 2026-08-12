@@ -3,9 +3,9 @@ import { createPaddedChartDomain } from './chartScale';
 
 describe('createPaddedChartDomain', () => {
   it('contains the minimum and maximum with rounded breathing room', () => {
-    const domain = createPaddedChartDomain([141.32, 305.32, 469.32]);
-    expect(domain[0]).toBeLessThan(141.32);
-    expect(domain[1]).toBeGreaterThan(469.32);
+    const domain = createPaddedChartDomain([150, 300, 450]);
+    expect(domain[0]).toBeLessThan(150);
+    expect(domain[1]).toBeGreaterThan(450);
     expect(domain).toEqual([100, 500]);
   });
 
