@@ -15,6 +15,7 @@ const contentTypes = {
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.txt': 'text/plain; charset=utf-8',
   '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2',
 };
@@ -215,6 +216,24 @@ try {
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   assert.equal(await controllerGeneration(page), 1);
 
+  const onlineThirdPartyNotices = await page.evaluate(async () => {
+    const response = await fetch('/THIRD_PARTY_NOTICES.txt');
+    if (!response.ok) throw new Error(`Drittanbieterhinweise antworteten mit ${response.status}`);
+    return response.text();
+  });
+  assert.match(onlineThirdPartyNotices, /^ACCURA – THIRD-PARTY NOTICES/);
+  await context.setOffline(true);
+  try {
+    const offlineThirdPartyNotices = await page.evaluate(async () => {
+      const response = await fetch('/THIRD_PARTY_NOTICES.txt');
+      if (!response.ok) throw new Error(`Offline-Drittanbieterhinweise antworteten mit ${response.status}`);
+      return response.text();
+    });
+    assert.equal(offlineThirdPartyNotices, onlineThirdPartyNotices, 'Drittanbieterhinweise sind nicht vollständig im Precache verfügbar');
+  } finally {
+    await context.setOffline(false);
+  }
+
   const cdp = await context.newCDPSession(page);
   const [{ errors: manifestErrors }, { installabilityErrors }] = await Promise.all([
     cdp.send('Page.getAppManifest'),
@@ -308,7 +327,7 @@ try {
 
   await assertTheme(baseUrl, 'light', 'light');
   await assertTheme(baseUrl, 'dark', 'dark');
-  console.log('PWA-Smoke-Test bestanden: Manifest, Installierbarkeit, Icons, Light/Dark-Systemfarbe und kontrollierter Zwei-Versionen-Update-Flow sind gültig.');
+  console.log('PWA-Smoke-Test bestanden: Manifest, Installierbarkeit, Icons, Offline-Lizenzhinweise, Light/Dark-Systemfarbe und kontrollierter Zwei-Versionen-Update-Flow sind gültig.');
 } finally {
   await context.close();
   await browser.close();

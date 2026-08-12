@@ -34,7 +34,14 @@ Der Mock-Modus verwendet ausschließlich anonyme Repository-Daten. Für Google O
 npm run docs:check
 npm test
 npm run lint
+npm run licenses:check
 npm run build
 ```
 
 Die Dokumentationsprüfung ist ein lokales Hilfsmittel und kein CI- oder Release-Gate. Lizenzhinweise zur eingebetteten Schrift stehen unter [docs/fonts](docs/fonts/README.md).
+
+## Lizenz
+
+Der Accura-eigene Code und die eigene Dokumentation stehen, soweit nicht ausdrücklich anders gekennzeichnet, unter der [GNU Affero General Public License Version 3](LICENSE), ausschließlich Version 3 (`AGPL-3.0-only`). Drittanbieterbestandteile bleiben unter ihren jeweiligen Lizenzen; die ausgelieferten Lizenztexte und Hinweise stehen in [THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt).
+
+Das Accura-Logo-, Icon- und Brand-Design ist separat von der Softwarelizenz ausgenommen. Einzelheiten stehen in den [Brand- und Kennzeichenhinweisen](TRADEMARKS.md). Diese Brand-Ausnahme schränkt keine Rechte an dem unter `AGPL-3.0-only` lizenzierten Code ein.

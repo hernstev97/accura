@@ -2,6 +2,7 @@
   "name": "accura",
   "private": true,
   "version": "0.1.0",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,11 +17,13 @@
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "smoke:offline": "node scripts/offline-smoke.mjs",
     "test": "npm run test:server-esm && vitest run",
-    "test:server-esm": "node --test scripts/server-esm.test.mjs",
+    "test:server-esm": "node --test scripts/*.test.mjs",
     "test:visual": "playwright test tests/visual",
     "test:visual:update": "playwright test tests/visual --update-snapshots",
     "test:watch": "vitest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "licenses:generate": "node scripts/generate-third-party-notices.mjs --write",
+    "licenses:check": "node scripts/generate-third-party-notices.mjs --check"
   },
   "dependencies": {
     "@fontsource-variable/google-sans-flex": "^5.3.1",

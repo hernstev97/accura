@@ -1,0 +1,4 @@
+# Preserve authoritative and generated legal texts byte-for-byte on every platform.
+LICENSE -text
+public/THIRD_PARTY_NOTICES.txt -text
+scripts/license-overrides/*.txt -text
