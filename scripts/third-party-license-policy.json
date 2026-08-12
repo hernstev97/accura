@@ -1,0 +1,26 @@
+{
+  "maxOutputBytes": 262144,
+  "allowedLicenses": [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "OFL-1.1",
+    "Unlicense"
+  ],
+  "packages": {
+    "postgres@3.4.9": {
+      "licenseFiles": [
+        "scripts/license-overrides/postgres-3.4.9-UNLICENSE.txt"
+      ]
+    },
+    "victory-vendor@37.3.6": {
+      "allowedLicenseExpression": "MIT AND ISC",
+      "licenseFiles": [
+        "scripts/license-overrides/victory-vendor-37.3.6-MIT.txt",
+        "scripts/license-overrides/victory-vendor-37.3.6-ISC.txt"
+      ]
+    }
+  }
+}

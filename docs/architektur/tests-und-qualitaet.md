@@ -14,12 +14,13 @@ Keine einzelne Prüfung beweist das Produkt. Reine Unit-Tests decken fachliche R
 
 | Befehl | Inhalt | Netzwerk/Secrets |
 | --- | --- | --- |
-| `npm test` | Node-ESM-Test und alle Vitest-Dateien unter `src/**/*.test.{ts,tsx}` | keine externen Dienste |
+| `npm test` | Node-Tests für ESM und den Lizenzgenerator sowie Vitest-Dateien unter `src/` und `build/` | keine externen Dienste |
 | `npm run lint` | ESLint über das Repository | nein |
+| `npm run licenses:check` | installierten Produktionsgraph fail-closed gegen Policy und eingecheckte Drittanbieterhinweise prüfen | nein |
 | `npm run build` | TypeScript-Projektbuild und Vite/PWA-Produktionsbuild | nein |
 | `npm run test:visual` | Playwright, 38 committed Chromium-Golden-Screens plus Axe-Szenarien | lokaler Server/Browser |
 | `npm run smoke` | orchestrierte Auth-, PWA-Lifecycle-, Browser- und Offline-Smokes | lokale Mocks, keine Google-Secrets |
-| `npm run smoke:pwa` | Manifest, Chromium-Installierbarkeit, Icons, Theme-Metadaten und Zwei-Versionen-Update | lokaler Server, keine Secrets |
+| `npm run smoke:pwa` | Manifest, Chromium-Installierbarkeit, Icons, offline precachte Lizenzhinweise, Theme-Metadaten und Zwei-Versionen-Update | lokaler Server, keine Secrets |
 | `npm run docs:check` | interne Dokumentstruktur, Links und Anker | nein |
 | `npm run docs:check:external` | zusätzlich deduplizierte externe Links | ja, optional |
 
@@ -33,7 +34,7 @@ Unter `tests/visual/__screenshots__/chromium` liegen 38 Referenzbilder für 412,
 
 ## GitHub-CI
 
-`.github/workflows/ci.yml` läuft für Pushes nach `master` und Pull Requests. Die Jobs prüfen Lint, Unit-Tests, Build und Smoke-Tests. Der lokale Dokumentationscheck wird bewusst nicht in diese Datei oder `npm test` aufgenommen. Externe Links sind aufgrund temporärer Netzfehler nie Release-Gate.
+`.github/workflows/ci.yml` läuft für Pushes nach `master` und Pull Requests. Die Jobs prüfen Lint einschließlich `licenses:check`, Unit-Tests, Build und Smoke-Tests. Der lokale Dokumentationscheck wird bewusst nicht in diese Datei oder `npm test` aufgenommen. Externe Links sind aufgrund temporärer Netzfehler nie Release-Gate.
 
 ## Fehlerfälle und Grenzen
 

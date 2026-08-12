@@ -322,6 +322,33 @@ button:disabled {
   line-height: 18px;
 }
 
+.legal-links {
+  display: grid;
+  overflow: hidden;
+  border-radius: max(0px, calc(var(--shape-current-outer) - var(--shape-current-inset)));
+  background: var(--color-surface-container);
+}
+
+.legal-links a {
+  min-height: 48px;
+  padding: 13px var(--space-4);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 22px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.legal-links a + a {
+  border-top: 1px solid var(--color-outline-variant);
+}
+
+.legal-links a:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+}
+
 .color-theme-layer {
   z-index: 100;
   align-items: center;

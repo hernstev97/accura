@@ -33,6 +33,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Verify third-party license notices
+        run: npm run licenses:check
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest

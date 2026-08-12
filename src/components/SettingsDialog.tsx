@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAppearance } from '../appearance/AppearanceProvider';
 import { useFinanceData } from '../data/FinanceDataProvider';
+import {
+  ACCURA_LICENSE_URL,
+  ACCURA_SOURCE_SHORT_SHA,
+  ACCURA_SOURCE_URL,
+  ACCURA_TRADEMARKS_URL,
+} from '../legalLinks';
 import { AdaptiveDialog } from './AdaptiveDialog';
 import { AppButton } from './AppButton';
 import { ColorThemeDialog } from './ColorThemeDialog';
@@ -157,6 +163,18 @@ export function SettingsEntry() {
                   <AppButton className="settings-action settings-action--danger" leadingIcon={<Icon name="unlink" size={20} />} onClick={() => setConfirmDisconnect(true)} variant="danger">Google-Verbindung trennen</AppButton>
                 </div>
               ) : null}
+            </section>
+
+            <section className="settings-group" aria-labelledby="settings-legal-title">
+              <h3 id="settings-legal-title">Open Source &amp; Rechtliches</h3>
+              <nav className="legal-links" aria-label="Open Source und rechtliche Informationen">
+                <a href={ACCURA_SOURCE_URL} rel="noreferrer" target="_blank">
+                  Quellcode dieser Version ({ACCURA_SOURCE_SHORT_SHA})
+                </a>
+                <a href={ACCURA_LICENSE_URL} rel="noreferrer" target="_blank">GNU AGPL-3.0-only</a>
+                <a href={ACCURA_TRADEMARKS_URL} rel="noreferrer" target="_blank">Brand- und Kennzeichenhinweise</a>
+                <a href="/THIRD_PARTY_NOTICES.txt" target="_blank">Drittanbieter-Lizenzen</a>
+              </nav>
             </section>
           </div>
         )}

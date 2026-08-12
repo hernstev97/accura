@@ -23,13 +23,20 @@
 
 Alle Variablen sind serverseitig erforderlich. `VERCEL_ENV=production` oder `NODE_ENV=production` aktiviert Produktion und damit HTTPS-Prüfung sowie `Secure`-Cookies.
 
-## Browser-/Entwicklungsvariable
+## Öffentliche Build- und Entwicklungsvariablen
 
 | Variable | Vertrag |
 | --- | --- |
 | `VITE_USE_MOCK_API` | optional; nur exakt `true`, Vite Development und `import.meta.env.DEV` aktivieren anonyme Mock-API |
+| `ACCURA_SOURCE_REPOSITORY_URL` | optionaler Build-Override; vollständige GitHub-Repository-URL, nur gemeinsam mit `ACCURA_SOURCE_COMMIT_SHA` |
+| `ACCURA_SOURCE_COMMIT_SHA` | optionaler Build-Override; vollständiger 40-stelliger Git-Commit-SHA, nur gemeinsam mit `ACCURA_SOURCE_REPOSITORY_URL` |
+| `VITE_VERCEL_GIT_REPO_OWNER` | öffentlicher, von Vercel bereitgestellter Repository-Owner für den versionsgebundenen Source-Link |
+| `VITE_VERCEL_GIT_REPO_SLUG` | öffentlicher, von Vercel bereitgestellter Repository-Name für den versionsgebundenen Source-Link |
+| `VITE_VERCEL_GIT_COMMIT_SHA` | öffentlicher, vollständiger Vercel-Deployment-Commit für den versionsgebundenen Source-Link |
 
 Jede `VITE_`-Variable wird grundsätzlich als browseröffentlich behandelt. Niemals Secret, Token, Datenbank-URL oder persönliche Finanzdaten mit diesem Präfix setzen.
+
+Explizite `ACCURA_SOURCE_*`-Overrides haben Vorrang vor den Vercel-Git-Werten. Ohne beide Quellen verwendet ein lokaler Build `git rev-parse HEAD`. Ein Produktionsbuild ohne gültigen vollständigen SHA bricht ab; ausschließlich der Dev-Server darf auf `master` zurückfallen. Repository-URL, vollständiger SHA, Kurz-SHA und daraus abgeleitete Rechtslinks werden als öffentliche Konstanten in das Browser-Bundle eingebettet und enthalten keine Geheimnisse.
 
 ## Konsistenzregeln
 

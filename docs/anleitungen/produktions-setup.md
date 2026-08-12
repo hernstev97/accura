@@ -85,6 +85,8 @@ Nach grünen Prüfungen über den eigentümerkontrollierten Vercel-Workflow depl
 - Disconnect löscht Serververbindung und lokalen Finance-Cache;
 - Wiederverbinden und erneute Auswahl;
 - Privacy und Appearance bleiben über Logout/Disconnect erhalten.
+- der Info-Dialog verlinkt auf den vollständigen Commit-SHA des tatsächlich betriebenen Stands sowie dessen `LICENSE` und `TRADEMARKS.md`;
+- `/THIRD_PARTY_NOTICES.txt` ist online und nach einmaligem Laden auch offline erreichbar.
 
 Google-OAuth-Apps im External-Testmodus können Grants mit nicht ausschließlich Basisprofil-Scopes nach sieben Tagen verlieren. Vor Dauerbetrieb den Veröffentlichungsstatus passend konfigurieren und danach bewusst neu verbinden.
 
