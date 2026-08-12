@@ -591,10 +591,11 @@ try {
   assert.equal(await appearance.page.getByLabel('Informationen schließen').evaluate((element) => element === document.activeElement), true, 'Informationsdialog setzt keinen sinnvollen Anfangsfokus');
   const sourceLink = appearance.page.getByRole('link', { name: /Quellcode dieser Version \([0-9a-f]{7}\)/ });
   const sourceHref = await sourceLink.getAttribute('href');
-  assert.match(sourceHref ?? '', /^https:\/\/github\.com\/hernstev97\/accura\/tree\/[0-9a-f]{40}$/);
-  const sourceSha = sourceHref?.split('/').at(-1);
-  assert.equal(await appearance.page.getByRole('link', { name: 'GNU AGPL-3.0-only' }).getAttribute('href'), `https://github.com/hernstev97/accura/blob/${sourceSha}/LICENSE`);
-  assert.equal(await appearance.page.getByRole('link', { name: 'Brand- und Kennzeichenhinweise' }).getAttribute('href'), `https://github.com/hernstev97/accura/blob/${sourceSha}/TRADEMARKS.md`);
+  const sourceMatch = sourceHref?.match(/^(https:\/\/github\.com\/[^/?#\s]+\/[^/?#\s]+)\/tree\/([0-9a-f]{40})$/);
+  assert.ok(sourceMatch, `Source-Link ist keine revisionsgebundene GitHub-URL: ${sourceHref}`);
+  const [, sourceRepository, sourceSha] = sourceMatch;
+  assert.equal(await appearance.page.getByRole('link', { name: 'GNU AGPL-3.0-only' }).getAttribute('href'), `${sourceRepository}/blob/${sourceSha}/LICENSE`);
+  assert.equal(await appearance.page.getByRole('link', { name: 'Brand- und Kennzeichenhinweise' }).getAttribute('href'), `${sourceRepository}/blob/${sourceSha}/TRADEMARKS.md`);
   assert.equal(await appearance.page.getByRole('link', { name: 'Drittanbieter-Lizenzen' }).getAttribute('href'), '/THIRD_PARTY_NOTICES.txt');
   await assertModalWithinViewport(appearance.page, '.settings-surface', 'Einstellungen 412×915');
   await appearance.page.screenshot({ path: '/tmp/finance-appearance-settings-412x915.png' });

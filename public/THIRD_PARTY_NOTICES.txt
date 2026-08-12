@@ -955,7 +955,7 @@ SOFTWARE.
 ==============================================================================
 LICENSE TEXT 11
 Applies to: d3-array@3.2.4, victory-vendor@37.3.6
-Source files: d3-array@3.2.4/LICENSE, victory-vendor@37.3.6/scripts/license-overrides/victory-vendor-37.3.6-ISC.txt
+Source files: d3-array@3.2.4/LICENSE, override: scripts/license-overrides/victory-vendor-37.3.6-ISC.txt
 ------------------------------------------------------------------------------
 Copyright 2010-2023 Mike Bostock
 
@@ -1294,7 +1294,7 @@ SOFTWARE.
 ==============================================================================
 LICENSE TEXT 25
 Applies to: postgres@3.4.9
-Source files: postgres@3.4.9/scripts/license-overrides/postgres-3.4.9-UNLICENSE.txt
+Source files: override: scripts/license-overrides/postgres-3.4.9-UNLICENSE.txt
 ------------------------------------------------------------------------------
 This is free and unencumbered software released into the public domain.
 
@@ -1505,7 +1505,7 @@ PERFORMANCE OF THIS SOFTWARE.
 ==============================================================================
 LICENSE TEXT 33
 Applies to: victory-vendor@37.3.6
-Source files: victory-vendor@37.3.6/scripts/license-overrides/victory-vendor-37.3.6-MIT.txt
+Source files: override: scripts/license-overrides/victory-vendor-37.3.6-MIT.txt
 ------------------------------------------------------------------------------
 The MIT License (MIT)
 

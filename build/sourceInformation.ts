@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 
 const CANONICAL_REPOSITORY_URL = 'https://github.com/hernstev97/accura';
 const FULL_SHA = /^[0-9a-f]{40}$/i;
-const GITHUB_REPOSITORY = /^https:\/\/github\.com\/[^/]+\/[^/]+$/;
+const GITHUB_REPOSITORY = /^https:\/\/github\.com\/[^/?#]+\/[^/?#]+$/;
 
 type SourceEnvironment = Record<string, string | undefined>;
 

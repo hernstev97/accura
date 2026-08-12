@@ -106,6 +106,20 @@ test('sorts deterministically, groups identical texts, and preserves their bytes
   const rendered = first.toString('utf8');
   assert.ok(rendered.indexOf('alpha@1.0.0') < rendered.indexOf('zeta@1.0.0'));
   assert.match(rendered, /Applies to: alpha@1\.0\.0, zeta@1\.0\.0/);
+  assert.match(rendered, /Source files: alpha@1\.0\.0\/COPYING, zeta@1\.0\.0\/LICENSE/);
   assert.equal(rendered.split(licenseText).length - 1, 1);
   assert.equal((await readFile(join(setup.root, 'node_modules/alpha/COPYING'), 'utf8')), licenseText);
+});
+
+test('labels repository overrides separately from installed package files', async () => {
+  const policy = {
+    ...basePolicy,
+    packages: { 'example@1.0.0': { licenseFiles: ['scripts/reviewed-example-license.txt'] } },
+  };
+  const setup = await fixture([validPackage()], policy);
+  await mkdir(join(setup.root, 'scripts'), { recursive: true });
+  await writeFile(join(setup.root, 'scripts/reviewed-example-license.txt'), 'Reviewed override text.\n');
+  const rendered = (await setup.generate()).toString('utf8');
+  assert.match(rendered, /Source files: override: scripts\/reviewed-example-license\.txt/);
+  assert.doesNotMatch(rendered, /example@1\.0\.0\/scripts\/reviewed-example-license\.txt/);
 });

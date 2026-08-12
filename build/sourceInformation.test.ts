@@ -59,6 +59,19 @@ describe('resolveSourceInformation', () => {
     })).toThrow(/40-stelligen/);
   });
 
+  it.each([
+    'https://github.com/hernstev97/accura?ref=wrong',
+    'https://github.com/hernstev97/accura#wrong',
+  ])('rejects repository URLs whose query or fragment would corrupt the source path', (repositoryUrl) => {
+    expect(() => resolveSourceInformation({
+      command: 'build',
+      environment: {
+        ACCURA_SOURCE_COMMIT_SHA: explicitSha,
+        ACCURA_SOURCE_REPOSITORY_URL: repositoryUrl,
+      },
+    })).toThrow(/Ungültige GitHub-Repository-URL/);
+  });
+
   it('allows only the development server to fall back to master', () => {
     const result = resolveSourceInformation({ command: 'serve', environment: {}, readLocalCommit: () => undefined });
     expect(result).toMatchObject({ commitSha: '', shortSha: 'master' });

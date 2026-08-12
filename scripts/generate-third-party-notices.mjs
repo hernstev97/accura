@@ -99,7 +99,7 @@ async function loadText(projectRoot, packagePath, source) {
   if (bytes.length === 0 || bytes.includes(0) || Buffer.from(bytes.toString('utf8')).compare(bytes) !== 0) {
     throw new Error(`Lizenz- oder NOTICE-Datei ist leer oder kein gültiges UTF-8: ${source.path}`);
   }
-  return { bytes, label: source.kind === 'override' ? source.path : source.path };
+  return { bytes, kind: source.kind, label: source.path };
 }
 
 export async function generateThirdPartyNotices({
@@ -192,7 +192,9 @@ export async function generateThirdPartyNotices({
         const key = `${kind}:${hash}`;
         const group = textGroups.get(key) ?? { bytes: entry.bytes, kind, packages: [], sources: [] };
         group.packages.push(packageEntry.packageKey);
-        group.sources.push(`${packageEntry.packageKey}/${entry.label}`);
+        group.sources.push(entry.kind === 'override'
+          ? `override: ${entry.label}`
+          : `${packageEntry.packageKey}/${entry.label}`);
         textGroups.set(key, group);
       }
     }
