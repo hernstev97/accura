@@ -25,6 +25,8 @@
   "dependencies": {
     "@fontsource-variable/google-sans-flex": "^5.3.1",
     "@material/material-color-utilities": "^0.4.0",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "jose": "^6.2.8",
     "motion": "^13.0.0",
     "postgres": "^3.4.9",

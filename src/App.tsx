@@ -1,3 +1,5 @@
+import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 import { MotionConfig } from 'motion/react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { AdaptiveNavigation } from './components/AdaptiveNavigation';
@@ -20,6 +22,8 @@ import {
   type Destination,
 } from './navigation/appNavigation';
 import { OverviewScreen } from './screens/OverviewScreen';
+
+const VERCEL_TELEMETRY_ENABLED = Boolean(import.meta.env.VITE_VERCEL_ENV);
 
 const budgetScreenModule = import('./screens/BudgetScreen');
 const debtScreenModule = import('./screens/DebtScreen');
@@ -164,6 +168,12 @@ function App({ initialDestination }: AppProps) {
 
   return (
     <MotionConfig reducedMotion="user">
+      {VERCEL_TELEMETRY_ENABLED ? (
+        <>
+          <SpeedInsights />
+          <Analytics />
+        </>
+      ) : null}
       <div className="app-shell">
         <div className={`app-content ${hasData ? 'app-content--connected' : ''}`}>
           <header className="top-app-bar">
