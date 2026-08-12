@@ -10,6 +10,7 @@ import {
   selectLatestPocketSnapshot,
   selectNecessityTotalsCents,
   selectBudgetAllocationCents,
+  selectBudgetStatusCents,
   selectOverviewAllocationCents,
   selectNextDebtReliefMilestone,
   selectNextFreeMoneyCents,
@@ -39,36 +40,71 @@ const eventList = new Intl.ListFormat('de-DE', { style: 'long', type: 'conjuncti
 
 export type FinanceViewModel = ReturnType<typeof createFinanceViewModel>;
 
+type BudgetStatusBase = {
+  balance: number;
+  balanceCents: number;
+  planned: number;
+  plannedCents: number;
+  utilizationBasisPoints: number | null;
+};
+
+export type BudgetStatus =
+  | (BudgetStatusBase & { kind: 'empty' })
+  | (BudgetStatusBase & { kind: 'within-budget' })
+  | (BudgetStatusBase & { kind: 'overdrawn'; deficit: number; deficitCents: number });
+
 export function createFinanceViewModel(data: FinanceDataV1) {
   const necessityTotals = selectNecessityTotalsCents(data);
   const overviewAllocation = selectOverviewAllocationCents(data);
   const budgetAllocation = selectBudgetAllocationCents(data);
-  const accounts = data.accounts.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((account) => ({
-    ...account,
-    balance: centsToEuros(selectLatestAccountSnapshot(data, account.id)?.balanceCents ?? 0),
-  }));
-  const pockets = data.pockets.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((pocket) => ({
-    ...pocket,
-    balance: centsToEuros(selectLatestPocketSnapshot(data, pocket.id)?.balanceCents ?? 0),
-  }));
+  const selectedBudgetStatus = selectBudgetStatusCents(data);
+  const commonBudgetStatus = {
+    balance: centsToEuros(selectedBudgetStatus.balanceCents),
+    balanceCents: selectedBudgetStatus.balanceCents,
+    planned: centsToEuros(selectedBudgetStatus.plannedCents),
+    plannedCents: selectedBudgetStatus.plannedCents,
+    utilizationBasisPoints: selectedBudgetStatus.utilizationBasisPoints,
+  };
+  const budgetStatus: BudgetStatus = selectedBudgetStatus.kind === 'overdrawn'
+    ? {
+        kind: 'overdrawn',
+        deficit: centsToEuros(selectedBudgetStatus.deficitCents),
+        deficitCents: selectedBudgetStatus.deficitCents,
+        ...commonBudgetStatus,
+      }
+    : { kind: selectedBudgetStatus.kind, ...commonBudgetStatus };
+  const accounts = data.accounts.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((account) => {
+    const balanceCents = selectLatestAccountSnapshot(data, account.id)?.balanceCents ?? 0;
+    return { ...account, balance: centsToEuros(balanceCents), balanceCents };
+  });
+  const pockets = data.pockets.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((pocket) => {
+    const balanceCents = selectLatestPocketSnapshot(data, pocket.id)?.balanceCents ?? 0;
+    return { ...pocket, balance: centsToEuros(balanceCents), balanceCents };
+  });
   const budgetCategories = data.budgetItems.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((item) => ({
     id: item.id,
     label: item.label,
     amount: centsToEuros(item.monthlyAmountCents),
+    amountCents: item.monthlyAmountCents,
     necessityId: item.necessityId,
     kind: item.kind,
     note: item.note,
   }));
-  const debts = data.debts.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((debt) => ({
-    id: debt.id,
-    name: debt.name,
-    kind: debt.kind,
-    supportingText: /\bdkb\b/i.test(debt.name)
-      ? 'Kredit mit monatlicher Rate'
-      : debt.note,
-    monthlyPayment: centsToEuros(debt.monthlyPaymentCents),
-    payoffBalance: centsToEuros(selectLatestDebtSnapshot(data, debt.id)?.payoffBalanceCents ?? 0),
-  }));
+  const debts = data.debts.filter(({ active }) => active).sort((a, b) => a.displayOrder - b.displayOrder).map((debt) => {
+    const payoffBalanceCents = selectLatestDebtSnapshot(data, debt.id)?.payoffBalanceCents ?? 0;
+    return {
+      id: debt.id,
+      name: debt.name,
+      kind: debt.kind,
+      supportingText: /\bdkb\b/i.test(debt.name)
+        ? 'Kredit mit monatlicher Rate'
+        : debt.note,
+      monthlyPayment: centsToEuros(debt.monthlyPaymentCents),
+      monthlyPaymentCents: debt.monthlyPaymentCents,
+      payoffBalance: centsToEuros(payoffBalanceCents),
+      payoffBalanceCents,
+    };
+  });
   const activeDebtIds = new Set(data.debts.filter(({ active }) => active).map(({ id }) => id));
   const milestoneTotals = new Map<string, number>();
   data.debtMilestones.filter(({ debtId }) => activeDebtIds.has(debtId)).forEach(({ date, balanceCents }) => {
@@ -79,6 +115,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     label: longMonth.format(dateForFormatting(date)),
     shortLabel: shortMonth.format(dateForFormatting(date)),
     balance: centsToEuros(balanceCents),
+    balanceCents,
   }));
   let projectedFreeCents = selectFreeMoneyCents(data);
   const futureReliefMilestones = selectFutureDebtReliefMilestones(data);
@@ -92,6 +129,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       label: 'Aktuell',
       monthLabel: longMonth.format(dateForFormatting(data.asOf)),
       freeAmount: centsToEuros(projectedFreeCents),
+      freeAmountCents: projectedFreeCents,
       event: null,
       eventDetail: null,
     },
@@ -103,6 +141,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
         label: `Nach ${monthLabel}`,
         monthLabel,
         freeAmount: centsToEuros(projectedFreeCents),
+        freeAmountCents: projectedFreeCents,
         event: eventList.format(milestone.events.map(presentReliefEvent)),
         eventDetail: milestone.events
           .filter(({ event }) => event !== 'debt-payment-ends' && !/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(event))
@@ -120,10 +159,20 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     eventLabel: eventList.format(nextReliefMilestone.events.map(presentReliefEvent)),
     eventCount: nextReliefMilestone.events.length,
     monthlyRelief: centsToEuros(nextReliefMilestone.monthlyReliefCents),
+    monthlyReliefCents: nextReliefMilestone.monthlyReliefCents,
     freeAfter: centsToEuros(nextFreeMoneyCents),
+    freeAfterCents: nextFreeMoneyCents,
   } : null;
 
   const upcomingSummary = selectUpcomingSummary(data);
+  const currentCashCents = selectCurrentAccountTotalCents(data);
+  const plannedAmountCents = selectPlannedAmountCents(data);
+  const plannedReservesCents = selectPlannedReserveCents(data);
+  const freeMoneyCents = selectFreeMoneyCents(data);
+  const freePercentageBasisPoints = selectFreePercentageBasisPoints(data);
+  const payoffTodayCents = selectCurrentPayoffCents(data);
+  const remainingScheduledTotalCents = selectRemainingScheduledTotalCents(data);
+  const futureDebtCostCents = selectFutureDebtCostCents(data);
 
   return {
     meta: {
@@ -137,6 +186,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     accounts,
     pockets,
     budgetCategories,
+    budgetStatus,
     necessityGroups: (Object.keys(necessityPresentation) as NecessityId[]).map((id) => ({
       id,
       ...necessityPresentation[id],
@@ -166,14 +216,21 @@ export function createFinanceViewModel(data: FinanceDataV1) {
       overview: overviewAllocation,
     },
     totals: {
-      currentCash: centsToEuros(selectCurrentAccountTotalCents(data)),
-      plannedAmount: centsToEuros(selectPlannedAmountCents(data)),
-      plannedReserves: centsToEuros(selectPlannedReserveCents(data)),
-      freeMoney: centsToEuros(selectFreeMoneyCents(data)),
-      freePercentage: selectFreePercentageBasisPoints(data) / 100,
-      payoffToday: centsToEuros(selectCurrentPayoffCents(data)),
-      remainingScheduledTotal: centsToEuros(selectRemainingScheduledTotalCents(data)),
-      futureDebtCost: centsToEuros(selectFutureDebtCostCents(data)),
+      currentCash: centsToEuros(currentCashCents),
+      currentCashCents,
+      plannedAmount: centsToEuros(plannedAmountCents),
+      plannedAmountCents,
+      plannedReserves: centsToEuros(plannedReservesCents),
+      plannedReservesCents,
+      freeMoney: centsToEuros(freeMoneyCents),
+      freeMoneyCents,
+      freePercentage: freePercentageBasisPoints === null ? null : freePercentageBasisPoints / 100,
+      payoffToday: centsToEuros(payoffTodayCents),
+      payoffTodayCents,
+      remainingScheduledTotal: centsToEuros(remainingScheduledTotalCents),
+      remainingScheduledTotalCents,
+      futureDebtCost: centsToEuros(futureDebtCostCents),
+      futureDebtCostCents,
     },
   };
 }

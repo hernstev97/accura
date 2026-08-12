@@ -67,7 +67,7 @@ describe('curated presets and semantic color independence', () => {
 
   it('leaves finance semantics outside the dynamic token set', () => {
     const css = readFileSync(new URL('../design/tokens.css', import.meta.url), 'utf8');
-    for (const semantic of ['--color-positive-container', '--color-attention-container', '--chart-free', '--chart-essential', '--chart-worthwhile']) {
+    for (const semantic of ['--color-positive-container', '--color-attention-container', '--chart-free', '--chart-deficit', '--chart-essential', '--chart-worthwhile']) {
       expect(themeTokenNames).not.toContain(semantic);
       expect(css).toContain(semantic);
     }

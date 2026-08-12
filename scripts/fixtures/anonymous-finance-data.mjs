@@ -86,7 +86,8 @@ export const anonymousFinanceResponse = {
   refreshedAt: '2026-08-08T10:00:00.000Z',
 };
 
-export async function installFinanceApiMocks(page, state = 'connected') {
+export async function installFinanceApiMocks(page, state = 'connected', financeData = anonymousFinanceData) {
+  const financeResponse = { ...anonymousFinanceResponse, data: financeData };
   await page.route('**/api/session', async (route) => {
     if (state === 'loading') await new Promise((resolve) => setTimeout(resolve, 350));
     if (state === 'signed-out') return route.fulfill({ json: { authenticated: false } });
@@ -97,10 +98,10 @@ export async function installFinanceApiMocks(page, state = 'connected') {
     await new Promise((resolve) => setTimeout(resolve, 80));
     if (state === 'validation-error') return route.fulfill({ status: 422, json: { error: { code: 'invalid_finance_schema', message: 'Die Tabelle entspricht nicht Finance Data Schema v1.', details: { issues: [{ tab: '_Meta', row: 2, column: 'schema_version', message: 'Schema-Version wird nicht unterstützt.', expected: '1' }] } } } });
     if (state === 'reconnect') return route.fulfill({ status: 401, json: { error: { code: 'reconnect_required', message: 'Die Google-Verbindung muss erneut autorisiert werden.' } } });
-    return route.fulfill({ json: anonymousFinanceResponse });
+    return route.fulfill({ json: financeResponse });
   });
   await page.route('**/api/google/picker', (route) => route.fulfill({ json: { accessToken: 'short-lived-browser-token', expiresIn: 3600, apiKey: 'public-picker-key', appId: '123456', clientId: 'client-id' } }));
-  await page.route('**/api/google/spreadsheet', (route) => route.fulfill({ json: anonymousFinanceResponse }));
+  await page.route('**/api/google/spreadsheet', (route) => route.fulfill({ json: financeResponse }));
   await page.route('**/api/auth/logout', (route) => route.fulfill({ json: { ok: true } }));
   await page.route('**/api/connection/disconnect', (route) => route.fulfill({ json: { ok: true } }));
 }

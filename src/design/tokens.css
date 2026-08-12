@@ -104,6 +104,7 @@
   --chart-optional: #9b829f;
   --chart-unnecessary: #aa7777;
   --chart-free: #58784c;
+  --chart-deficit: #9c405c;
   --chart-grid: color-mix(in srgb, var(--color-outline-variant) 72%, transparent);
   --chart-cursor: color-mix(in srgb, var(--color-primary) 8%, transparent);
   --chart-line-width: 3px;
@@ -193,6 +194,7 @@
     --chart-optional: #c7afcb;
     --chart-unnecessary: #d9a3a3;
     --chart-free: #afd09f;
+    --chart-deficit: #ffb1c5;
   }
 }
 
@@ -214,6 +216,7 @@
   --chart-optional: #c7afcb;
   --chart-unnecessary: #d9a3a3;
   --chart-free: #afd09f;
+  --chart-deficit: #ffb1c5;
 }
 
 @supports (color: AccentColor) {

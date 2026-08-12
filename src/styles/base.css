@@ -48,9 +48,12 @@ main[tabindex]:focus-visible {
 }
 
 .financial-value {
+  min-width: 0;
+  max-width: 100%;
   font-variant-numeric: tabular-nums lining-nums;
   font-variation-settings: 'ROND' var(--type-metric-rond), 'wdth' 98, 'GRAD' 0, 'slnt' 0;
-  white-space: nowrap;
+  overflow-wrap: normal;
+  white-space: normal;
 }
 
 @keyframes screen-entrance {
