@@ -23,6 +23,8 @@ import {
 } from './navigation/appNavigation';
 import { OverviewScreen } from './screens/OverviewScreen';
 
+const VERCEL_TELEMETRY_ENABLED = Boolean(import.meta.env.VITE_VERCEL_ENV);
+
 const budgetScreenModule = import('./screens/BudgetScreen');
 const debtScreenModule = import('./screens/DebtScreen');
 const upcomingScreenModule = import('./screens/UpcomingScreen');
@@ -166,8 +168,12 @@ function App({ initialDestination }: AppProps) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <SpeedInsights />
-      <Analytics />
+      {VERCEL_TELEMETRY_ENABLED ? (
+        <>
+          <SpeedInsights />
+          <Analytics />
+        </>
+      ) : null}
       <div className="app-shell">
         <div className={`app-content ${hasData ? 'app-content--connected' : ''}`}>
           <header className="top-app-bar">
