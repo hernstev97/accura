@@ -1632,7 +1632,7 @@ button:disabled {
 }
 
 .segmented-control__item[aria-selected='true'] {
-  color: color-mix(in srgb, var(--color-system-accent) 68%, var(--color-on-surface));
+  color: var(--color-on-primary-container);
 }
 .position-count { min-height: 36px; font-size: 12px; }
 
@@ -1696,7 +1696,7 @@ dialog.adaptive-dialog::backdrop { background: color-mix(in srgb, var(--color-sc
 .money-value {
   display: inline;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   vertical-align: baseline;
 }
 
@@ -1714,7 +1714,7 @@ dialog.adaptive-dialog::backdrop { background: color-mix(in srgb, var(--color-sc
   max-width: 100%;
   filter: blur(calc(7em / 32));
   opacity: 0.78;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   transform: translateZ(0);
   will-change: filter;
   white-space: normal;

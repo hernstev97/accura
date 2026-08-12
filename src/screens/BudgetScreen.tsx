@@ -17,7 +17,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { useChartAnimation } from '../design/useChartAnimation';
-import { compactCurrencyFormatter, formatCurrencyValue, maskMoneyShape, percentFormatter } from '../lib/format';
+import { compactCurrencyFormatter, formatCurrencyCentsValue, maskMoneyShape, percentFormatter } from '../lib/format';
 import { usePrivacy } from '../privacy/PrivacyProvider';
 
 type ChartView = 'categories' | 'necessity';
@@ -25,6 +25,7 @@ type ChartItem = {
   id: string;
   label: string;
   amount: number;
+  amountCents: number;
   colorToken?: string;
   kind?: 'expense' | 'reserve';
 };
@@ -40,19 +41,19 @@ export function BudgetScreen() {
   const [chartView, setChartView] = useState<ChartView>('categories');
   const reduceMotion = useReducedMotion();
   const chartAnimationActive = useChartAnimation(reduceMotion, chartView, 280);
-  const categoryData = [...data.budgetCategories].sort((a, b) => b.amount - a.amount);
-  const freeMoney = data.totals.freeMoney;
+  const categoryData = [...data.budgetCategories].sort((a, b) => b.amountCents - a.amountCents);
+  const freeMoneyCents = data.totals.freeMoneyCents;
   const budgetEmpty = data.budgetStatus.kind === 'empty';
-  const overdrawnBudgetStatus = data.budgetStatus.kind === 'overdrawn' ? data.budgetStatus : null;
-  const budgetOverdrawn = overdrawnBudgetStatus !== null;
+  const budgetHasDeficit = data.budgetStatus.balanceCents < 0;
+  const budgetDeficitCents = budgetHasDeficit ? -data.budgetStatus.balanceCents : 0;
   const stackedSegments = [
     ...data.necessityGroups,
     {
       id: 'free',
-      label: budgetOverdrawn ? 'Fehlbetrag' : 'Frei',
-      amount: freeMoney,
+      label: budgetHasDeficit ? 'Fehlbetrag' : 'Frei',
+      amount: data.totals.freeMoney,
       amountCents: data.allocations.budget.freeCents,
-      colorToken: budgetOverdrawn ? '--chart-deficit' : '--chart-free',
+      colorToken: budgetHasDeficit ? '--chart-deficit' : '--chart-free',
     },
   ];
   const ringSegments: AllocationRingSegment[] = stackedSegments.map((segment) => ({
@@ -62,8 +63,8 @@ export function BudgetScreen() {
     label: segment.label,
   }));
   const chartData: ChartItem[] = chartView === 'categories'
-    ? categoryData.map(({ id, label, amount, kind }) => ({ id, label, amount, kind }))
-    : data.necessityGroups.map(({ id, label, amount, colorToken }) => ({ id, label, amount, colorToken }));
+    ? categoryData.map(({ id, label, amount, amountCents, kind }) => ({ id, label, amount, amountCents, kind }))
+    : data.necessityGroups.map(({ id, label, amount, amountCents, colorToken }) => ({ id, label, amount, amountCents, colorToken }));
   const chartTitle = chartView === 'categories' ? 'Ausgaben nach Kategorie' : 'Budget nach Notwendigkeit';
   const chartHeight = chartView === 'categories' ? Math.max(320, categoryData.length * 48 + 24) : 320;
   const hasChartValues = chartData.some(({ amount }) => amount > 0);
@@ -71,8 +72,10 @@ export function BudgetScreen() {
     ? '–'
     : `${percentFormatter.format(data.budgetStatus.utilizationBasisPoints / 100)} %`;
   const headerSupporting = budgetEmpty
-    ? `${data.meta.monthLabel} · noch keine Positionen`
-    : budgetOverdrawn
+    ? budgetHasDeficit
+      ? `${data.meta.monthLabel} · negatives Einkommen, noch keine Positionen`
+      : `${data.meta.monthLabel} · noch keine Positionen`
+    : budgetHasDeficit
       ? `${data.meta.monthLabel} · über dem Einkommen geplant`
       : `${data.meta.monthLabel} · vollständig aufgeteilt`;
 
@@ -93,23 +96,23 @@ export function BudgetScreen() {
             color: `var(${segment.colorToken})`,
             id: segment.id,
             label: segment.label,
-            value: <MoneyValue value={segment.amount} />,
+            value: <MoneyValue valueCents={segment.amountCents} />,
           }))} />
         )}
         id="budget-hero"
-        label="Einkommen"
+        label={budgetHasDeficit && budgetEmpty ? 'Negatives Monatseinkommen' : 'Einkommen'}
         supporting={budgetEmpty
-          ? 'Im Monat · noch keine Budgetpositionen'
-          : budgetOverdrawn
+          ? budgetHasDeficit ? 'Im Monat · unter null, noch keine Budgetpositionen' : 'Im Monat · noch keine Budgetpositionen'
+          : budgetHasDeficit
             ? `Im Monat · ${utilizationLabel} verplant`
             : 'Im Monat · vollständig verplant'}
-        tone={budgetOverdrawn ? 'attention' : 'accent'}
-        value={<MoneyValue value={data.meta.monthlyIncome} />}
+        tone={budgetHasDeficit ? 'attention' : 'accent'}
+        value={<MoneyValue valueCents={data.meta.monthlyIncomeCents} />}
         visual={(
           <LayeredAllocationRing
-            centerLabel={budgetOverdrawn || budgetEmpty ? 'verplant' : 'Budget'}
+            centerLabel={budgetHasDeficit ? 'Defizit' : budgetEmpty ? 'verplant' : 'Budget'}
             centerSupporting="verteilt"
-            centerValue={budgetOverdrawn ? utilizationLabel : budgetEmpty ? '0 %' : '100 %'}
+            centerValue={budgetHasDeficit ? utilizationLabel : budgetEmpty ? '0 %' : '100 %'}
             detailed
             segments={ringSegments}
             totalCents={data.allocations.budget.incomeCents}
@@ -118,18 +121,22 @@ export function BudgetScreen() {
       />
 
       <MetricGrid label="Budgetkennzahlen">
-        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={<MoneyValue value={data.totals.plannedReserves} />} />
+        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={<MoneyValue valueCents={data.totals.plannedReservesCents} />} />
         <MetricCard
-          label={budgetOverdrawn ? 'Budgetsaldo' : 'Frei'}
-          supporting={budgetOverdrawn ? 'Geplante Beträge über Einkommen' : 'Ohne feste Zuordnung'}
-          tone={budgetOverdrawn ? 'attention' : 'positive'}
-          value={<MoneyValue value={freeMoney} />}
+          label={budgetHasDeficit ? 'Budgetsaldo' : 'Frei'}
+          supporting={budgetHasDeficit
+            ? budgetEmpty ? 'Negatives Einkommen ohne Budgetpositionen' : 'Geplante Beträge über Einkommen'
+            : 'Ohne feste Zuordnung'}
+          tone={budgetHasDeficit ? 'attention' : 'positive'}
+          value={<MoneyValue valueCents={freeMoneyCents} />}
         />
       </MetricGrid>
 
-      {budgetOverdrawn ? (
-        <InlineNotice title="Budget liegt über dem Einkommen" tone="danger">
-          <p>Geplante Ausgaben und Rücklagen übersteigen das Monatseinkommen um <MoneyValue value={overdrawnBudgetStatus.deficit} />.</p>
+      {budgetHasDeficit ? (
+        <InlineNotice title={budgetEmpty ? 'Monatseinkommen ist negativ' : 'Budget liegt über dem Einkommen'} tone="danger">
+          <p>{budgetEmpty
+            ? <>Das Monatseinkommen liegt um <MoneyValue valueCents={budgetDeficitCents} /> unter null. Es sind noch keine Budgetpositionen hinterlegt.</>
+            : <>Geplante Ausgaben und Rücklagen übersteigen das Monatseinkommen um <MoneyValue valueCents={budgetDeficitCents} />.</>}</p>
         </InlineNotice>
       ) : null}
 
@@ -188,7 +195,7 @@ export function BudgetScreen() {
                     width={104}
                   />
                   <Tooltip
-                    content={(props) => <FinanceChartTooltip {...props} valueLabel="Monatlich" />}
+                    content={(props) => <FinanceChartTooltip {...props} centsDataKey="amountCents" valueLabel="Monatlich" />}
                     cursor={{ fill: 'var(--chart-cursor)' }}
                     isAnimationActive={chartAnimationActive}
                   />
@@ -232,7 +239,7 @@ export function BudgetScreen() {
             )) : null}
 
             <div className="sr-only" id={`budget-chart-summary-${option.id}`} role="list">
-              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrencyValue(item.amount, privacyMode)}. </span>)}
+              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrencyCentsValue(item.amountCents, privacyMode)}. </span>)}
             </div>
           </div>
         ))}
