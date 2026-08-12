@@ -824,7 +824,8 @@ try {
   const overviewRoleGeometry = await financeRoleGeometry(mobile.page, '.overview-screen');
   assert.equal(await overviewScreen.getAttribute('data-entrance'), 'first');
   const overviewText = await mobile.page.locator('body').innerText();
-  assert.match(overviewText, /141,32\s*€\s*frei/);
+  const overviewHeroValue = await mobile.page.locator('#overview-hero .financial-hero__value').innerText();
+  assert.match(overviewHeroValue, /^141,32\s*€$/, 'Übersichts-Hero zeigt nicht den erwarteten Betrag ohne frei-Zusatz');
   assert.match(overviewText, /1\.350,75\s*€/);
   assert.match(overviewText, /Coolblue endet im September 2026/);
   assert.match(overviewText, /Danach voraussichtlich 305,32\s*€ frei/);

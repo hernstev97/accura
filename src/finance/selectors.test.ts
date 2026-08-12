@@ -12,6 +12,7 @@ import {
   selectLatestAccountSnapshot,
   selectNecessityTotalsCents,
   selectBudgetAllocationCents,
+  selectBudgetStatusCents,
   selectOverviewAllocationCents,
   selectNextDebtReliefMilestone,
   selectNextFreeMoneyCents,
@@ -58,6 +59,65 @@ describe('cent-based finance selectors', () => {
 
     const budget = selectBudgetAllocationCents(data);
     expect(Object.values(budget.necessityCents).reduce((sum, amount) => sum + amount, 0) + budget.freeCents).toBe(budget.incomeCents);
+  });
+
+  it('classifies empty, within-budget, exact, and overdrawn budgets in cents', () => {
+    expect(selectBudgetStatusCents({ ...data, budgetItems: [] })).toEqual({
+      kind: 'empty',
+      balanceCents: data.monthlyIncomeCents,
+      plannedCents: 0,
+      utilizationBasisPoints: 0,
+    });
+
+    expect(selectBudgetStatusCents(data)).toEqual({
+      kind: 'within-budget',
+      balanceCents: 14_132,
+      plannedCents: 245_000,
+      utilizationBasisPoints: 9_455,
+    });
+
+    expect(selectBudgetStatusCents({ ...data, monthlyIncomeCents: 245_000 })).toEqual({
+      kind: 'within-budget',
+      balanceCents: 0,
+      plannedCents: 245_000,
+      utilizationBasisPoints: 10_000,
+    });
+
+    expect(selectBudgetStatusCents({ ...data, monthlyIncomeCents: 100_000 })).toEqual({
+      kind: 'overdrawn',
+      balanceCents: -145_000,
+      deficitCents: 145_000,
+      plannedCents: 245_000,
+      utilizationBasisPoints: 24_500,
+    });
+  });
+
+  it('does not invent budget utilization without positive income', () => {
+    expect(selectBudgetStatusCents({ ...data, monthlyIncomeCents: 0 })).toMatchObject({
+      kind: 'overdrawn',
+      utilizationBasisPoints: null,
+    });
+    expect(selectFreePercentageBasisPoints({ ...data, monthlyIncomeCents: 0 })).toBeNull();
+
+    const negativeEmptyBudget = { ...data, monthlyIncomeCents: -12_345, budgetItems: [] };
+    expect(selectBudgetStatusCents(negativeEmptyBudget)).toEqual({
+      kind: 'empty',
+      balanceCents: -12_345,
+      plannedCents: 0,
+      utilizationBasisPoints: null,
+    });
+    expect(selectFreePercentageBasisPoints(negativeEmptyBudget)).toBeNull();
+  });
+
+  it('calculates percentages for large safe cent values without unsafe intermediate multiplication', () => {
+    const large = {
+      ...data,
+      monthlyIncomeCents: 9_000_000_000_000_000,
+      budgetItems: [{ ...data.budgetItems[0]!, monthlyAmountCents: 4_500_000_000_000_000 }],
+    };
+
+    expect(selectFreePercentageBasisPoints(large)).toBe(5_000);
+    expect(selectBudgetStatusCents(large).utilizationBasisPoints).toBe(5_000);
   });
 
   it('keeps installment counts separate from cent-based scheduled totals', () => {
@@ -135,8 +195,19 @@ describe('cent-based finance selectors', () => {
     expect(view.meta.asOfLabel).toBe('08.08.2026');
     expect(view.meta.monthLabel).toBe('August 2026');
     expect(view.totals.currentCash).toBe(1350.75);
+    expect(view.totals.currentCashCents).toBe(135_075);
     expect(view.nextDebtRelief).toMatchObject({ eventLabel: 'Coolblue', monthlyRelief: 164, freeAfter: 305.32 });
+    expect(view.nextDebtRelief).toMatchObject({ monthlyReliefCents: 16_400, freeAfterCents: 30_532 });
     expect(view.debtBalanceMilestones.map(({ balance }) => balance)).toEqual([14322.93, 13000, 8000, 0]);
+    expect(view.debtBalanceMilestones.map(({ balanceCents }) => balanceCents)).toEqual([1_432_293, 1_300_000, 800_000, 0]);
+    expect(view.budgetStatus).toEqual({
+      kind: 'within-budget',
+      balance: 141.32,
+      balanceCents: 14_132,
+      planned: 2450,
+      plannedCents: 245_000,
+      utilizationBasisPoints: 9_455,
+    });
   });
 
   it('keeps machine event codes and a raw DKB note out of presentation values', () => {

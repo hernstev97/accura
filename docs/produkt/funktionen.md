@@ -12,7 +12,7 @@ Die vier Hauptansichten sind direkt über `/`, `/demnaechst`, `/budget` und `/sc
 
 ### Übersicht
 
-Die Übersicht zeigt verfügbare Mittel, die Aufteilung des Monatseinkommens, aktive Konten, zugehörige Pockets, den Datenstand und die nächste planmäßige Entlastung. Detail- und Standarddarstellung lassen sich umschalten. Werte stammen aus dem normalisierten Snapshot, nicht aus live berechneten Google-Zellen.
+Die Übersicht zeigt verfügbare Mittel, die Aufteilung des Monatseinkommens, aktive Konten, zugehörige Pockets, den Datenstand und die nächste planmäßige Entlastung. Detail- und Standarddarstellung lassen sich umschalten. Zunächst erscheinen höchstens fünf Konten und sechs nicht leere Pockets; „Alle zeigen“ legt alle aktiven Einträge einschließlich leerer Pockets offen, ohne Summen zu verändern. Negative Stände und ein überzogenes Budget werden mit Vorzeichen und erklärendem Hinweis dargestellt. Fehlende Konten oder Pockets erhalten einen beschriebenen Leerzustand statt einer leeren Liste. Werte stammen aus dem normalisierten Snapshot, nicht aus live berechneten Google-Zellen.
 
 ### Demnächst
 
@@ -20,11 +20,11 @@ Demnächst zeigt den nächsten Gehaltstag, aktive wiederkehrende Budget- und Sch
 
 ### Budget
 
-Budget gruppiert aktive Ausgaben nach Notwendigkeit (`essential`, `necessary`, `worthwhile`, `optional`, `unnecessary`) und trennt Ausgaben von Rücklagen. Kennzahlen, Ring- und Balkendarstellungen helfen, Monatsplanung und Einkommensverwendung zu lesen.
+Budget gruppiert aktive Ausgaben nach Notwendigkeit (`essential`, `necessary`, `worthwhile`, `optional`, `unnecessary`) und trennt Ausgaben von Rücklagen. Kennzahlen, Ring- und Balkendarstellungen helfen, Monatsplanung und Einkommensverwendung zu lesen. Eine Überziehung bleibt als negativer Budgetsaldo und tatsächliche Auslastung über 100 Prozent sichtbar; der geometrisch negative Ringanteil wird nicht gezeichnet, aber als Fehlbetrag erklärt. Ohne aktive Budgetpositionen ersetzt ein Leerzustand das Diagramm.
 
 ### Schulden
 
-Schulden stellt Ablösesumme, planmäßige Gesamtkosten, daraus abgeleitete Mehrkosten, Gläubiger beziehungsweise Schuldpositionen, Restschuldverlauf und auslaufende Raten dar. Snapshot- und Meilensteindaten werden nicht vermischt.
+Schulden stellt Ablösesumme, planmäßige Gesamtkosten, daraus abgeleitete Mehrkosten, Gläubiger beziehungsweise Schuldpositionen, Restschuldverlauf und auslaufende Raten dar. Snapshot- und Meilensteindaten werden nicht vermischt. Ohne aktive Schulden zeigt der Screen ausschließlich einen positiven Leerzustand; fehlen bei aktiven Schulden Restschuld- oder Entlastungsmeilensteine, werden die betroffenen Diagramme jeweils durch eine konkrete Erklärung ersetzt.
 
 ## Globale Aktionen
 

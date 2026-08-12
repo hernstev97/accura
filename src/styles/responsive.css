@@ -100,6 +100,9 @@
   }
 
   .data-list__value {
+    grid-column: 2 / -1;
+    max-width: 100%;
+    justify-self: end;
     font-size: 14px;
   }
 

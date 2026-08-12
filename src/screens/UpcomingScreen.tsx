@@ -25,8 +25,8 @@ export function UpcomingScreen() {
   const data = useFinanceViewModel();
   const upcoming = data.upcoming;
   const hasSalaryConfig = upcoming.salaryDay !== null;
-  const safeToSpend = upcoming.safeToSpend;
-  const isNegativeSafeToSpend = safeToSpend < 0;
+  const safeToSpendCents = upcoming.safeToSpendCents;
+  const isNegativeSafeToSpend = safeToSpendCents < 0;
 
   return (
     <ScreenEntrance className="upcoming-screen" destination="upcoming" labelledBy="upcoming-title">
@@ -42,7 +42,7 @@ export function UpcomingScreen() {
         label="Bis Gehalt verfügbar"
         supporting={upcoming.nextSalaryDateLabel ? `Frei bis zum Gehaltseingang am ${upcoming.nextSalaryDateLabel}` : 'Kein Gehaltstag in der Tabelle hinterlegt'}
         tone={isNegativeSafeToSpend ? 'attention' : 'positive'}
-        value={<><MoneyValue value={safeToSpend} /> <span className="financial-hero__value-unit">frei</span></>}
+        value={<MoneyValue valueCents={safeToSpendCents} />}
         visual={(
           <div className="debt-hero-status" aria-label={`${upcoming.payments.length} ${upcoming.payments.length === 1 ? 'Fälligkeit' : 'Fälligkeiten'}`} role="img">
             <span className="debt-hero-status__icon" aria-hidden="true"><Icon name="calendar" size={26} /></span>
@@ -57,7 +57,7 @@ export function UpcomingScreen() {
           label="Noch fällig"
           supporting={`${upcoming.payments.length} ${upcoming.payments.length === 1 ? 'Zahlung' : 'Zahlungen'} bis Gehalt`}
           tone="neutral"
-          value={<MoneyValue value={upcoming.totalPending} />}
+          value={<MoneyValue valueCents={upcoming.totalPendingCents} />}
         />
         <MetricCard
           label="Nächstes Gehalt"
@@ -70,8 +70,8 @@ export function UpcomingScreen() {
       {isNegativeSafeToSpend ? (
         <InlineNotice icon={<Icon name="info" size={22} />} title="Ausstehende Zahlungen übersteigen Guthaben" tone="danger">
           <p>
-            Bis zum nächsten Gehalt am {upcoming.nextSalaryDateLabel ?? 'Gehaltstag'} stehen <MoneyValue value={upcoming.totalPending} /> an
-            Abzügen an. Das verfügbare Kontoguthaben reicht um <MoneyValue value={Math.abs(safeToSpend)} /> nicht aus.
+            Bis zum nächsten Gehalt am {upcoming.nextSalaryDateLabel ?? 'Gehaltstag'} stehen <MoneyValue valueCents={upcoming.totalPendingCents} /> an
+            Abzügen an. Das verfügbare Kontoguthaben reicht um <MoneyValue valueCents={Math.abs(safeToSpendCents)} /> nicht aus.
           </p>
         </InlineNotice>
       ) : null}
@@ -98,7 +98,7 @@ export function UpcomingScreen() {
           title="Anstehende Abzüge"
         >
           <DataList
-            footer={<><span>Ausstehende Summe</span><strong className="financial-value"><MoneyValue value={upcoming.totalPending} /></strong></>}
+            footer={<><span>Ausstehende Summe</span><strong className="financial-value"><MoneyValue valueCents={upcoming.totalPendingCents} /></strong></>}
             label="Anstehende Abzüge"
           >
             {upcoming.payments.map((payment) => (
@@ -114,7 +114,7 @@ export function UpcomingScreen() {
                   </>
                 )}
                 title={payment.name}
-                value={<MoneyValue value={payment.amount} />}
+                value={<MoneyValue valueCents={payment.amountCents} />}
               />
             ))}
           </DataList>
@@ -123,4 +123,3 @@ export function UpcomingScreen() {
     </ScreenEntrance>
   );
 }
-

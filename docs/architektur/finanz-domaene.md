@@ -67,7 +67,9 @@ Verbindliche Regeln:
 
 ## View-Model und Grenzen
 
-Das View-Model erzeugt die vier Screenmodelle gemeinsam; dadurch teilen UI und Tests dieselbe Ableitung. Es ist eine Projektion, keine Speicherung. Die Demnächst-Logik nimmt monatliche Wiederholung an und berücksichtigt weder einmalige Termine noch Feiertags-/Bankarbeitstagverschiebungen. Negative `safeToSpendCents` sind möglich und werden nicht künstlich auf null begrenzt.
+Das View-Model erzeugt die vier Screenmodelle gemeinsam; dadurch teilen UI und Tests dieselbe Ableitung. Es ist eine Projektion, keine Speicherung. Der zentrale discriminated `budgetStatus` unterscheidet `empty` ohne aktive Budgetpositionen, `within-budget` mit nicht negativem Saldo und `overdrawn` mit positivem Fehlbetrag. Alle Varianten enthalten geplante Summe, vorzeichenbehafteten Budgetsaldo und die Auslastung in Basis Points. Bei Einkommen kleiner oder gleich null ist diese Auslastung `null`; ein negativer Budgetsaldo wird weder für Anzeige noch zugängliche Zusammenfassungen auf null begrenzt. Alle Beträge werden bis zur Präsentationsgrenze in Integer-Cents berechnet.
+
+Die Demnächst-Logik nimmt monatliche Wiederholung an und berücksichtigt weder einmalige Termine noch Feiertags-/Bankarbeitstagverschiebungen. Negative `safeToSpendCents` sind möglich und werden nicht künstlich auf null begrenzt. Dasselbe gilt für reale negative Konto- und Pocketstände sowie den daraus abgeleiteten aktuellen Gesamtbestand.
 
 ## Begründung
 

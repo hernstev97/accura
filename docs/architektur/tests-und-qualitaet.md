@@ -17,17 +17,17 @@ Keine einzelne Prüfung beweist das Produkt. Reine Unit-Tests decken fachliche R
 | `npm test` | Node-ESM-Test und alle Vitest-Dateien unter `src/**/*.test.{ts,tsx}` | keine externen Dienste |
 | `npm run lint` | ESLint über das Repository | nein |
 | `npm run build` | TypeScript-Projektbuild und Vite/PWA-Produktionsbuild | nein |
-| `npm run test:visual` | Playwright, 26 committed Chromium-Golden-Screens plus Axe-Szenarien | lokaler Server/Browser |
+| `npm run test:visual` | Playwright, 38 committed Chromium-Golden-Screens plus Axe-Szenarien | lokaler Server/Browser |
 | `npm run smoke` | orchestrierte Auth-, PWA-Lifecycle-, Browser- und Offline-Smokes | lokale Mocks, keine Google-Secrets |
 | `npm run smoke:pwa` | Manifest, Chromium-Installierbarkeit, Icons, Theme-Metadaten und Zwei-Versionen-Update | lokaler Server, keine Secrets |
 | `npm run docs:check` | interne Dokumentstruktur, Links und Anker | nein |
 | `npm run docs:check:external` | zusätzlich deduplizierte externe Links | ja, optional |
 
-Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, kontrollierte Worker-Aktualisierung, Chromium-Installierbarkeit, Icon-Safe-Zone, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts, URL-Routing, History, OAuth-Rückweg, Offline-Deep-Link-Reload und Netzrückkehr.
+Die Browser-Suiten verwenden anonyme Fixtures und simulierte Google-/API-Antworten. Neben dem normalen Datenstand decken deterministische Edge-Fixtures extreme und negative Beträge mit Budgetüberziehung, vollständig leere Collections sowie dichte Konto-/Pocketlisten ab. Sie prüfen unter anderem Connection States, IndexedDB, Service Worker, kontrollierte Worker-Aktualisierung, Chromium-Installierbarkeit, Icon-Safe-Zone, Responsive Layout, Dark Mode, Reduced Motion, Fokus, Touch-Ziele, Konsole, Charts, URL-Routing, History, OAuth-Rückweg, Offline-Deep-Link-Reload und Netzrückkehr.
 
 ## Golden Screenshots und Axe
 
-Unter `tests/visual/__screenshots__/chromium` liegen 26 Referenzbilder für 412, 768 und 1440 Pixel, Light/Dark, die ursprünglichen drei Finance-Screens sowie ausgewählte Dialog- und Fehlerzustände. Screenshots sind Regressionstests, keine kanonische Produktdokumentation.
+Unter `tests/visual/__screenshots__/chromium` liegen 38 Referenzbilder für 412, 768 und 1440 Pixel, Light/Dark, die Finance-Screens sowie ausgewählte Dialog-, Fehler- und Finanz-Grenzzustände. Zwölf davon bilden bei 412 Pixeln extreme/überzogene, leere und dichte Finance-Fixtures in Light und Dark ab. Zusätzliche funktionale Prüfungen bei 320 Pixeln sichern Umbruch, Dokumentbreite, Leerzustände und progressive Offenlegung. Screenshots sind Regressionstests, keine kanonische Produktdokumentation.
 
 `@axe-core/playwright` prüft automatisierbare WCAG-Probleme. Das ersetzt weder Tastatur-, Screenreader- noch visuelle manuelle Prüfung. Demnächst und Privacy sind noch nicht vollständig in Golden- und Axe-Matrix enthalten; diese Lücke steht in [Now](../produkt/roadmap.md#now).
 

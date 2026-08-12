@@ -19,6 +19,8 @@ const parsed = validateFinanceWorkbook(anonymousWorkbook as TabularWorkbook);
 if (!parsed.success) throw new Error('Anonymous workbook is invalid');
 const baseData = parsed.data;
 
+const visibleText = (markup: string) => markup.replace(/<!-- -->|<[^>]+>/g, '');
+
 const mockApi: FinanceApi = {
   getSession: async () => ({ authenticated: false }),
   getFinance: async () => { throw new Error('not implemented'); },
@@ -53,15 +55,16 @@ function TestWrapper({ children, privacyEnabled = true }: { children: React.Reac
 }
 
 describe('ACC-62 Privacy Mode', () => {
-  it('1. Privacy Mode hides amounts and displays masked shape placeholder and accessible label', () => {
+  it('1. Privacy Mode hides amounts and displays a masked shape with accessible replacement text', () => {
     const html = renderToString(
       <PrivacyProvider initialEnabled={true}>
         <MoneyValue value={1234.56} />
       </PrivacyProvider>
     );
-    expect(html).toContain('aria-label="Betrag ausgeblendet"');
+    expect(html).toContain('<span class="sr-only">Betrag ausgeblendet</span>');
+    expect(html).not.toContain('role="text"');
     expect(html).toContain('money-value--masked');
-    expect(html).toContain('t.zeh,sb');
+    expect(visibleText(html)).toContain('t.zeh,sb');
     expect(html).not.toContain('1.234,56');
   });
 
@@ -71,7 +74,7 @@ describe('ACC-62 Privacy Mode', () => {
         <MoneyValue value={1234.56} />
       </PrivacyProvider>
     );
-    expect(html).toContain('1.234,56');
+    expect(visibleText(html)).toContain('1.234,56');
     expect(html).not.toContain('money-value--masked');
     expect(html).not.toContain('Betrag ausgeblendet');
   });

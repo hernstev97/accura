@@ -17,7 +17,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { useFinanceViewModel } from '../data/FinanceDataProvider';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { useChartAnimation } from '../design/useChartAnimation';
-import { formatCurrency, formatCurrencyValue, maskMoneyShape } from '../lib/format';
+import { compactCurrencyFormatter, formatCurrencyCentsValue, maskMoneyShape, percentFormatter } from '../lib/format';
 import { usePrivacy } from '../privacy/PrivacyProvider';
 
 type ChartView = 'categories' | 'necessity';
@@ -25,6 +25,7 @@ type ChartItem = {
   id: string;
   label: string;
   amount: number;
+  amountCents: number;
   colorToken?: string;
   kind?: 'expense' | 'reserve';
 };
@@ -40,11 +41,20 @@ export function BudgetScreen() {
   const [chartView, setChartView] = useState<ChartView>('categories');
   const reduceMotion = useReducedMotion();
   const chartAnimationActive = useChartAnimation(reduceMotion, chartView, 280);
-  const categoryData = [...data.budgetCategories].sort((a, b) => b.amount - a.amount);
-  const freeMoney = data.totals.freeMoney;
+  const categoryData = [...data.budgetCategories].sort((a, b) => b.amountCents - a.amountCents);
+  const freeMoneyCents = data.totals.freeMoneyCents;
+  const budgetEmpty = data.budgetStatus.kind === 'empty';
+  const budgetHasDeficit = data.budgetStatus.balanceCents < 0;
+  const budgetDeficitCents = budgetHasDeficit ? -data.budgetStatus.balanceCents : 0;
   const stackedSegments = [
     ...data.necessityGroups,
-    { id: 'free', label: 'Frei', amount: freeMoney, amountCents: data.allocations.budget.freeCents, colorToken: '--chart-free' },
+    {
+      id: 'free',
+      label: budgetHasDeficit ? 'Fehlbetrag' : 'Frei',
+      amount: data.totals.freeMoney,
+      amountCents: data.allocations.budget.freeCents,
+      colorToken: budgetHasDeficit ? '--chart-deficit' : '--chart-free',
+    },
   ];
   const ringSegments: AllocationRingSegment[] = stackedSegments.map((segment) => ({
     amountCents: segment.amountCents,
@@ -53,11 +63,21 @@ export function BudgetScreen() {
     label: segment.label,
   }));
   const chartData: ChartItem[] = chartView === 'categories'
-    ? categoryData.map(({ id, label, amount, kind }) => ({ id, label, amount, kind }))
-    : data.necessityGroups.map(({ id, label, amount, colorToken }) => ({ id, label, amount, colorToken }));
+    ? categoryData.map(({ id, label, amount, amountCents, kind }) => ({ id, label, amount, amountCents, kind }))
+    : data.necessityGroups.map(({ id, label, amount, amountCents, colorToken }) => ({ id, label, amount, amountCents, colorToken }));
   const chartTitle = chartView === 'categories' ? 'Ausgaben nach Kategorie' : 'Budget nach Notwendigkeit';
   const chartHeight = chartView === 'categories' ? Math.max(320, categoryData.length * 48 + 24) : 320;
   const hasChartValues = chartData.some(({ amount }) => amount > 0);
+  const utilizationLabel = data.budgetStatus.utilizationBasisPoints === null
+    ? '–'
+    : `${percentFormatter.format(data.budgetStatus.utilizationBasisPoints / 100)} %`;
+  const headerSupporting = budgetEmpty
+    ? budgetHasDeficit
+      ? `${data.meta.monthLabel} · negatives Einkommen, noch keine Positionen`
+      : `${data.meta.monthLabel} · noch keine Positionen`
+    : budgetHasDeficit
+      ? `${data.meta.monthLabel} · über dem Einkommen geplant`
+      : `${data.meta.monthLabel} · vollständig aufgeteilt`;
 
   const focusChartSelection = () => {
     document.getElementById(`budget-chart-tab-${chartView}`)?.focus({ preventScroll: true });
@@ -66,29 +86,33 @@ export function BudgetScreen() {
 
   return (
     <ScreenEntrance className="budget-screen" destination="budget" labelledBy="budget-title">
-      <ScreenHeader id="budget-title" supporting={`${data.meta.monthLabel} · vollständig aufgeteilt`} title="Dein Budget" />
+      <ScreenHeader id="budget-title" supporting={headerSupporting} title="Dein Budget" />
 
       <FinancialHero
-        action={<AppButton onClick={focusChartSelection} size="small" variant="tonal">Diagrammansicht wählen</AppButton>}
+        action={budgetEmpty ? undefined : <AppButton onClick={focusChartSelection} size="small" variant="tonal">Diagrammansicht wählen</AppButton>}
         className="financial-hero--allocation"
         footer={(
           <AllocationLegend items={stackedSegments.map((segment) => ({
             color: `var(${segment.colorToken})`,
             id: segment.id,
             label: segment.label,
-            value: <MoneyValue value={segment.amount} />,
+            value: <MoneyValue valueCents={segment.amountCents} />,
           }))} />
         )}
         id="budget-hero"
-        label="Einkommen"
-        supporting="Im Monat · vollständig verplant"
-        tone="accent"
-        value={<MoneyValue value={data.meta.monthlyIncome} />}
+        label={budgetHasDeficit && budgetEmpty ? 'Negatives Monatseinkommen' : 'Einkommen'}
+        supporting={budgetEmpty
+          ? budgetHasDeficit ? 'Im Monat · unter null, noch keine Budgetpositionen' : 'Im Monat · noch keine Budgetpositionen'
+          : budgetHasDeficit
+            ? `Im Monat · ${utilizationLabel} verplant`
+            : 'Im Monat · vollständig verplant'}
+        tone={budgetHasDeficit ? 'attention' : 'accent'}
+        value={<MoneyValue valueCents={data.meta.monthlyIncomeCents} />}
         visual={(
           <LayeredAllocationRing
-            centerLabel="Budget"
+            centerLabel={budgetHasDeficit ? 'Defizit' : budgetEmpty ? 'verplant' : 'Budget'}
             centerSupporting="verteilt"
-            centerValue="100 %"
+            centerValue={budgetHasDeficit ? utilizationLabel : budgetEmpty ? '0 %' : '100 %'}
             detailed
             segments={ringSegments}
             totalCents={data.allocations.budget.incomeCents}
@@ -97,9 +121,24 @@ export function BudgetScreen() {
       />
 
       <MetricGrid label="Budgetkennzahlen">
-        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={<MoneyValue value={data.totals.plannedReserves} />} />
-        <MetricCard label="Frei" supporting="Ohne feste Zuordnung" tone="positive" value={<MoneyValue value={freeMoney} />} />
+        <MetricCard label="Rücklagen" supporting="Für spätere Ausgaben eingeplant" tone="neutral" value={<MoneyValue valueCents={data.totals.plannedReservesCents} />} />
+        <MetricCard
+          label={budgetHasDeficit ? 'Budgetsaldo' : 'Frei'}
+          supporting={budgetHasDeficit
+            ? budgetEmpty ? 'Negatives Einkommen ohne Budgetpositionen' : 'Geplante Beträge über Einkommen'
+            : 'Ohne feste Zuordnung'}
+          tone={budgetHasDeficit ? 'attention' : 'positive'}
+          value={<MoneyValue valueCents={freeMoneyCents} />}
+        />
       </MetricGrid>
+
+      {budgetHasDeficit ? (
+        <InlineNotice title={budgetEmpty ? 'Monatseinkommen ist negativ' : 'Budget liegt über dem Einkommen'} tone="danger">
+          <p>{budgetEmpty
+            ? <>Das Monatseinkommen liegt um <MoneyValue valueCents={budgetDeficitCents} /> unter null. Es sind noch keine Budgetpositionen hinterlegt.</>
+            : <>Geplante Ausgaben und Rücklagen übersteigen das Monatseinkommen um <MoneyValue valueCents={budgetDeficitCents} />.</>}</p>
+        </InlineNotice>
+      ) : null}
 
       <ChartFrame
         action={<span className="position-count" role="status">{chartData.length} Positionen</span>}
@@ -156,7 +195,7 @@ export function BudgetScreen() {
                     width={104}
                   />
                   <Tooltip
-                    content={(props) => <FinanceChartTooltip {...props} valueLabel="Monatlich" />}
+                    content={(props) => <FinanceChartTooltip {...props} centsDataKey="amountCents" valueLabel="Monatlich" />}
                     cursor={{ fill: 'var(--chart-cursor)' }}
                     isAnimationActive={chartAnimationActive}
                   />
@@ -183,20 +222,24 @@ export function BudgetScreen() {
                       fill="var(--color-on-surface)"
                       fontSize={12}
                       fontWeight={650}
-                      formatter={(value) => privacyMode ? maskMoneyShape(formatCurrency(Number(value))) : formatCurrency(Number(value))}
+                      formatter={(value) => privacyMode
+                        ? maskMoneyShape(compactCurrencyFormatter.format(Number(value)))
+                        : compactCurrencyFormatter.format(Number(value))}
                       position="right"
                     />
                   </Bar>
                 </BarChart>
               </div>
             ) : (
-              <InlineNotice title="Noch keine Werte" tone="info">
-                <p>Für diese Ansicht sind im aktuellen Datenstand keine positiven Beträge vorhanden.</p>
+              <InlineNotice title={budgetEmpty ? 'Noch keine Budgetpositionen' : 'Noch keine Werte'} tone="info">
+                <p>{budgetEmpty
+                  ? 'Im aktuellen Datenstand sind keine aktiven Budgetpositionen hinterlegt.'
+                  : 'Für diese Ansicht sind im aktuellen Datenstand keine positiven Beträge vorhanden.'}</p>
               </InlineNotice>
             )) : null}
 
             <div className="sr-only" id={`budget-chart-summary-${option.id}`} role="list">
-              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrencyValue(item.amount, privacyMode)}. </span>)}
+              {chartData.map((item) => <span key={item.id} role="listitem">{item.label}: {formatCurrencyCentsValue(item.amountCents, privacyMode)}. </span>)}
             </div>
           </div>
         ))}
@@ -204,4 +247,3 @@ export function BudgetScreen() {
     </ScreenEntrance>
   );
 }
-
