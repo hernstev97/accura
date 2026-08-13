@@ -86,11 +86,11 @@ function MorphingPinDot({
 }
 
 function PinIndicators({ length, resetToken }: { length: number; resetToken?: number }) {
-  const nextIndicatorId = useRef(0);
+  const nextIndicatorId = useRef(length);
   const previousResetToken = useRef(resetToken);
   const [indicators, setIndicators] = useState<PinIndicatorItem[]>(() =>
-    Array.from({ length }, () => ({
-      id: nextIndicatorId.current++,
+    Array.from({ length }, (_, index) => ({
+      id: index,
       phase: 'active',
       shape: chooseExpressivePinShape(),
     })));
@@ -113,14 +113,17 @@ function PinIndicators({ length, resetToken }: { length: number; resetToken?: nu
       return;
     }
 
-    const additions = Array.from({ length: length - activeLength }, () => ({
-      id: nextIndicatorId.current++,
-      phase: 'active' as const,
-      shape: chooseExpressivePinShape(),
-    }));
     setIndicators((current) => {
       const missing = length - current.filter(({ phase }) => phase === 'active').length;
-      return missing > 0 ? [...current, ...additions.slice(0, missing)] : current;
+      if (missing <= 0) return current;
+      return [
+        ...current,
+        ...Array.from({ length: missing }, () => ({
+          id: nextIndicatorId.current++,
+          phase: 'active' as const,
+          shape: chooseExpressivePinShape(),
+        })),
+      ];
     });
   }, [activeLength, length]);
 
