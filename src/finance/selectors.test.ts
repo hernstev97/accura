@@ -188,11 +188,11 @@ describe('cent-based finance selectors', () => {
 
     expect(selectNextDebtReliefMilestone(afterAllMilestones)).toBeUndefined();
     expect(selectNextFreeMoneyCents(afterAllMilestones)).toBeNull();
-    expect(createFinanceViewModel(afterAllMilestones).nextDebtRelief).toBeNull();
+    expect(createFinanceViewModel(afterAllMilestones, afterAllMilestones.asOf).nextDebtRelief).toBeNull();
   });
 
   it('creates localized, UI-ready values only at the presentation boundary', () => {
-    const view = createFinanceViewModel(data);
+    const view = createFinanceViewModel(data, data.asOf);
     expect(view.meta.asOfLabel).toBe('08.08.2026');
     expect(view.meta.monthLabel).toBe('August 2026');
     expect(view.totals.currentCash).toBe(1350.75);
@@ -220,7 +220,7 @@ describe('cent-based finance selectors', () => {
         { date: '2026-09', monthlyReliefCents: 12_000, event: 'debt-payment-ends', eventDetail: 'Finanzierung A' },
       ],
     };
-    const view = createFinanceViewModel(withCopyLeaks);
+    const view = createFinanceViewModel(withCopyLeaks, withCopyLeaks.asOf);
     expect(view.nextDebtRelief?.eventLabel).toBe('Finanzierung A');
     expect(view.nextDebtRelief?.eventLabel).not.toContain('debt-payment-ends');
     expect(view.debts.find(({ kind }) => kind === 'loan')?.supportingText).toBe('Kredit mit monatlicher Rate');

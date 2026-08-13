@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { installFinanceApiMocks, installPickerMock } from '../../scripts/fixtures/anonymous-finance-data.mjs';
+import { anonymousFinanceData, installFinanceApiMocks, installPickerMock } from '../../scripts/fixtures/anonymous-finance-data.mjs';
 import {
   denseOverviewFinanceData,
   emptyCollectionsFinanceData,
@@ -78,6 +78,23 @@ function trackRuntimeErrors(page: Page) {
   });
   page.on('pageerror', (error) => errors.push(`Laufzeit: ${error.message}`));
   return errors;
+}
+
+function financeDataWithExampleSubscription() {
+  const financeData = structuredClone(anonymousFinanceData);
+  financeData.asOf = '2026-08-12';
+  financeData.budgetItems.push({
+    id: 'example-subscription',
+    label: 'Beispiel-Abo',
+    monthlyAmountCents: 2300,
+    necessityId: 'worthwhile',
+    kind: 'expense',
+    displayOrder: 99,
+    active: true,
+    note: null,
+    dueDay: 12,
+  });
+  return financeData;
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -245,6 +262,30 @@ test('overview greeting follows the local device time', async ({ page, context }
   await expect(page.getByRole('heading', { name: 'Guten Morgen' })).toBeVisible();
   await page.clock.fastForward(1_000);
   await expect(page.getByRole('heading', { name: 'Guten Tag' })).toBeVisible();
+});
+
+test('upcoming payments refresh after the local day changes', async ({ page, context }) => {
+  const financeData = financeDataWithExampleSubscription();
+  await page.clock.install({ time: new Date('2026-08-12T21:59:50.000Z') });
+  await preparePage(page, context, 'connected', 'light', false, '/demnaechst', financeData);
+  await expect(page.getByText('Beispiel-Abo', { exact: true })).toBeVisible();
+
+  await page.clock.pauseAt(new Date('2026-08-12T21:59:59.900Z'));
+  await page.clock.runFor(200);
+
+  await expect(page.getByText('Beispiel-Abo', { exact: true })).toHaveCount(0);
+});
+
+test('upcoming payments refresh when the app becomes visible on a later day', async ({ page, context }) => {
+  const financeData = financeDataWithExampleSubscription();
+  await page.clock.install({ time: new Date('2026-08-12T10:00:00.000Z') });
+  await preparePage(page, context, 'connected', 'light', false, '/demnaechst', financeData);
+  await expect(page.getByText('Beispiel-Abo', { exact: true })).toBeVisible();
+
+  await page.clock.setSystemTime(new Date('2026-08-13T10:00:00.000Z'));
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+
+  await expect(page.getByText('Beispiel-Abo', { exact: true })).toHaveCount(0);
 });
 
 test('412 light info dialog', async ({ page, context }) => {

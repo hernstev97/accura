@@ -117,9 +117,8 @@ export function isShortlyBeforeSalary(
  * Returns all active recurring payments due strictly before the next salary date (today <= dueDate < nextSalaryDate),
  * sorted chronologically.
  */
-export function selectUpcomingPayments(data: FinanceDataV1, todayISO?: string): UpcomingPaymentV1[] {
-  const today = todayISO ?? data.asOf;
-  const nextSalaryDate = getNextSalaryDate(today, data.salaryDay);
+export function selectUpcomingPayments(data: FinanceDataV1, projectionDateISO: string): UpcomingPaymentV1[] {
+  const nextSalaryDate = getNextSalaryDate(projectionDateISO, data.salaryDay);
 
   if (!nextSalaryDate) return [];
 
@@ -127,10 +126,10 @@ export function selectUpcomingPayments(data: FinanceDataV1, todayISO?: string): 
 
   const processItem = (item: BudgetItemV1 | DebtV1, source: 'budget' | 'debt') => {
     if (!item.active || item.dueDay === null) return;
-    const dueDate = getNextOccurrenceDate(today, item.dueDay);
+    const dueDate = getNextOccurrenceDate(projectionDateISO, item.dueDay);
     if (!dueDate) return;
 
-    if (dueDate >= today && dueDate < nextSalaryDate) {
+    if (dueDate >= projectionDateISO && dueDate < nextSalaryDate) {
       const amountCents = 'monthlyAmountCents' in item ? item.monthlyAmountCents : item.monthlyPaymentCents;
       const name = 'label' in item ? item.label : item.name;
       candidates.push({
@@ -163,10 +162,9 @@ export function selectSafeToSpendCents(currentlyAvailableCents: number, pendingP
   return currentlyAvailableCents - pendingPaymentsTotalCents;
 }
 
-export function selectUpcomingSummary(data: FinanceDataV1, todayISO?: string): UpcomingSummaryV1 {
-  const today = todayISO ?? data.asOf;
-  const nextSalaryDate = getNextSalaryDate(today, data.salaryDay);
-  const payments = selectUpcomingPayments(data, today);
+export function selectUpcomingSummary(data: FinanceDataV1, projectionDateISO: string): UpcomingSummaryV1 {
+  const nextSalaryDate = getNextSalaryDate(projectionDateISO, data.salaryDay);
+  const payments = selectUpcomingPayments(data, projectionDateISO);
   const totalPendingCents = selectUpcomingPaymentsTotalCents(payments);
   const currentlyAvailableCents = selectCurrentAccountTotalCents(data);
   const safeToSpendCents = selectSafeToSpendCents(currentlyAvailableCents, totalPendingCents);
