@@ -94,57 +94,68 @@ export function PinManagementDialog({
 
   const submit = async () => {
     if (busy || coolingDown) return;
-    setBusy(true);
     setError(null);
-
-    if (stage === 'current') {
-      if (mode === 'disable') {
-        const result = await privacy.disablePin(pin);
-        setBusy(false);
-        if (result.status === 'success') {
-          onComplete('PIN-Sperre deaktiviert. Der App-Vorschau-Schutz bleibt aktiv.');
-          return;
-        }
-        handleFailure(result);
-        return;
-      }
-      const result = await privacy.verifyCurrentPin(pin);
-      setBusy(false);
-      if (result.status === 'success') {
-        setStage('new');
-        clearEntry();
-      } else {
-        handleFailure(result);
-      }
-      return;
-    }
 
     if (stage === 'new') {
       candidatePinRef.current = pin;
       setStage('confirm');
-      setBusy(false);
       clearEntry();
       return;
     }
 
-    if (pin !== candidatePinRef.current) {
+    if (stage === 'confirm' && pin !== candidatePinRef.current) {
       candidatePinRef.current = '';
       setStage('new');
-      setBusy(false);
       setError('Die beiden PINs stimmen nicht überein. Bitte beginne erneut.');
       clearEntry();
       return;
     }
 
-    const result = mode === 'setup' ? await privacy.setupPin(pin) : await privacy.replacePin(pin);
-    candidatePinRef.current = '';
-    setBusy(false);
-    if (result.status === 'success') {
-      onComplete(mode === 'setup' ? 'PIN-Sperre eingerichtet.' : 'PIN wurde geändert.');
+    setBusy(true);
+    if (stage === 'current') {
+      try {
+        if (mode === 'disable') {
+          const result = await privacy.disablePin(pin);
+          if (result.status === 'success') {
+            onComplete('PIN-Sperre deaktiviert. Der App-Vorschau-Schutz bleibt aktiv.');
+            return;
+          }
+          handleFailure(result);
+          return;
+        }
+        const result = await privacy.verifyCurrentPin(pin);
+        if (result.status === 'success') {
+          setStage('new');
+          clearEntry();
+        } else {
+          handleFailure(result);
+        }
+      } catch {
+        setError('Die PIN-Prüfung ist unerwartet fehlgeschlagen. Bitte versuche es erneut.');
+        clearEntry();
+      } finally {
+        setBusy(false);
+      }
       return;
     }
-    setStage('new');
-    handleFailure(result);
+
+    try {
+      const result = mode === 'setup' ? await privacy.setupPin(pin) : await privacy.replacePin(pin);
+      candidatePinRef.current = '';
+      if (result.status === 'success') {
+        onComplete(mode === 'setup' ? 'PIN-Sperre eingerichtet.' : 'PIN wurde geändert.');
+        return;
+      }
+      setStage('new');
+      handleFailure(result);
+    } catch {
+      candidatePinRef.current = '';
+      setStage('new');
+      setError('Die PIN konnte unerwartet nicht gespeichert werden. Bitte versuche es erneut.');
+      clearEntry();
+    } finally {
+      setBusy(false);
+    }
   };
 
   const goBack = () => {

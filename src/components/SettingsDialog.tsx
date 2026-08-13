@@ -40,13 +40,14 @@ export function SettingsEntry() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const colorsRef = useRef<HTMLButtonElement>(null);
   const privacyScreenRef = useRef<HTMLInputElement>(null);
-  const pinProtectionRef = useRef<HTMLInputElement>(null);
+  const pinProtectionRef = useRef<HTMLButtonElement>(null);
   const cancelDisconnectRef = useRef<HTMLButtonElement>(null);
 
   const closeSettings = useCallback(() => {
     setConfirmDisconnect(false);
     setColorsOpen(false);
     setPinDialogMode(null);
+    setProtectionMessage(null);
     setOpen(false);
   }, []);
 
@@ -205,22 +206,26 @@ export function SettingsEntry() {
                   />
                   <span aria-hidden="true" className="settings-switch-row__track"><i /></span>
                 </label>
-                <label className="settings-switch-row">
+                <div className="settings-switch-row settings-switch-row--action">
                   <span className="settings-switch-row__icon"><Icon name="lock" /></span>
                   <span className="settings-switch-row__copy">
                     <strong>Mit PIN entsperren</strong>
                     <small id="pin-lock-support">Verlangt nach jedem Hintergrundwechsel sowie bei App-Start und Reload eine sechsstellige PIN.</small>
                   </span>
-                  <input
+                  <AppButton
+                    aria-haspopup="dialog"
+                    aria-label={pinConfigured ? 'PIN-Sperre deaktivieren' : 'PIN einrichten'}
                     aria-describedby="pin-lock-support"
-                    checked={pinConfigured}
+                    className="settings-switch-row__action"
                     disabled={!pinConfigured && !pinSetupAvailable}
-                    onChange={() => setPinDialogMode(pinConfigured ? 'disable' : 'setup')}
+                    onClick={() => setPinDialogMode(pinConfigured ? 'disable' : 'setup')}
                     ref={pinProtectionRef}
-                    type="checkbox"
-                  />
-                  <span aria-hidden="true" className="settings-switch-row__track"><i /></span>
-                </label>
+                    size="small"
+                    variant="tonal"
+                  >
+                    {pinConfigured ? 'Deaktivieren' : 'Einrichten'}
+                  </AppButton>
+                </div>
               </div>
               {pinConfigured ? (
                 <div className="settings-actions settings-actions--secondary app-protection-actions">
@@ -231,7 +236,7 @@ export function SettingsEntry() {
                 <p className="settings-group__supporting app-protection-support">PIN-Schutz benötigt verfügbaren lokalen Speicher und Web Crypto über HTTPS.</p>
               ) : null}
               {pinConfigured ? <p className="settings-group__supporting app-protection-support">Der App-Vorschau-Schutz bleibt aktiv, solange die PIN-Sperre eingerichtet ist.</p> : null}
-              {protectionMessage ? <p aria-live="polite" className="settings-inline-status" role="status">{protectionMessage}</p> : null}
+              <p aria-atomic="true" aria-live="polite" className="settings-inline-status" role="status">{protectionMessage ?? ''}</p>
             </section>
 
             <section className="settings-group" aria-labelledby="settings-account-title">

@@ -81,10 +81,6 @@ export function PrivacyProvider({
   const appProtectionRef = useRef(appProtection);
   const appCoveredRef = useRef(appCovered);
   const corruptRef = useRef(appProtectionCorrupt);
-  manualPrivacyRef.current = manualPrivacyMode;
-  appProtectionRef.current = appProtection;
-  appCoveredRef.current = appCovered;
-  corruptRef.current = appProtectionCorrupt;
 
   const applyCoveredState = useCallback((covered: boolean) => {
     appCoveredRef.current = covered;
@@ -118,13 +114,11 @@ export function PrivacyProvider({
   }, []);
 
   const setPrivacyMode = useCallback((updater: boolean | ((prev: boolean) => boolean)) => {
-    setPrivacyModeState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      manualPrivacyRef.current = next;
-      applyPrivacyToDocument(next || appCoveredRef.current);
-      writeStoredPrivacy(next);
-      return next;
-    });
+    const next = typeof updater === 'function' ? updater(manualPrivacyRef.current) : updater;
+    manualPrivacyRef.current = next;
+    applyPrivacyToDocument(next || appCoveredRef.current);
+    writeStoredPrivacy(next);
+    setPrivacyModeState(next);
   }, []);
 
   const togglePrivacyMode = useCallback(() => {

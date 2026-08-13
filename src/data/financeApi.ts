@@ -69,7 +69,7 @@ export interface FinanceApi {
   getPickerConfig(signal?: AbortSignal): Promise<PickerConfig>;
   saveSpreadsheet(fileId: string, csrfToken: string, signal?: AbortSignal): Promise<FinanceResponse>;
   logout(csrfToken: string): Promise<void>;
-  disconnect(csrfToken: string): Promise<void>;
+  disconnect(csrfToken: string, signal?: AbortSignal): Promise<void>;
 }
 
 export const productionFinanceApi: FinanceApi = {
@@ -83,5 +83,5 @@ export const productionFinanceApi: FinanceApi = {
     signal,
   }),
   logout: async (csrfToken) => { await request('/api/auth/logout', z.object({ ok: z.literal(true) }), { method: 'POST', headers: { 'x-csrf-token': csrfToken } }); },
-  disconnect: async (csrfToken) => { await request('/api/connection/disconnect', z.object({ ok: z.literal(true) }), { method: 'POST', headers: { 'x-csrf-token': csrfToken } }); },
+  disconnect: async (csrfToken, signal) => { await request('/api/connection/disconnect', z.object({ ok: z.literal(true) }), { method: 'POST', headers: { 'x-csrf-token': csrfToken }, signal }); },
 };

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   APP_PROTECTION_STORAGE_KEY,
+  MAX_PIN_COOLDOWN_MS,
   PIN_PBKDF2_ITERATIONS,
   attemptsRemainingBeforeCooldown,
   createPinCredential,
@@ -50,6 +52,11 @@ describe('ACC-14 app protection storage and PIN security', () => {
     expect(credential).not.toBeNull();
     expect(credential?.iterations).toBe(PIN_PBKDF2_ITERATIONS);
     expect(JSON.stringify(credential)).not.toContain('123456');
+    expect(parseAppProtectionPreference({
+      ...defaultAppProtectionPreference(),
+      privacyScreenEnabled: true,
+      pin: credential,
+    })).not.toBeNull();
     await expect(verifyPinCredential('123456', credential!)).resolves.toBe(true);
     await expect(verifyPinCredential('654321', credential!)).resolves.toBe(false);
   });
@@ -86,5 +93,20 @@ describe('ACC-14 app protection storage and PIN security', () => {
     expect(stillBlocked.status).toBe('cooldown');
     const sixthPreference = preferenceAfterFailedPin({ ...fifth.preference, blockedUntil: null }, now + 30_001);
     expect(sixthPreference.blockedUntil).toBe(now + 90_001);
+
+    const cappedPreference = preferenceAfterFailedPin({
+      ...sixthPreference,
+      blockedUntil: null,
+      failedAttempts: 100,
+    }, now);
+    expect(cappedPreference.blockedUntil).toBe(now + MAX_PIN_COOLDOWN_MS);
+  });
+
+  it('keeps the pre-render PIN validation iteration count synchronized', () => {
+    const indexHtml = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    const inlineIterations = indexHtml.match(/const pinPbkdf2Iterations = (\d+);/)?.[1];
+
+    expect(inlineIterations).toBeDefined();
+    expect(Number(inlineIterations)).toBe(PIN_PBKDF2_ITERATIONS);
   });
 });

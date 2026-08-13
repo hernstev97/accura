@@ -39,6 +39,8 @@
           }
           const protectionRaw = localStorage.getItem('finance-app-protection-v1');
           if (protectionRaw !== null) {
+            // Keep synchronized with PIN_PBKDF2_ITERATIONS in appProtectionStore.ts.
+            const pinPbkdf2Iterations = 600000;
             let protectionValid = false;
             let pinConfigured = false;
             try {
@@ -52,7 +54,7 @@
                 && (pin === null || (
                   protection.privacyScreenEnabled === true
                   && pin?.algorithm === 'PBKDF2-HMAC-SHA-256'
-                  && pin?.iterations === 600000
+                  && pin?.iterations === pinPbkdf2Iterations
                   && typeof pin?.salt === 'string'
                   && typeof pin?.verifier === 'string'
                 ));

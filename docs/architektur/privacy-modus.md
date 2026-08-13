@@ -26,7 +26,7 @@ Der bestehende Privacy-Modus liegt als String unter `finance-privacy-v1`. Der ve
 
 ## Vergessene PIN
 
-Der Reset bleibt ohne Netzwerk bewusst gesperrt. Online wird eine vorhandene Google-Verbindung serverseitig getrennt, die Sitzung zurückgesetzt und der lokale Finance-Cache gelöscht; erst danach entfernt Accura PIN und App-Schutz. Die Google-Sheets-Datei selbst bleibt unverändert. Schlägt ein Schritt fehl, bleibt die Sperre aktiv. Als äußerste lokale Alternative kann der Nutzer sämtliche Accura-Sitedaten über Browser- oder Android-Einstellungen löschen.
+Der Reset bleibt ohne Netzwerk bewusst gesperrt. Online wird eine vorhandene Google-Verbindung über eine auf 15 Sekunden begrenzte, abbrechbare Anfrage serverseitig getrennt, die Sitzung zurückgesetzt und der lokale Finance-Cache gelöscht; erst danach entfernt Accura PIN und App-Schutz. Vor der Cache-Löschung rotiert Accura eine profilweite Cache-Generation. Noch laufende Antworten aus anderen Tabs dürfen deshalb keinen vor dem Reset gestarteten Finance-Snapshot erneut speichern. Die Google-Sheets-Datei selbst bleibt unverändert. Schlägt ein Schritt fehl, bleibt die Sperre aktiv. Als äußerste lokale Alternative kann der Nutzer sämtliche Accura-Sitedaten über Browser- oder Android-Einstellungen löschen.
 
 ## Sicherheitsgrenze
 
@@ -34,7 +34,7 @@ Die Funktionen reduzieren Shoulder Surfing und verdecken die App beim Hintergrun
 
 Der lokale PIN ist eine Zugriffshürde innerhalb desselben Browserprofils, keine Verschlüsselung. Er schützt weder JavaScript-Arbeitsspeicher, DOM-/React-Daten, IndexedDB, Netzwerkantworten noch ein bereits kompromittiertes Gerät. Nutzer mit DevTools-, Dateisystem- oder Profilzugriff können lokale Daten lesen oder löschen. App-Schutz und Privacy ersetzen daher weder Gerätesperre, getrennte Browserprofile noch Betriebssystemschutz.
 
-## Fehlerfälle und Accessibility
+## Fehlerfälle und Barrierefreiheit
 
 Beschädigte App-Schutz-Daten fallen geschlossen auf den Recovery-Screen zurück. Kann eine Schutzänderung oder ein Fehlversuch nicht dauerhaft gespeichert werden, wird nicht entsperrt. Blockiertes `localStorage` verhindert die PIN-Einrichtung. Screenreader erhalten PIN-Länge und Fehlerstatus, niemals die eingegebenen Ziffern; die numerischen Tasten bleiben echte Buttons und die Eingabe ist zusätzlich per Tastatur bedienbar.
 

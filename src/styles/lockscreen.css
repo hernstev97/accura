@@ -264,6 +264,15 @@ html[data-app-covered='true'] body > dialog {
   cursor: default;
 }
 
+.settings-switch-row--action {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  cursor: default;
+}
+
+.settings-switch-row__action {
+  justify-self: end;
+}
+
 .settings-switch-row__icon {
   display: grid;
   width: 44px;
@@ -359,6 +368,7 @@ html[data-app-covered='true'] body > dialog {
 }
 
 .settings-inline-status {
+  min-height: 18px;
   margin: var(--space-2) var(--space-2) 0;
   color: var(--color-primary);
   font-size: 12px;

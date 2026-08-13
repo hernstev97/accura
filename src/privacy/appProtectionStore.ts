@@ -1,11 +1,13 @@
 export const APP_PROTECTION_STORAGE_KEY = 'finance-app-protection-v1';
 export const PIN_LENGTH = 6;
+// Keep this value synchronized with `pinPbkdf2Iterations` in index.html. The
+// pre-render guard cannot import the application module before the first paint.
 export const PIN_PBKDF2_ITERATIONS = 600_000;
+export const MAX_PIN_COOLDOWN_MS = 15 * 60_000;
 
 const PIN_PATTERN = /^\d{6}$/;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const INITIAL_COOLDOWN_MS = 30_000;
-const MAX_COOLDOWN_MS = 15 * 60_000;
 const ATTEMPTS_BEFORE_COOLDOWN = 5;
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -221,7 +223,7 @@ export function preferenceAfterFailedPin(preference: AppProtectionPreferenceV1, 
     return { ...preference, failedAttempts, blockedUntil: null };
   }
   const exponent = Math.min(failedAttempts - ATTEMPTS_BEFORE_COOLDOWN, 10);
-  const cooldown = Math.min(INITIAL_COOLDOWN_MS * (2 ** exponent), MAX_COOLDOWN_MS);
+  const cooldown = Math.min(INITIAL_COOLDOWN_MS * (2 ** exponent), MAX_PIN_COOLDOWN_MS);
   return { ...preference, failedAttempts, blockedUntil: now + cooldown };
 }
 

@@ -6,6 +6,10 @@ const DATABASE_NAME = 'finance-overview';
 const DATABASE_VERSION = 1;
 const STORE_NAME = 'last-good';
 const CACHE_KEY = 'finance-data-v1';
+export const FINANCE_CACHE_GENERATION_STORAGE_KEY = 'finance-cache-generation-v1';
+const INITIAL_CACHE_GENERATION = '0';
+
+type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 const cacheSchema = z.object({
   key: z.literal(CACHE_KEY),
@@ -38,6 +42,49 @@ const transactionDone = (transaction: IDBTransaction) => new Promise<void>((reso
   transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB-Transaktion wurde abgebrochen.'));
 });
 
+function browserStorage(): StorageLike | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function readFinanceCacheGeneration(storage: StorageLike | null = browserStorage()): string {
+  if (!storage) return INITIAL_CACHE_GENERATION;
+  try {
+    return storage.getItem(FINANCE_CACHE_GENERATION_STORAGE_KEY) ?? INITIAL_CACHE_GENERATION;
+  } catch {
+    return INITIAL_CACHE_GENERATION;
+  }
+}
+
+export function rotateFinanceCacheGeneration(storage: StorageLike | null = browserStorage()): string | null {
+  if (!storage) return null;
+  try {
+    const randomPart = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+    const next = `${Date.now()}-${randomPart}`;
+    storage.setItem(FINANCE_CACHE_GENERATION_STORAGE_KEY, next);
+    return next;
+  } catch {
+    return null;
+  }
+}
+
+export function restoreFinanceCacheGeneration(
+  generation: string,
+  storage: StorageLike | null = browserStorage(),
+): boolean {
+  if (!storage) return false;
+  try {
+    if (generation === INITIAL_CACHE_GENERATION) storage.removeItem(FINANCE_CACHE_GENERATION_STORAGE_KEY);
+    else storage.setItem(FINANCE_CACHE_GENERATION_STORAGE_KEY, generation);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function loadCachedFinanceData(): Promise<CachedFinanceSnapshot | null> {
   if (!globalThis.indexedDB) return null;
   const database = await openDatabase();
@@ -55,13 +102,19 @@ export async function loadCachedFinanceData(): Promise<CachedFinanceSnapshot | n
   }
 }
 
-export async function saveCachedFinanceData(snapshot: Omit<CachedFinanceSnapshot, 'key'>) {
-  if (!globalThis.indexedDB) return;
+export async function saveCachedFinanceData(
+  snapshot: Omit<CachedFinanceSnapshot, 'key'>,
+  expectedGeneration = readFinanceCacheGeneration(),
+  storage: StorageLike | null = browserStorage(),
+): Promise<boolean> {
+  if (!globalThis.indexedDB || readFinanceCacheGeneration(storage) !== expectedGeneration) return false;
   const database = await openDatabase();
   try {
+    if (readFinanceCacheGeneration(storage) !== expectedGeneration) return false;
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     transaction.objectStore(STORE_NAME).put({ key: CACHE_KEY, ...snapshot });
     await transactionDone(transaction);
+    return true;
   } finally {
     database.close();
   }

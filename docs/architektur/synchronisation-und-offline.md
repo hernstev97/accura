@@ -33,6 +33,7 @@ flowchart TB
     WP[(IndexedDB finance-appearance-v1\n0 oder 1 WebP-Vorschau)]
     PR[localStorage finance-privacy-v1\nbis Aenderung/Browserloeschung]
     LK[localStorage finance-app-protection-v1\nbis Reset/Browserloeschung]
+    CG[localStorage finance-cache-generation-v1\nzufaellige Cache-Invalidierung ohne Fachdaten]
     SV[sessionStorage finance-screen-visits-v1\nbis Tab-Ende]
     SW[(Service-Worker-Cache\nversionierte App-Shell)]
   end
@@ -46,7 +47,7 @@ Workbox precacht statische HTML-, JavaScript-, CSS-, SVG-, PNG- und WOFF2-Artefa
 
 ## Fehler und Sicherheitsannahmen
 
-Wenn IndexedDB nicht verfügbar ist, funktioniert Online-Nutzung weiter, aber kein fachlicher Offline-Start. Ein Last-known-good-Snapshot kann vertrauliche Finanzdaten enthalten und ist nicht verschlüsselt. Browserbereinigung oder Speicherdruck können ihn entfernen. Logout lässt ihn bewusst für späteren Offline-/Wiederanmeldestart bestehen; Disconnect löscht ihn nur auf dem aktuellen Gerät. Ein vergessener PIN wird nur online zurückgesetzt und löscht zuerst Verbindung, Sitzung und diesen Finance-Cache; ohne bestätigte Bereinigung bleibt die Sperre aktiv.
+Wenn IndexedDB nicht verfügbar ist, funktioniert Online-Nutzung weiter, aber kein fachlicher Offline-Start. Ein Last-known-good-Snapshot kann vertrauliche Finanzdaten enthalten und ist nicht verschlüsselt. Browserbereinigung oder Speicherdruck können ihn entfernen. Logout lässt ihn bewusst für späteren Offline-/Wiederanmeldestart bestehen; Disconnect löscht ihn nur auf dem aktuellen Gerät. Ein vergessener PIN wird nur online zurückgesetzt und löscht zuerst Verbindung, Sitzung und diesen Finance-Cache; ohne bestätigte Bereinigung bleibt die Sperre aktiv. Die Recovery rotiert davor die profilweite Cache-Generation. Jeder Sync darf nur mit der bei seinem Start gelesenen Generation persistieren, sodass verspätete Antworten anderer Tabs den gelöschten Snapshot nicht wiederherstellen.
 
 ## Begründung und Nachweis
 

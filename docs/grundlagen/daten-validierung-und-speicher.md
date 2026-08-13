@@ -18,7 +18,7 @@ Jede Systemgrenze liefert zunächst unbekannte Daten: Google Sheets, HTTP-Antwor
 | --- | --- | --- |
 | signiertes `HttpOnly`-Cookie | Sitzung | Browser sendet es same-origin; JavaScript kann es nicht lesen; Logout/Disconnect löschen es |
 | kurzlebiges OAuth-Cookie | State, Nonce, PKCE-Verifier | etwa zehn Minuten, nur während Anmeldung |
-| `localStorage` | kleine Geräteeinstellungen | Appearance, Privacy und versionierter App-Schutz/PIN-Verifier; bleibt bei Logout/Disconnect |
+| `localStorage` | kleine Geräteeinstellungen | Appearance, Privacy, versionierter App-Schutz/PIN-Verifier und eine fachinhaltsfreie Cache-Generation für tabübergreifende Recovery-Invalidierung; bleibt bei Logout/Disconnect |
 | `sessionStorage` | Tab-Sitzung | besuchte Screens für einmalige Entrance-Motion |
 | IndexedDB | strukturierte größere lokale Daten | ein Finance-Snapshot und optional eine reduzierte Wallpaper-Vorschau in getrennten Datenbanken |
 | Service-Worker-Cache | statische App-Shell | keine `/api/*`-Antworten |

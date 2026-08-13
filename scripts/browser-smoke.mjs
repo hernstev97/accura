@@ -1287,7 +1287,7 @@ try {
   await privacyCover.getByRole('button', { name: 'Inhalte anzeigen' }).click();
 
   await privacyPage.getByLabel('Einstellungen öffnen').click();
-  await privacyPage.getByRole('checkbox', { name: /Mit PIN entsperren/ }).click();
+  await privacyPage.getByRole('button', { name: 'PIN einrichten', exact: true }).click();
   for (const digit of '123456') await privacyPage.getByRole('dialog', { name: 'PIN einrichten' }).getByRole('button', { name: digit, exact: true }).click();
   await privacyPage.getByRole('dialog', { name: 'PIN einrichten' }).getByRole('button', { name: 'PIN bestätigen' }).click();
   for (const digit of '123456') await privacyPage.getByRole('dialog', { name: 'Neue PIN bestätigen' }).getByRole('button', { name: digit, exact: true }).click();
@@ -1295,6 +1295,7 @@ try {
   await privacyPage.getByRole('dialog', { name: 'Informationen' }).waitFor();
   await privacyPage.getByText('PIN-Sperre eingerichtet.').waitFor();
   const storedProtection = await privacyPage.evaluate(() => localStorage.getItem('finance-app-protection-v1'));
+  assert.ok(storedProtection, 'App-Schutz wurde nicht gespeichert');
   assert.equal(storedProtection.includes('PBKDF2-HMAC-SHA-256'), true, 'PIN-Verifier wurde nicht gespeichert');
   assert.equal(storedProtection.includes('123456'), false, 'PIN wurde im Klartext gespeichert');
   await privacyPage.getByLabel('Informationen schließen').click();

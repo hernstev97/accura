@@ -85,30 +85,43 @@ function ActiveAppLockScreen() {
     if (busy || coolingDown) return;
     setBusy(true);
     setError(null);
-    const result = await unlockWithPin(pin);
-    setBusy(false);
-    if (result.status === 'success') return;
-    setPin('');
-    setResetToken((current) => current + 1);
-    setError(verificationMessage(result));
-    requestAnimationFrame(() => pinPadRef.current?.focus({ preventScroll: true }));
+    try {
+      const result = await unlockWithPin(pin);
+      if (result.status === 'success') return;
+      setPin('');
+      setResetToken((current) => current + 1);
+      setError(verificationMessage(result));
+      requestAnimationFrame(() => pinPadRef.current?.focus({ preventScroll: true }));
+    } catch {
+      setPin('');
+      setResetToken((current) => current + 1);
+      setError('Die PIN-Prüfung ist unerwartet fehlgeschlagen. Accura bleibt gesperrt. Bitte versuche es erneut.');
+      requestAnimationFrame(() => pinPadRef.current?.focus({ preventScroll: true }));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const recover = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const result = await finance.recoverProtectedAccess();
-    if (result === 'success') {
-      const resetResult = resetAppProtectionAfterRecovery();
-      if (resetResult.status === 'success') return;
-      setError(verificationMessage(resetResult));
-    } else if (result === 'offline') {
-      setError('Für den sicheren Reset wird eine Internetverbindung benötigt. Accura bleibt gesperrt.');
-    } else {
-      setError('Verbindung und lokaler Finanzstand konnten nicht sicher entfernt werden. Accura bleibt gesperrt.');
+    try {
+      const result = await finance.recoverProtectedAccess();
+      if (result === 'success') {
+        const resetResult = resetAppProtectionAfterRecovery();
+        if (resetResult.status === 'success') return;
+        setError(verificationMessage(resetResult));
+      } else if (result === 'offline') {
+        setError('Für den sicheren Reset wird eine Internetverbindung benötigt. Accura bleibt gesperrt.');
+      } else {
+        setError('Verbindung und lokaler Finanzstand konnten nicht sicher entfernt werden. Accura bleibt gesperrt.');
+      }
+    } catch {
+      setError('Der sichere Reset ist unerwartet fehlgeschlagen. Accura bleibt gesperrt. Bitte versuche es erneut.');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const title = recoveryOpen ? 'App-Schutz zurücksetzen?' : hasPin ? 'PIN eingeben' : 'Accura ist geschützt';
