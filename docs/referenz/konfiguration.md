@@ -27,20 +27,21 @@ Alle Variablen sind serverseitig erforderlich. `VERCEL_ENV=production` oder `NOD
 
 | Variable | Vertrag |
 | --- | --- |
-| `VITE_USE_MOCK_API` | optional; nur exakt `true`, Vite Development und `import.meta.env.DEV` aktivieren anonyme Mock-API |
+| `VITE_USE_MOCK_API` | optionaler lokaler Schalter; nur exakt `true` zusammen mit Vite Development aktiviert die anonyme Mock-API |
+| `VITE_VERCEL_ENV` | öffentliche Vercel-Systemvariable; exakt `preview` aktiviert automatisch die anonyme Mock-API, `production` niemals |
 | `ACCURA_SOURCE_REPOSITORY_URL` | optionaler Build-Override; vollständige GitHub-Repository-URL, nur gemeinsam mit `ACCURA_SOURCE_COMMIT_SHA` |
 | `ACCURA_SOURCE_COMMIT_SHA` | optionaler Build-Override; vollständiger 40-stelliger Git-Commit-SHA, nur gemeinsam mit `ACCURA_SOURCE_REPOSITORY_URL` |
 | `VITE_VERCEL_GIT_REPO_OWNER` | öffentlicher, von Vercel bereitgestellter Repository-Owner für den versionsgebundenen Source-Link |
 | `VITE_VERCEL_GIT_REPO_SLUG` | öffentlicher, von Vercel bereitgestellter Repository-Name für den versionsgebundenen Source-Link |
 | `VITE_VERCEL_GIT_COMMIT_SHA` | öffentlicher, vollständiger Vercel-Deployment-Commit für den versionsgebundenen Source-Link |
 
-Jede `VITE_`-Variable wird grundsätzlich als browseröffentlich behandelt. Niemals Secret, Token, Datenbank-URL oder persönliche Finanzdaten mit diesem Präfix setzen.
+Jede `VITE_`-Variable wird grundsätzlich als browseröffentlich behandelt. Niemals Secret, Token, Datenbank-URL oder persönliche Finanzdaten mit diesem Präfix setzen. Vercels automatische Systemvariablen müssen für das Projekt aktiviert bleiben, damit Preview-Builds eindeutig erkannt werden.
 
 Explizite `ACCURA_SOURCE_*`-Overrides haben Vorrang vor den Vercel-Git-Werten. Ohne beide Quellen verwendet ein lokaler Build `git rev-parse HEAD`. Ein Produktionsbuild ohne gültigen vollständigen SHA bricht ab; ausschließlich der Dev-Server darf auf `master` zurückfallen. Repository-URL, vollständiger SHA, Kurz-SHA und daraus abgeleitete Rechtslinks werden als öffentliche Konstanten in das Browser-Bundle eingebettet und enthalten keine Geheimnisse.
 
 ## Konsistenzregeln
 
-Wenn `APP_ORIGIN=https://accura.example` lautet, muss der Callback `https://accura.example/api/auth/google/callback` lauten. Preview-URLs benötigen entweder bewusst eigene Google-Redirect-Einträge und passende Variablen oder dürfen den realen OAuth-Fluss nicht verwenden. Development und Production sollten eigene Datenbank/Secrets nutzen.
+Wenn `APP_ORIGIN=https://accura.example` lautet, muss der Callback `https://accura.example/api/auth/google/callback` lauten. Die Vercel-Preview verwendet ausschließlich anonyme Mock-Daten und darf keine produktiven Google- oder PostgreSQL-Secrets benötigen. Ein zukünftiges reales Integrationsenvironment müsste bewusst eigene Redirect-Einträge, Datenbank und Secrets erhalten.
 
 ## Rotation
 

@@ -15,6 +15,12 @@ npm run dev:mock
 
 Vite nennt die lokale URL. Dieser Modus lädt ausschließlich anonyme Daten aus `src/mocks`, simuliert Sitzung/API und Picker und benötigt weder Google noch PostgreSQL. Die Umschaltung ist nur aktiv, wenn Vite im Entwicklungsmodus läuft und `VITE_USE_MOCK_API=true` gesetzt ist. Ein Produktionsbuild verwendet den Mock nicht.
 
+## Develop- und Vercel-Preview
+
+Der dauerhafte Integrationsbranch `develop` wird unter `https://accura-preview.kiumu.app/` als Vercel Preview bereitgestellt. Alle Vercel-Preview-Deployments verwenden automatisch dieselbe anonyme, bereits angemeldete Mock-Sitzung wie `npm run dev:mock`. Damit benötigen weder `develop` noch Pull-Request-Previews Google- oder PostgreSQL-Secrets.
+
+Die Trennung ist fail-closed: Nur Vercels exakte Umgebung `preview` aktiviert den Build-Mock automatisch. `production` verwendet unabhängig von `VITE_USE_MOCK_API` immer die reale API. Production und Preview besitzen außerdem verschiedene Origins und dadurch getrennte Cookies, IndexedDB- und Service-Worker-Speicher.
+
 ## Realer lokaler Serverfluss
 
 Plain `npm run dev` startet nur Vite und stellt `api/` nicht bereit. Für echte Vercel Functions:
@@ -48,4 +54,5 @@ npx vercel dev --listen 3000
 - npm-Skripte: [package.json](../../package.json)
 - Vite/PWA: [vite.config.ts](../../vite.config.ts)
 - Mock-API: [src/mocks/mockFinanceApi.ts](../../src/mocks/mockFinanceApi.ts)
+- Modusauflösung: [build/financeRuntimeMode.ts](../../build/financeRuntimeMode.ts)
 - Mock-Workbook: [src/mocks/anonymousWorkbook.ts](../../src/mocks/anonymousWorkbook.ts)

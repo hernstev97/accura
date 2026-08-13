@@ -10,7 +10,9 @@
 
 Die Tabelle enthält Quellen und zeitbezogene Snapshots, keine UI-Gesamtsummen. Der Parser validiert Beziehungen und normalisiert Geld in Integer-Cents. Reine Selektoren wählen den fachlich gültigen Stand und berechnen Summen. Das View-Model ergänzt lokalisierte Texte und Screen-Strukturen. React rendert diese Ausgabe.
 
-## Sheets- und Finance-Datenpipeline
+Im beschlossenen Zielbild ist `FinanceDataV1` die quellenunabhängige Domänengrenze: Der einmalige Sheet-Import erzeugt denselben Vertrag wie das PostgreSQL-Repository. Die folgenden Sheets-Schritte beschreiben den aktuell implementierten Übergangsstand. Quelle, Owner-Zuordnung und SQL-Grenze legt [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) fest.
+
+## Aktuelle Sheets- und Finance-Datenpipeline
 
 ```mermaid
 flowchart LR
@@ -73,7 +75,7 @@ Das View-Model erzeugt die vier Screenmodelle gemeinsam; dadurch teilen UI und T
 
 Die Demnächst-Logik nimmt monatliche Wiederholung an und berücksichtigt weder einmalige Termine noch Feiertags-/Bankarbeitstagverschiebungen. Bis ein Nutzerprofil existiert, liefert der Browser nach Möglichkeit eine IANA-Zeitzone wie `Europe/Berlin`; fehlt sie, wird der lokale Gerätekalender verwendet. Das View-Model wird beim Sichtbarwerden der App und nach dem nächsten lokalen Tageswechsel mit einem neuen Projektionstag berechnet. Tests übergeben feste ISO-Daten und bleiben dadurch deterministisch. Negative `safeToSpendCents` sind möglich und werden nicht künstlich auf null begrenzt. Dasselbe gilt für reale negative Konto- und Pocketstände sowie den daraus abgeleiteten aktuellen Gesamtbestand.
 
-Bei einer späteren Migration zu PostgreSQL gelten dieselben fachlichen Grenzen: reine Kalendertage wie Snapshot-, Fälligkeits- und Meilensteindaten werden als `date` gespeichert; tatsächliche Ereigniszeitpunkte wie Synchronisationen oder Änderungen als `timestamptz`. Ob Client, Anwendungsserver oder Datenbank den Projektionstag ableitet, wird mit der Datenbankarchitektur entschieden. Für die Finanz-Domäne bleibt er ein expliziter Eingabewert und darf weder stillschweigend aus dem Snapshot-Stichtag noch aus der Server- oder Datenbank-Session-Zeitzone entstehen.
+Beim beschlossenen Wechsel zu PostgreSQL gelten dieselben fachlichen Grenzen: reine Kalendertage wie Snapshot- und Fälligkeitsdaten werden als `date` gespeichert; tatsächliche Ereigniszeitpunkte wie Synchronisationen oder Änderungen als `timestamptz`. Die Monats- oder Tagespräzision eines Meilensteins muss separat erhalten bleiben. Für die Finanz-Domäne bleibt der Projektionstag ein expliziter Eingabewert und darf weder stillschweigend aus dem Snapshot-Stichtag noch aus der Server- oder Datenbank-Session-Zeitzone entstehen.
 
 Mit dem Onboarding wird die dort bestätigte IANA-Zeitzone als Heimatzeitzone im Nutzerprofil gespeichert. Die Gerätezeitzone darf den initialen Wert vorschlagen, ändert die Heimatzeitzone bei Reisen aber nicht automatisch. Nutzer können sie bewusst korrigieren. IANA-Zonen werden validiert; feste UTC-Offsets reichen wegen Sommerzeit und Regeländerungen nicht aus.
 

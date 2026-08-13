@@ -6,7 +6,13 @@
 > **Kanonisch für:** Systemkontext, Vertrauensgrenzen und Architektur-Gesamtbild.
 > **Verwandte Dokumente:** [Frontend](frontend.md), [Backend und Sicherheit](backend-und-sicherheit.md), [Quellcode-Karte](../referenz/quellcode-karte.md)
 
-## Mentales Modell
+## Verbindliche Richtung
+
+Der beschlossene Quellenwechsel trennt Finanzquelle und Identität: PostgreSQL wird die einzige produktive Finanzquelle, Google Sheets bleibt ein einmaliges Importformat und Google OAuth dient danach nur noch der Anmeldung. Der vollständige Browservertrag bleibt `FinanceDataV1`; `owner_id` existiert ausschließlich in der Persistenz. Finanzberechnungen und Snapshot-Auswahl bleiben außerhalb von SQL. Verbindlich sind [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) und [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md).
+
+Dieses Zielbild ist noch nicht vollständig implementiert. Bis Schema, Import und Cutover abgeschlossen sind, gilt der folgende Abschnitt als Beschreibung des laufenden Systems; neue Arbeit darf daraus keine fortbestehende Bindung an Sheets ableiten.
+
+## Aktuell implementierter Übergangsstand
 
 `accura` besteht aus einer React-PWA im Browser, same-origin Vercel Functions, PostgreSQL und Google-Diensten. Die Tabelle ist die Finanzquelle; PostgreSQL speichert nur die Verbindung. Der Server bildet die Sicherheits- und Validierungsgrenze. Der Browser erhält ausschließlich normalisierte Finanzdaten und zeigt daraus abgeleitete View-Models.
 
@@ -50,7 +56,7 @@ Google Sheets → Vercel Function → Tabellenparser → `FinanceDataV1` → Pro
 
 ## Architekturentscheidungen
 
-Die Gründe sind in [ADRs](../entscheidungen/README.md) festgehalten. Besonders zentral sind Google Sheets als Quelle, versionierte Integer-Cent-Domäne, serverseitiger Google-Zugriff, Single-User-Sicherheit und Last-known-good-Offline.
+Die Gründe sind in [ADRs](../entscheidungen/README.md) festgehalten. Für die nächste Arbeit sind PostgreSQL als Finanzquelle, Google OAuth nur als Identität, die versionierte Integer-Cent-Domäne, Single-User-Sicherheit und Last-known-good-Offline zentral. ADR 0001 und ADR 0003 erklären nur noch den implementierten historischen Ausgangspunkt.
 
 ## Grenzen und Sicherheitsannahmen
 

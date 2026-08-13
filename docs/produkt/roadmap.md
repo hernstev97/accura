@@ -18,28 +18,26 @@ Die Roadmap ist eine Absichtserklärung, kein Funktionsversprechen. „Now“ be
 
 ## Now
 
-- SSOT-Dokumentation und lokalen manuellen Dokumentationscheck fertigstellen.
-- Reale Produktionsabläufe für OAuth, Picker, Sheets, PostgreSQL, Offline-Start, Trennen und Wiederverbinden durch den Eigentümer abnehmen.
-- Golden- und Axe-Abdeckung für Demnächst und Privacy-Modus schließen.
-- Bestehende Qualitätsprüfungen dauerhaft grün halten.
+- Architektur für den Quellenwechsel verbindlich festlegen und die sheetgebundenen ADRs ersetzen.
+- Das heutige `FinanceDataV1` mit internem `owner_id` in PostgreSQL abbilden und ownergebunden wieder als denselben Vertrag lesen.
+- Sheet-Parser und PostgreSQL-Lesepfad mit derselben anonymen Fixture auf identische Cents, Fälligkeiten und Snapshot-Auswahl prüfen.
+- Den bestehenden privaten Datenstand einmalig importieren und danach eindeutig auf PostgreSQL als einzige produktive Quelle umschalten.
+- Einen eng begrenzten In-App-Editor für Stände, Beträge, Fälligkeiten und Aktivstatus bauen.
 
-Appearance-Grundimplementierung, Accessibility-Pass, Branding, CI, Demnächst und Privacy-Modus sind erreicht und deshalb keine allgemeinen offenen Arbeitspakete.
+Kein Teil dieses Schnitts führt Schema v2, öffentliche Registrierung, Mandanten-UI, dauerhaften Sheet-Sync oder Zurückschreiben nach Sheets ein.
 
 ## Next
 
-- Datensparsames Monitoring und strukturierte Betriebsdiagnose.
-- Rate-Limits und Missbrauchsschutz für den privaten Betrieb bewerten.
-- Workbook-Onboarding durch ein anonymes Template und Vorabvalidierung verbessern.
-- Cache-Zustand und lokale Löschaktionen transparenter machen.
-- Visuelle und barrierefreie Abdeckung seltener Paletten- und Fehlerzustände ergänzen.
+- Erst nachdem die eigene PostgreSQL-Datenhaltung im Alltag trägt: Invite-only-Authentifizierung und strikt getrennte Nutzerkonten umsetzen.
+- Danach ein angstfreies geführtes Erst-Onboarding ohne Google-Sheets-Pflicht für die Private Alpha bauen.
+- Vor Aufnahme weiterer Personen Isolation, Löschung, Recovery, Rate-Limits und datensparsame Betriebsdiagnose vollständig prüfen.
 
 ## Later
 
-- Historische Trends und Prognosen.
-- Finance Data Schema v2 nur bei konkretem Bedarf und expliziter Migration.
-- Optionale Hinweise auf geänderte oder veraltete Daten ohne Polling.
-- Weitere lokale Datenschutzkontrollen für Offline-Daten.
+- `FinanceDataV1` erst nach dem Quellenwechsel und nur bei konkretem Produktbedarf versioniert erweitern.
+- Mehrere Einkommensquellen, vollständige regelmäßige Zahlungen, Sparziele, Zins-/Vertragsdaten und monatliche Ist-Ausgaben jeweils als eigene fachliche Schritte bewerten.
+- Historische Trends und Prognosen erst auf einer erklärbaren, migrierten Datengrundlage aufbauen.
 
 ## Nicht Teil der Roadmap
 
-Multi-User, Mandantenverwaltung, öffentlicher SaaS-Betrieb, Banktransaktionen und stilles Bearbeiten der Finanzquelle sind keine geplanten Erweiterungen. Ebenso sind Depot-/Investmentanalyse, Gesamtvermögensverwaltung, Finanzproduktvermittlung, Steuer-/Buchhaltungsfunktionen und Wachstum allein zur Konkurrenz mit universellen Finanzplattformen keine strategischen Ziele.
+Öffentliche Registrierung, öffentlicher SaaS-Betrieb, geteilte Haushalte ohne belegten Bedarf, Banktransaktionen und stilles Bearbeiten externer Quellen sind keine geplanten Erweiterungen. Ebenso sind Depot-/Investmentanalyse, Gesamtvermögensverwaltung, Finanzproduktvermittlung, Steuer-/Buchhaltungsfunktionen und Wachstum allein zur Konkurrenz mit universellen Finanzplattformen keine strategischen Ziele.

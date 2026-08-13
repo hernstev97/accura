@@ -2,13 +2,16 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { accuraManifest } from './src/branding';
+import { resolveMockApiEnabled } from './build/financeRuntimeMode';
 import { resolveSourceInformation } from './build/sourceInformation';
 
 export default defineConfig(({ command }) => {
   const source = resolveSourceInformation({ command });
+  const mockApiEnabled = resolveMockApiEnabled({ command });
 
   return {
     define: {
+      __ACCURA_MOCK_API_ENABLED__: JSON.stringify(mockApiEnabled),
       __ACCURA_SOURCE_COMMIT_SHA__: JSON.stringify(source.commitSha),
       __ACCURA_SOURCE_SHORT_SHA__: JSON.stringify(source.shortSha),
       __ACCURA_SOURCE_URL__: JSON.stringify(source.sourceUrl),
