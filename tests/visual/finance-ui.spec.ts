@@ -381,6 +381,36 @@ test('overview allocation masks income, values, and derived geometry in privacy 
   expect(result.violations, `Overview mit ausgeblendeten Beträgen: ${JSON.stringify(result.violations, null, 2)}`).toEqual([]);
 });
 
+test('overview allocation hides the deficit state in privacy mode', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await preparePage(page, context, 'connected', 'light', true, '/', extremeOverdrawnFinanceData);
+
+  await page.getByLabel('Beträge ausblenden').click();
+  const hero = page.locator('#overview-hero');
+  const freeBar = hero.locator('.overview-allocation-bar[data-allocation-id="free"]');
+
+  await expect(hero.locator('.overview-allocation-ring')).not.toHaveClass(/overview-allocation-ring--deficit/);
+  await expect(freeBar).not.toHaveClass(/overview-allocation-bar--deficit/);
+  await expect(freeBar.locator('.overview-allocation-bar__label')).toHaveText('Frei');
+  await expect(freeBar).not.toContainText('Fehlbetrag');
+  await expect(hero.locator('.overview-allocation-ring__center small')).toHaveText('Frei');
+  await expect(hero.locator('[data-testid="overview-allocation-center-value"]')).toHaveText('••• %');
+  await expect(hero.locator('.overview-allocation-ring__income')).toContainText('von •••• €');
+  await expect(hero.getByTestId('overview-allocation-accessible-summary')).toContainText('Frei: Betrag ausgeblendet');
+  await expect(hero.getByTestId('overview-allocation-accessible-summary')).not.toContainText('Fehlbetrag');
+
+  const privateStyles = await hero.evaluate((element) => ({
+    freeColor: (element.querySelector('.overview-allocation-bar[data-allocation-id="free"]') as HTMLElement)
+      .style.getPropertyValue('--overview-allocation-color'),
+    incomeFontSize: Number.parseFloat(getComputedStyle(element.querySelector('.overview-allocation-ring__income') as Element).fontSize),
+    visibleNegativeSigns: [...element.querySelectorAll('[aria-hidden="true"]')]
+      .some((node) => /[-−]/.test(node.textContent ?? '')),
+  }));
+  expect(privateStyles.freeColor).toBe('var(--chart-free)');
+  expect(privateStyles.incomeFontSize).toBeGreaterThanOrEqual(12);
+  expect(privateStyles.visibleNegativeSigns).toBe(false);
+});
+
 test('upcoming payments refresh after the local day changes', async ({ page, context }) => {
   const financeData = financeDataWithExampleSubscription();
   await page.clock.install({ time: new Date('2026-08-12T21:59:50.000Z') });
@@ -781,6 +811,12 @@ test('320 extreme values, negative balances, and an overdrawn budget stay exact 
   await page.getByRole('heading', { name: overviewHeading }).waitFor();
 
   await expectOverviewAllocationLayout(page);
+  const incomeLabelTypography = await page.locator('#overview-hero .overview-allocation-ring__income').evaluate((element) => ({
+    size: element.getAttribute('data-income-size'),
+    fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+  }));
+  expect(incomeLabelTypography.size).toBe('medium');
+  expect(incomeLabelTypography.fontSize).toBeGreaterThanOrEqual(12);
   await expect(page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"]')).toContainText('Fehlbetrag');
   await expect(page.getByText('Budget liegt über dem Einkommen')).toBeVisible();
   await expect(page.getByText('Negative Kontostände berücksichtigt')).toBeVisible();

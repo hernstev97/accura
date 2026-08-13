@@ -1591,18 +1591,18 @@ button:disabled {
 .overview-allocation-ring__income {
   fill: var(--color-on-surface-variant);
   font-family: inherit;
-  font-size: clamp(8px, 4cqi, 13px);
+  font-size: clamp(12px, 4cqi, 13px);
   font-variation-settings: 'ROND' var(--type-label-rond), 'wdth' 94;
   font-weight: var(--type-label-weight);
   letter-spacing: -0.015em;
 }
 
 .overview-allocation-ring__income[data-income-size='medium'] {
-  font-size: clamp(7px, 3.5cqi, 11px);
+  font-size: clamp(12px, 3.5cqi, 13px);
 }
 
 .overview-allocation-ring__income[data-income-size='long'] {
-  font-size: clamp(6px, 2.9cqi, 9px);
+  font-size: 12px;
 }
 
 .overview-allocation-ring__income--masked,

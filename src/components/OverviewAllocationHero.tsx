@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { AllocationRingSegment } from '../design/layeredAllocationRing';
 import { describeAllocationRing } from '../design/layeredAllocationRing';
 import { createOverviewAllocationSectors, OVERVIEW_RING_GEOMETRY } from '../design/overviewAllocationRing';
-import { formatCurrencyCents, maskMoneyShape } from '../lib/format';
+import { formatCurrencyCents } from '../lib/format';
 import { usePrivacy } from '../privacy/PrivacyProvider';
 import { MoneyValue } from './MoneyValue';
 
@@ -20,6 +20,8 @@ type BarStyle = CSSProperties & {
 };
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
+const PRIVATE_AMOUNT_PLACEHOLDER = '•••• €';
+const PRIVATE_CENTER_PLACEHOLDER = '••• %';
 
 function fillRatio(amountCents: number, incomeCents: number) {
   if (incomeCents <= 0 || !Number.isSafeInteger(amountCents) || !Number.isSafeInteger(incomeCents)) return 0;
@@ -28,6 +30,11 @@ function fillRatio(amountCents: number, incomeCents: number) {
 
 export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCents, segments }: OverviewAllocationHeroProps) {
   const { privacyMode } = usePrivacy();
+  const displayedSegments = privacyMode
+    ? segments.map((segment) => segment.amountCents < 0
+        ? { ...segment, amountCents: 0, color: 'var(--chart-free)', label: 'Frei' }
+        : segment)
+    : segments;
   const sectors = privacyMode
     ? createOverviewAllocationSectors([{
         amountCents: 1,
@@ -37,11 +44,12 @@ export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCen
       }], 1)
     : createOverviewAllocationSectors(segments, incomeCents);
   const hasDeficit = segments.some(({ amountCents }) => amountCents < 0);
-  const summary = describeAllocationRing([...segments], incomeCents, privacyMode);
+  const summary = describeAllocationRing([...displayedSegments], incomeCents, privacyMode);
   const formattedIncome = formatCurrencyCents(incomeCents);
-  const visibleIncome = privacyMode ? maskMoneyShape(formattedIncome) : formattedIncome;
-  const visibleCenterValue = privacyMode ? maskMoneyShape(centerValue) : centerValue;
-  const incomeSize = formattedIncome.length >= 19 ? 'long' : formattedIncome.length >= 14 ? 'medium' : 'default';
+  const visibleIncome = privacyMode ? PRIVATE_AMOUNT_PLACEHOLDER : formattedIncome;
+  const visibleCenterValue = privacyMode ? PRIVATE_CENTER_PLACEHOLDER : centerValue;
+  const visibleCenterLabel = privacyMode ? 'Frei' : centerLabel;
+  const incomeSize = privacyMode ? 'default' : formattedIncome.length >= 19 ? 'long' : formattedIncome.length >= 14 ? 'medium' : 'default';
   const incomePathId = `${id}-income-path`;
 
   return (
@@ -49,7 +57,7 @@ export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCen
       <div className="overview-allocation-hero__layout">
         <figure
           aria-label={summary}
-          className={`overview-allocation-ring ${hasDeficit ? 'overview-allocation-ring--deficit' : ''}`.trim()}
+          className={`overview-allocation-ring ${hasDeficit && !privacyMode ? 'overview-allocation-ring--deficit' : ''}`.trim()}
           role="img"
         >
           <svg
@@ -96,13 +104,13 @@ export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCen
             >
               {visibleCenterValue}
             </strong>
-            <small>{centerLabel}</small>
+            <small>{visibleCenterLabel}</small>
           </span>
           <span className="sr-only" data-testid="overview-allocation-accessible-summary">{summary}</span>
         </figure>
 
         <div aria-label="Werte der Einkommensaufteilung" className="overview-allocation-bars" role="list">
-          {segments.map((segment) => {
+          {displayedSegments.map((segment) => {
             const ratio = privacyMode ? 1 : fillRatio(segment.amountCents, incomeCents);
             const style: BarStyle = {
               '--overview-allocation-color': segment.color,
@@ -121,7 +129,7 @@ export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCen
                 <span className="overview-allocation-bar__content">
                   <span className="overview-allocation-bar__label">{segment.label}</span>
                   <strong className="overview-allocation-bar__value financial-value">
-                    <MoneyValue valueCents={segment.amountCents} />
+                    <MoneyValue maskedPlaceholder={privacyMode ? PRIVATE_AMOUNT_PLACEHOLDER : undefined} valueCents={segment.amountCents} />
                   </strong>
                 </span>
               </div>
