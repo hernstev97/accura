@@ -1,14 +1,12 @@
 import { useState } from 'react';
-import { AllocationLegend } from '../components/AllocationLegend';
 import { AppButton } from '../components/AppButton';
 import { DataList, DataListItem } from '../components/DataList';
-import { FinancialHero } from '../components/FinancialHero';
 import { Icon } from '../components/Icon';
 import { InlineNotice } from '../components/InlineNotice';
-import { LayeredAllocationRing } from '../components/LayeredAllocationRing';
 import { MetricCard } from '../components/MetricCard';
 import { MetricGrid } from '../components/MetricGrid';
 import { MoneyValue } from '../components/MoneyValue';
+import { OverviewAllocationHero } from '../components/OverviewAllocationHero';
 import { ScreenEntrance } from '../components/ScreenEntrance';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SurfaceSection } from '../components/SurfaceSection';
@@ -23,7 +21,6 @@ const POCKET_PREVIEW_LIMIT = 6;
 export function OverviewScreen() {
   const data = useFinanceViewModel();
   const greeting = useTimeOfDayGreeting();
-  const [allocationDetailed, setAllocationDetailed] = useState(false);
   const [showAllAccounts, setShowAllAccounts] = useState(false);
   const [showAllPockets, setShowAllPockets] = useState(false);
   const freeMoneyCents = data.totals.freeMoneyCents;
@@ -68,47 +65,12 @@ export function OverviewScreen() {
     <ScreenEntrance className="overview-screen" destination="overview" labelledBy="overview-title">
       <ScreenHeader id="overview-title" supporting={`Dein ${data.meta.monthLabel} auf einen Blick.`} title={greeting} />
 
-      <FinancialHero
-        action={(
-          <AppButton
-            aria-pressed={allocationDetailed}
-            onClick={() => setAllocationDetailed((detailed) => !detailed)}
-            size="small"
-            variant="tonal"
-          >
-            {allocationDetailed ? 'Kompakte Aufteilung' : 'Aufteilung umschalten'}
-          </AppButton>
-        )}
-        className="financial-hero--allocation"
-        footer={(
-          <AllocationLegend items={segments.map((segment) => ({
-            color: segment.color,
-            id: segment.id,
-            label: segment.label,
-            value: <MoneyValue valueCents={segment.amountCents} />,
-          }))} />
-        )}
+      <OverviewAllocationHero
+        centerLabel={budgetHasDeficit ? budgetEmpty ? 'Saldo' : 'verplant' : 'Frei'}
+        centerValue={ringCenterValue}
         id="overview-hero"
-        label={budgetHasDeficit ? 'Budgetsaldo' : 'Frei verfügbar'}
-        supporting={budgetHasDeficit
-          ? budgetEmpty ? 'Das Monatseinkommen liegt unter null' : 'Geplante Beträge übersteigen das Monatseinkommen'
-          : <>von <MoneyValue valueCents={data.meta.monthlyIncomeCents} /> Einkommen im Monat</>}
-        tone={budgetHasDeficit ? 'attention' : 'positive'}
-        value={<MoneyValue valueCents={freeMoneyCents} />}
-        visual={(
-          <LayeredAllocationRing
-            centerLabel={budgetHasDeficit ? budgetEmpty ? 'Saldo' : 'verplant' : 'Frei'}
-            centerSupporting="vom Einkommen"
-            centerValue={ringCenterValue}
-            detailed={allocationDetailed}
-            interactiveLabel={allocationDetailed
-              ? 'Kompakte Aufteilung anzeigen'
-              : budgetHasDeficit ? 'Ausgaben, Rücklagen und Fehlbetrag anzeigen' : 'Ausgaben, Rücklagen und freien Betrag anzeigen'}
-            onDetailedChange={setAllocationDetailed}
-            segments={segments}
-            totalCents={allocation.incomeCents}
-          />
-        )}
+        incomeCents={allocation.incomeCents}
+        segments={segments}
       />
 
       <MetricGrid label="Schnellübersicht">

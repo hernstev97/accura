@@ -160,6 +160,7 @@ async function expectMoneyValuesInsideContainers(page: Page, minimumCount = 1) {
         '.metric-card__value',
         '.financial-hero',
         '.metric-card',
+        '.overview-allocation-bar',
         '.allocation-legend__item',
         '.data-list__item',
         '.data-list__footer',
@@ -203,7 +204,7 @@ async function expectMoneyValuesInsideContainers(page: Page, minimumCount = 1) {
 
 async function expectPrimaryMoneyValuesOnOneLine(page: Page, minimumCount = 1) {
   const valueMetrics = await page
-    .locator('.financial-hero__value > .money-value, .metric-card__value > .money-value')
+    .locator('.financial-hero__value > .money-value, .metric-card__value > .money-value, .overview-allocation-bar__value > .money-value')
     .evaluateAll((values) => values.map((value) => {
       const style = getComputedStyle(value);
       return {
@@ -221,8 +222,8 @@ async function expectPrimaryMoneyValuesOnOneLine(page: Page, minimumCount = 1) {
   expect(offenders).toEqual([]);
 }
 
-async function expectCompactHeroRingBesideCopy(page: Page, destination: 'overview' | 'budget') {
-  const geometry = await page.locator(`.${destination}-screen .financial-hero`).evaluate((hero) => {
+async function expectCompactBudgetHeroRingBesideCopy(page: Page) {
+  const geometry = await page.locator('.budget-screen .financial-hero').evaluate((hero) => {
     const content = hero.querySelector('.financial-hero__content')?.getBoundingClientRect();
     const ringElement = hero.querySelector('.circular-allocation');
     const ring = ringElement?.getBoundingClientRect();
@@ -252,9 +253,45 @@ async function expectCompactHeroRingBesideCopy(page: Page, destination: 'overvie
   })) : []);
 }
 
+async function expectOverviewAllocationLayout(page: Page) {
+  const geometry = await page.locator('#overview-hero').evaluate((hero) => {
+    const heroRect = hero.getBoundingClientRect();
+    const ring = hero.querySelector('.overview-allocation-ring')?.getBoundingClientRect();
+    const bars = hero.querySelector('.overview-allocation-bars')?.getBoundingClientRect();
+    const barItems = [...hero.querySelectorAll('.overview-allocation-bar')].map((bar) => {
+      const rect = bar.getBoundingClientRect();
+      return { height: rect.height, top: rect.top };
+    });
+    return {
+      backgroundColor: getComputedStyle(hero).backgroundColor,
+      barItems,
+      barsHeight: bars?.height ?? 0,
+      barsLeft: bars?.left ?? 0,
+      heroWidth: heroRect.width,
+      incomePath: Boolean(hero.querySelector('.overview-allocation-ring__income textPath')),
+      interactiveControls: hero.querySelectorAll('button, [role="button"]').length,
+      ringHeight: ring?.height ?? 0,
+      ringRight: ring?.right ?? 0,
+      ringWidth: ring?.width ?? 0,
+      sectorIds: [...hero.querySelectorAll('.overview-allocation-ring__sector')]
+        .map((sector) => sector.getAttribute('data-allocation-id')),
+    };
+  });
+
+  expect(geometry.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  expect(geometry.ringWidth / geometry.heroWidth).toBeGreaterThanOrEqual(0.4);
+  expect(geometry.ringWidth / geometry.heroWidth).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(geometry.ringHeight - geometry.barsHeight)).toBeLessThanOrEqual(0.5);
+  expect(geometry.barsLeft).toBeGreaterThanOrEqual(geometry.ringRight - 0.5);
+  expect(geometry.barItems).toHaveLength(3);
+  expect(Math.max(...geometry.barItems.map(({ height }) => height)) - Math.min(...geometry.barItems.map(({ height }) => height))).toBeLessThanOrEqual(0.5);
+  expect(geometry.sectorIds.length).toBeGreaterThan(0);
+  expect(geometry.incomePath).toBe(true);
+  expect(geometry.interactiveControls).toBe(0);
+}
+
 for (const scenario of [
   { name: 'overview-default', destination: 'overview' as const },
-  { name: 'overview-detailed', destination: 'overview' as const, interact: async (page: Page) => page.locator('.overview-screen .circular-allocation__button').click() },
   { name: 'budget-categories', destination: 'budget' as const },
   { name: 'budget-necessity', destination: 'budget' as const, interact: async (page: Page) => page.getByRole('tab', { name: 'Notwendigkeit' }).click() },
   { name: 'debt-collapsed', destination: 'debt' as const },
@@ -265,9 +302,8 @@ for (const scenario of [
     await preparePage(page, context, 'connected', 'light', scenario.destination === 'overview', destinationPaths[scenario.destination]);
     await openDestination(page, scenario.destination);
     await scenario.interact?.(page);
-    if (scenario.destination === 'overview' || scenario.destination === 'budget') {
-      await expectCompactHeroRingBesideCopy(page, scenario.destination);
-    }
+    if (scenario.destination === 'overview') await expectOverviewAllocationLayout(page);
+    if (scenario.destination === 'budget') await expectCompactBudgetHeroRingBesideCopy(page);
     await capture(page, `412-light-${scenario.name}.png`);
   });
 }
@@ -307,6 +343,24 @@ test('overview greeting follows the local device time', async ({ page, context }
   await expect(page.getByRole('heading', { name: 'Guten Morgen' })).toBeVisible();
   await page.clock.fastForward(1_000);
   await expect(page.getByRole('heading', { name: 'Guten Tag' })).toBeVisible();
+});
+
+test('overview allocation masks income, values, and derived geometry in privacy mode', async ({ page, context }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'light', true);
+
+  await page.getByLabel('Beträge ausblenden').click();
+  await expect(page.getByLabel('Beträge anzeigen')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#overview-hero .overview-allocation-bar .money-value--masked')).toHaveCount(3);
+  await expect(page.locator('#overview-hero .overview-allocation-ring__income')).not.toContainText(/\d/);
+  await expect(page.locator('#overview-hero .overview-allocation-ring__sector').first()).not.toHaveAttribute('data-share', /.+/);
+  await expect(page.locator('#overview-hero .overview-allocation-bar').first()).not.toHaveAttribute('data-fill-ratio', /.+/);
+  await expect(page.locator('#overview-hero [data-testid="overview-allocation-accessible-summary"]')).toContainText('Monatseinkommen Betrag ausgeblendet');
+  const result = await new AxeBuilder({ page })
+    .include('#overview-hero')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(result.violations, `Overview mit ausgeblendeten Beträgen: ${JSON.stringify(result.violations, null, 2)}`).toEqual([]);
 });
 
 test('upcoming payments refresh after the local day changes', async ({ page, context }) => {
@@ -667,6 +721,7 @@ for (const viewport of [{ width: 768, height: 1024 }, { width: 1440, height: 100
         await page.setViewportSize(viewport);
         await preparePage(page, context, 'connected', theme, destination === 'overview', destinationPaths[destination]);
         await openDestination(page, destination);
+        if (destination === 'overview') await expectOverviewAllocationLayout(page);
         await capture(page, `${viewport.width}-${theme}-${destination}.png`);
       });
     }
@@ -707,13 +762,13 @@ test('320 extreme values, negative balances, and an overdrawn budget stay exact 
   await preparePage(page, context, 'connected', 'light', true, '/', extremeOverdrawnFinanceData);
   await page.getByRole('heading', { name: overviewHeading }).waitFor();
 
-  await expect(page.getByRole('heading', { name: 'Budgetsaldo' })).toBeVisible();
+  await expectOverviewAllocationLayout(page);
+  await expect(page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"]')).toContainText('Fehlbetrag');
   await expect(page.getByText('Budget liegt über dem Einkommen')).toBeVisible();
   await expect(page.getByText('Negative Kontostände berücksichtigt')).toBeVisible();
   await expect(page.getByText('-111.111.101,11 €', { exact: true }).first()).toBeVisible();
-  await expect(page.locator('#overview-hero')).toHaveClass(/financial-hero--attention/);
-  await expect(page.locator('#overview-hero [data-testid="allocation-center-value"]')).toHaveText('190,0 %');
-  await expect(page.locator('#overview-hero [data-testid="allocation-accessible-summary"]')).toContainText('Fehlbetrag: -111.111.101,11 €');
+  await expect(page.locator('#overview-hero [data-testid="overview-allocation-center-value"]')).toHaveText('190,0 %');
+  await expect(page.locator('#overview-hero [data-testid="overview-allocation-accessible-summary"]')).toContainText('Fehlbetrag: -111.111.101,11 €');
   await expectNoHorizontalOverflow(page);
   await expectMoneyValuesInsideContainers(page);
   await expectPrimaryMoneyValuesOnOneLine(page);
@@ -756,7 +811,7 @@ test('412 maximum safe cent values still fit hero and metric slots on one line',
   await page.setViewportSize({ width: 412, height: 915 });
   await preparePage(page, context, 'connected', 'light', true, '/', maximumSafeFinanceData);
 
-  const overviewHeroValue = page.locator('#overview-hero .financial-hero__value');
+  const overviewHeroValue = page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"] .overview-allocation-bar__value');
   await expect(overviewHeroValue).toHaveText('90.071.992.547.409,91 €');
   await expect(overviewHeroValue).not.toContainText(/frei/i);
   await expectNoHorizontalOverflow(page);
@@ -776,10 +831,9 @@ test('320 negative income without budget items remains an empty deficit state', 
   await page.setViewportSize({ width: 320, height: 800 });
   await preparePage(page, context, 'connected', 'light', true, '/', negativeEmptyBudgetData);
 
-  await expect(page.getByRole('heading', { name: 'Budgetsaldo' })).toBeVisible();
-  await expect(page.locator('#overview-hero')).toHaveClass(/financial-hero--attention/);
-  await expect(page.locator('#overview-hero [data-testid="allocation-center-value"]')).toHaveText('–');
-  await expect(page.locator('#overview-hero [data-testid="allocation-accessible-summary"]')).toContainText('Fehlbetrag: -123,45 €');
+  await expect(page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"]')).toContainText('Fehlbetrag');
+  await expect(page.locator('#overview-hero [data-testid="overview-allocation-center-value"]')).toHaveText('–');
+  await expect(page.locator('#overview-hero [data-testid="overview-allocation-accessible-summary"]')).toContainText('Fehlbetrag: -123,45 €');
   await expect(page.getByText('Monatseinkommen ist negativ')).toBeVisible();
   await expect(page.getByText('Frei verfügbar', { exact: true })).toHaveCount(0);
 
@@ -824,7 +878,7 @@ test('320 dense overview progressively exposes every account and pocket', async 
   const accountButton = page.getByRole('button', { name: 'Alle 12 zeigen' });
   const pocketButton = page.getByRole('button', { name: 'Alle 18 zeigen' });
   const totalBefore = await page.locator('#account-list .data-list__footer').textContent();
-  const heroBefore = await page.locator('#overview-hero .financial-hero__value').textContent();
+  const heroBefore = await page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"] .overview-allocation-bar__value').textContent();
   await expect(page.locator('#account-list [role="listitem"]')).toHaveCount(5);
   await expect(page.locator('#pocket-list .pocket')).toHaveCount(6);
   await expect(accountButton).toHaveAttribute('aria-expanded', 'false');
@@ -856,7 +910,7 @@ test('320 dense overview progressively exposes every account and pocket', async 
   await expect(page.getByRole('button', { name: 'Alle 18 zeigen' })).toBeFocused();
   await expect(page.getByRole('button', { name: 'Alle 18 zeigen' })).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('#account-list .data-list__footer')).toHaveText(totalBefore ?? '');
-  await expect(page.locator('#overview-hero .financial-hero__value')).toHaveText(heroBefore ?? '');
+  await expect(page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"] .overview-allocation-bar__value')).toHaveText(heroBefore ?? '');
 });
 
 test('320 all-zero pockets keep their empty explanation and remain expandable', async ({ page, context }) => {
