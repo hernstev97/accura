@@ -8,6 +8,7 @@ import { productionFinanceApi } from './data/financeApi';
 import type { PickerLauncher } from './data/googlePicker';
 import { initializeNavigationBeforeRender } from './navigation/appNavigation';
 import { PrivacyProvider } from './privacy/PrivacyProvider';
+import { initializeAppProtectionBeforeRender } from './privacy/appProtectionStore';
 import { initializePrivacyBeforeRender } from './privacy/privacyStore';
 import './design/tokens.css';
 import './styles.css';
@@ -15,6 +16,7 @@ import './styles.css';
 const initialAppearance = initializeAppearanceBeforeRender();
 const initialDestination = initializeNavigationBeforeRender();
 const initialPrivacy = initializePrivacyBeforeRender();
+const initialProtection = initializeAppProtectionBeforeRender();
 
 let financeApi = productionFinanceApi;
 let mockPicker: PickerLauncher | undefined;
@@ -25,7 +27,7 @@ if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_API === 'true') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PrivacyProvider initialEnabled={initialPrivacy}>
+    <PrivacyProvider initialEnabled={initialPrivacy} initialProtection={initialProtection}>
       <AppearanceProvider initialSnapshot={initialAppearance}>
         <FinanceDataProvider api={financeApi} pickerLauncher={mockPicker}>
           <App initialDestination={initialDestination} />

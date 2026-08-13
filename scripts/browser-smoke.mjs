@@ -1276,10 +1276,40 @@ try {
   assert.equal(await privacyPage.getByRole('button', { name: 'Beträge ausblenden' }).getAttribute('aria-pressed'), 'false');
   assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.privacyMode), undefined);
 
+  await privacyPage.getByLabel('Einstellungen öffnen').click();
+  await privacyPage.getByRole('checkbox', { name: /App-Vorschau schützen/ }).check();
+  await privacyPage.getByLabel('Informationen schließen').click();
+  await privacyPage.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  const privacyCover = privacyPage.getByRole('dialog', { name: 'Accura ist geschützt' });
+  await privacyCover.waitFor();
+  assert.equal(await privacyPage.locator('.app-shell').getAttribute('inert'), '');
+  assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.privacyMode), 'true');
+  await privacyCover.getByRole('button', { name: 'Inhalte anzeigen' }).click();
+
+  await privacyPage.getByLabel('Einstellungen öffnen').click();
+  await privacyPage.getByRole('checkbox', { name: /Mit PIN entsperren/ }).click();
+  for (const digit of '123456') await privacyPage.getByRole('dialog', { name: 'PIN einrichten' }).getByRole('button', { name: digit, exact: true }).click();
+  await privacyPage.getByRole('dialog', { name: 'PIN einrichten' }).getByRole('button', { name: 'PIN bestätigen' }).click();
+  for (const digit of '123456') await privacyPage.getByRole('dialog', { name: 'Neue PIN bestätigen' }).getByRole('button', { name: digit, exact: true }).click();
+  await privacyPage.getByRole('dialog', { name: 'Neue PIN bestätigen' }).getByRole('button', { name: 'PIN bestätigen' }).click();
+  await privacyPage.getByRole('dialog', { name: 'Informationen' }).waitFor();
+  await privacyPage.getByText('PIN-Sperre eingerichtet.').waitFor();
+  const storedProtection = await privacyPage.evaluate(() => localStorage.getItem('finance-app-protection-v1'));
+  assert.equal(storedProtection.includes('PBKDF2-HMAC-SHA-256'), true, 'PIN-Verifier wurde nicht gespeichert');
+  assert.equal(storedProtection.includes('123456'), false, 'PIN wurde im Klartext gespeichert');
+  await privacyPage.getByLabel('Informationen schließen').click();
+  await privacyPage.reload({ waitUntil: 'networkidle' });
+  const pinLock = privacyPage.getByRole('dialog', { name: 'PIN eingeben' });
+  await pinLock.waitFor();
+  for (const digit of '123456') await pinLock.getByRole('button', { name: digit, exact: true }).click();
+  await pinLock.getByRole('button', { name: 'PIN bestätigen' }).click();
+  await privacyPage.getByRole('heading', { name: overviewHeading }).waitFor();
+  assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.appCovered), undefined);
+
   assert.deepEqual(privacyErrors, [], privacyErrors.join('\n'));
   await privacyContext.close();
 
-  console.log('Browser-Smoke-Test bestanden: App-Shell, PWA, 4 Ansichten, Google-Sans-Flex-Typography, Expressive-Shapes, Farbdynamik, Privacy Mode und Diagramme funktionieren fehlerfrei.');
+  console.log('Browser-Smoke-Test bestanden: App-Shell, PWA, 4 Ansichten, Google-Sans-Flex-Typography, Expressive-Shapes, Farbdynamik, Privacy Mode, App-Vorschau, PIN-Lock und Diagramme funktionieren fehlerfrei.');
 } finally {
   await browser.close();
 }

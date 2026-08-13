@@ -17,6 +17,7 @@
 - Kontrollierter PWA-Versionswechsel mit verständlichem „Jetzt neu laden“/„Später“-Hinweis, stabilem Installationsmanifest und automatisierten Android-orientierten Icon-/Systemfarben-Verträgen.
 - Appearance mit Systemmodus, Hell/Dunkel, Browser-Akzent, neun Presets, lokaler Bildanalyse im Worker und lokaler WebP-Vorschau.
 - Lokaler Privacy-Modus einschließlich Tabsynchronisierung und Maskierung von sichtbaren sowie zugänglichen Geldtexten.
+- Optionaler App-Vorschau-Schutz und lokaler sechsstelliger PIN-Lock mit Android-orientiertem, thematisiertem Lockscreen, Expressive-PIN-Formen, Fehlversuchs-Wartezeit und fail-closed Recovery.
 - Wiederverwendbare MD3-Komponenten, Responsive/Reflow, Reduced Motion, Forced Colors, Fokusmanagement und lokale Google-Sans-Flex-Schrift.
 - GitHub-CI für Lint, Unit-Tests, Build und Smoke; aktuell 179 Vitest-Tests plus ein Node-ESM-Test sowie PWA-, Offline-, Golden- und Axe-Prüfungen.
 
@@ -28,7 +29,7 @@ Die genaue Commit-Historie bleibt in Git; diese Seite ist kein tägliches Journa
 
 ## Bekannte Abdeckungslücken
 
-Demnächst und Privacy besitzen Unit-/Komponententests, sind aber noch nicht vollständig in Golden-Screenshots und Axe-Szenarien abgebildet. Reale Produktionsabläufe mit persönlichen externen Diensten können im Repository nicht automatisiert bewiesen werden und benötigen eine Eigentümer-Abnahme. Androids tatsächlich gerenderter Installationsdialog, Launcher und Splash liegen ebenfalls außerhalb der gewählten Desktop-Chromium-Automation; Manifest, Installierbarkeit, Icon-Pixelverträge und Worker-Update sind automatisiert abgedeckt.
+Reale Produktionsabläufe mit persönlichen externen Diensten können im Repository nicht automatisiert bewiesen werden und benötigen eine Eigentümer-Abnahme. Androids tatsächlich gerenderter Installationsdialog, Launcher, Splash und App-Switcher liegen ebenfalls außerhalb der gewählten Desktop-Chromium-Automation; Manifest, Installierbarkeit, Icon-Pixelverträge, Worker-Update und der Web-Lockscreen sind automatisiert abgedeckt.
 
 ## Nachweis
 

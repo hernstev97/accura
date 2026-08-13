@@ -13,6 +13,7 @@ const STALE_AFTER_MS = 10 * 60 * 1000;
 export type AuthState = 'checking' | 'signed-out' | 'authenticated' | 'offline';
 export type ConnectionState = 'unknown' | 'disconnected' | 'no-spreadsheet' | 'connected' | 'reconnect';
 export type SyncState = 'initial' | 'syncing' | 'idle' | 'stale' | 'offline' | 'validation-error' | 'error';
+export type ProtectedAccessRecoveryResult = 'success' | 'offline' | 'error';
 
 export type FinanceUiError = {
   code: string;
@@ -106,6 +107,7 @@ type FinanceContextValue = FinanceProviderState & {
   selectSpreadsheet: () => Promise<void>;
   logout: () => Promise<void>;
   disconnect: () => Promise<void>;
+  recoverProtectedAccess: () => Promise<ProtectedAccessRecoveryResult>;
   signIn: () => void;
 };
 
@@ -323,12 +325,43 @@ export function FinanceDataProvider({
     }
   }, [api]);
 
+  const recoverProtectedAccess = useCallback(async (): Promise<ProtectedAccessRecoveryResult> => {
+    if (!navigator.onLine || stateRef.current.authState === 'offline') return 'offline';
+    const current = stateRef.current;
+    try {
+      if (current.authState === 'authenticated') {
+        if (!current.csrfToken) return 'error';
+        await api.disconnect(current.csrfToken);
+      } else if (current.authState !== 'signed-out') {
+        return 'error';
+      }
+      generation.current += 1;
+      abortController.current?.abort();
+      stateRef.current = financeProviderReducer(stateRef.current, { type: 'reset' });
+      dispatch({ type: 'reset' });
+      await clearCachedFinanceData();
+      return 'success';
+    } catch {
+      return navigator.onLine ? 'error' : 'offline';
+    }
+  }, [api]);
+
   const signIn = useCallback(() => {
     const parameters = new URLSearchParams({ return_to: safeAppReturnPath(window.location.pathname) });
     window.location.assign(`/api/auth/google/start?${parameters.toString()}`);
   }, []);
   const viewModel = useMemo(() => state.data ? createFinanceViewModel(state.data, projectionDate) : null, [state.data, projectionDate]);
-  const value = useMemo<FinanceContextValue>(() => ({ ...state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn }), [state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn]);
+  const value = useMemo<FinanceContextValue>(() => ({
+    ...state,
+    viewModel,
+    online,
+    refresh,
+    selectSpreadsheet,
+    logout,
+    disconnect,
+    recoverProtectedAccess,
+    signIn,
+  }), [state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, recoverProtectedAccess, signIn]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }

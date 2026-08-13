@@ -32,12 +32,13 @@ flowchart TB
     AP[localStorage finance-appearance-v1\nbis Reset/Browserloeschung]
     WP[(IndexedDB finance-appearance-v1\n0 oder 1 WebP-Vorschau)]
     PR[localStorage finance-privacy-v1\nbis Aenderung/Browserloeschung]
+    LK[localStorage finance-app-protection-v1\nbis Reset/Browserloeschung]
     SV[sessionStorage finance-screen-visits-v1\nbis Tab-Ende]
     SW[(Service-Worker-Cache\nversionierte App-Shell)]
   end
 ```
 
-Implementierung und Tests: [api/_lib/repository.ts](../../api/_lib/repository.ts), [api/_lib/security.ts](../../api/_lib/security.ts), [src/data/financeCache.ts](../../src/data/financeCache.ts), [src/appearance/wallpaperStore.ts](../../src/appearance/wallpaperStore.ts), [src/privacy/privacyStore.ts](../../src/privacy/privacyStore.ts), [scripts/offline-smoke.mjs](../../scripts/offline-smoke.mjs).
+Implementierung und Tests: [api/_lib/repository.ts](../../api/_lib/repository.ts), [api/_lib/security.ts](../../api/_lib/security.ts), [src/data/financeCache.ts](../../src/data/financeCache.ts), [src/appearance/wallpaperStore.ts](../../src/appearance/wallpaperStore.ts), [src/privacy/privacyStore.ts](../../src/privacy/privacyStore.ts), [src/privacy/appProtectionStore.ts](../../src/privacy/appProtectionStore.ts), [scripts/offline-smoke.mjs](../../scripts/offline-smoke.mjs).
 
 ## Service-Worker-Grenze
 
@@ -45,7 +46,7 @@ Workbox precacht statische HTML-, JavaScript-, CSS-, SVG-, PNG- und WOFF2-Artefa
 
 ## Fehler und Sicherheitsannahmen
 
-Wenn IndexedDB nicht verfügbar ist, funktioniert Online-Nutzung weiter, aber kein fachlicher Offline-Start. Ein Last-known-good-Snapshot kann vertrauliche Finanzdaten enthalten und ist nicht verschlüsselt. Browserbereinigung oder Speicherdruck können ihn entfernen. Logout lässt ihn bewusst für späteren Offline-/Wiederanmeldestart bestehen; Disconnect löscht ihn nur auf dem aktuellen Gerät.
+Wenn IndexedDB nicht verfügbar ist, funktioniert Online-Nutzung weiter, aber kein fachlicher Offline-Start. Ein Last-known-good-Snapshot kann vertrauliche Finanzdaten enthalten und ist nicht verschlüsselt. Browserbereinigung oder Speicherdruck können ihn entfernen. Logout lässt ihn bewusst für späteren Offline-/Wiederanmeldestart bestehen; Disconnect löscht ihn nur auf dem aktuellen Gerät. Ein vergessener PIN wird nur online zurückgesetzt und löscht zuerst Verbindung, Sitzung und diesen Finance-Cache; ohne bestätigte Bereinigung bleibt die Sperre aktiv.
 
 ## Begründung und Nachweis
 

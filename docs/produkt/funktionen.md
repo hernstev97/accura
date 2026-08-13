@@ -34,6 +34,7 @@ Schulden stellt Ablösesumme, planmäßige Gesamtkosten, daraus abgeleitete Mehr
 - **Google-Verbindung trennen:** versucht den Google-Grant zu widerrufen, löscht die Postgres-Verbindung, beendet die Sitzung und entfernt den Finance-Cache auf diesem Gerät.
 - **Darstellung:** System-, Hell- und Dunkelmodus; Browser-/Systemfarbe, kuratierte Presets oder lokal analysiertes Bild. Entwürfe werden erst durch Anwenden dauerhaft.
 - **Privacy:** maskiert oder zeigt Geldbeträge; die Einstellung bleibt lokal über Logout und Disconnect hinweg erhalten und wird zwischen Tabs synchronisiert.
+- **App-Schutz:** verdeckt Accura optional nach einem Hintergrundwechsel. Eine zusätzliche sechsstellige lokale PIN sperrt außerdem Start und Reload; beide Schalter liegen in den Einstellungen.
 - **Begrüßung:** Die Übersicht wählt abhängig von der lokalen Uhr „Guten Morgen“, „Guten Tag“ oder „Guten Abend“ und kombiniert dies mit dem `accura`-Branding.
 
 ## Offline-Nutzung

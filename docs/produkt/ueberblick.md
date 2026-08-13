@@ -59,7 +59,7 @@ Ein erfolgreich validierter Stand wird auf dem Gerät in IndexedDB gespeichert. 
 
 Refresh-Token, Google-Client-Secret, Datenbank-URL, Token-Schlüssel und Session-Secret bleiben auf dem Server. Der Browser erhält nur die Finanzantwort sowie beim bewussten Öffnen des Pickers kurzzeitig ein Zugriffstoken. Details und Vertrauensgrenzen stehen unter [Backend und Sicherheit](../architektur/backend-und-sicherheit.md).
 
-Der [Privacy-Modus](../architektur/privacy-modus.md) maskiert Geldbeträge in sichtbarer UI und Accessibility-Texten. Er schützt gegen beiläufiges Mitlesen, verschlüsselt jedoch weder Arbeitsspeicher noch IndexedDB und ersetzt keine Gerätesperre oder getrennte Browserprofile.
+Der [Privacy-Modus und App-Schutz](../architektur/privacy-modus.md) maskiert wahlweise Geldbeträge und kann die gesamte App nach einem Hintergrundwechsel verdecken oder mit einer lokalen PIN sperren. Diese Funktionen reduzieren beiläufiges Mitlesen, verschlüsseln jedoch weder Arbeitsspeicher noch IndexedDB und ersetzen keine Gerätesperre oder getrennte Browserprofile.
 
 ## Strategische Nicht-Ziele
 
@@ -80,7 +80,7 @@ Diese Grenzen sind strategisch. Eine zusätzliche Funktion ist nur dann sinnvoll
 - kein Bearbeiten der Google-Tabelle durch die App;
 - keine Bankanbindung, Überweisung oder automatische Kategorisierung im aktuellen Produkt;
 - kein garantierter Echtzeitstand und kein Hintergrund-Polling;
-- keine Verschlüsselung lokaler Finance-Daten durch den Privacy-Modus;
+- keine Verschlüsselung lokaler Finance-Daten durch Privacy- oder App-Schutz;
 - keine produktive persönliche Fixture im Repository.
 
 ## Produkt, Vision und Markt getrennt halten
