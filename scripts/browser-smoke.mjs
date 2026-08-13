@@ -277,6 +277,40 @@ async function assertRingCenterFits(page, ringSelector, label) {
   assert.equal(geometry.valueBottom <= geometry.innerBottom - 2, true, `${label}: Betrag berührt den Ring unten`);
 }
 
+async function assertOverviewAllocationHero(page, label) {
+  const geometry = await page.locator('#overview-hero').evaluate((hero) => {
+    const heroBounds = hero.getBoundingClientRect();
+    const ring = hero.querySelector('.overview-allocation-ring');
+    const bars = hero.querySelector('.overview-allocation-bars');
+    const ringBounds = ring.getBoundingClientRect();
+    const barsBounds = bars.getBoundingClientRect();
+    const barItems = [...hero.querySelectorAll('.overview-allocation-bar')].map((bar) => bar.getBoundingClientRect());
+    return {
+      barHeights: barItems.map(({ height }) => height),
+      barsHeight: barsBounds.height,
+      barsLeft: barsBounds.left,
+      center: hero.querySelector('[data-testid="overview-allocation-center-value"]')?.textContent ?? '',
+      heroWidth: heroBounds.width,
+      incomePath: Boolean(hero.querySelector('.overview-allocation-ring__income textPath')),
+      interactiveControls: hero.querySelectorAll('button, [role="button"]').length,
+      ringHeight: ringBounds.height,
+      ringRight: ringBounds.right,
+      ringWidth: ringBounds.width,
+      sectorIds: [...hero.querySelectorAll('.overview-allocation-ring__sector')]
+        .map((sector) => sector.getAttribute('data-allocation-id')),
+    };
+  });
+  assert.equal(Boolean(geometry.center.trim()), true, `${label}: Ringzentrum ist leer`);
+  assert.equal(geometry.ringWidth / geometry.heroWidth >= 0.4 && geometry.ringWidth / geometry.heroWidth <= 0.5, true, `${label}: Ring nimmt nicht ungefähr die halbe Breite ein`);
+  assert.equal(approximately(geometry.ringHeight, geometry.barsHeight), true, `${label}: Ring und Balkengruppe sind unterschiedlich hoch`);
+  assert.equal(geometry.barsLeft >= geometry.ringRight - 0.5, true, `${label}: Balken überlagern den Ring`);
+  assert.equal(geometry.barHeights.length, 3, `${label}: falsche Balkenanzahl`);
+  assert.equal(Math.max(...geometry.barHeights) - Math.min(...geometry.barHeights) <= 0.5, true, `${label}: Balken sind unterschiedlich hoch`);
+  assert.deepEqual(geometry.sectorIds, ['expenses', 'reserves', 'free'], `${label}: falsche Segmentreihenfolge`);
+  assert.equal(geometry.incomePath, true, `${label}: Einkommen folgt keinem Innenbogen`);
+  assert.equal(geometry.interactiveControls, 0, `${label}: Overview-Hero ist unerwartet interaktiv`);
+}
+
 async function assertLayeredRing(page, ringSelector, label) {
   const geometry = await page.locator(ringSelector).evaluate((ring) => ({
     arcs: [...ring.querySelectorAll('.circular-allocation__arc[data-allocation-id]')].map((arc) => ({
@@ -317,11 +351,10 @@ async function accentSnapshot(page) {
     const style = (selector) => getComputedStyle(document.querySelector(selector));
     const root = getComputedStyle(document.documentElement);
     return {
-      expense: style('.overview-screen [data-allocation-id="expenses"]').stroke,
-      focus: style('.circular-allocation__button').outlineColor,
-      free: style('.overview-screen [data-allocation-id="free"]').stroke,
+      expense: style('.overview-allocation-ring__sector[data-allocation-id="expenses"]').fill,
+      free: style('.overview-allocation-ring__sector[data-allocation-id="free"]').fill,
       navigation: style('[data-testid="navigation-indicator"]').backgroundColor,
-      reserve: style('.overview-screen [data-allocation-id="reserves"]').stroke,
+      reserve: style('.overview-allocation-ring__sector[data-allocation-id="reserves"]').fill,
       resolved: root.getPropertyValue('--color-system-accent').trim(),
     };
   });
@@ -568,7 +601,7 @@ try {
   await picker.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await picker.page.getByRole('button', { name: 'Google-Tabelle auswählen' }).click();
   await picker.page.getByRole('heading', { name: overviewHeading }).waitFor();
-  assert.match(await picker.page.locator('body').innerText(), /Frei verfügbar/);
+  assert.match(await picker.page.locator('#overview-hero').innerText(), /Ausgaben[\s\S]*Rücklagen[\s\S]*Frei/);
   assert.deepEqual(picker.errors, [], picker.errors.join('\n'));
   await picker.context.close();
 
@@ -829,10 +862,9 @@ try {
   await mobile.page.getByRole('heading', { name: overviewHeading }).waitFor();
   await assertGoogleSansFlex(mobile.page, 'Mobile Übersicht');
   const overviewScreen = mobile.page.locator('[data-destination="overview"]');
-  const overviewRoleGeometry = await financeRoleGeometry(mobile.page, '.overview-screen');
   assert.equal(await overviewScreen.getAttribute('data-entrance'), 'first');
   const overviewText = await mobile.page.locator('body').innerText();
-  const overviewHeroValue = await mobile.page.locator('#overview-hero .financial-hero__value').innerText();
+  const overviewHeroValue = await mobile.page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"] .overview-allocation-bar__value').innerText();
   assert.match(overviewHeroValue, /^141,32\s*€$/, 'Übersichts-Hero zeigt nicht den erwarteten Betrag ohne frei-Zusatz');
   assert.match(overviewText, /1\.350,75\s*€/);
   assert.match(overviewText, /Finanzierung A endet im September 2026/);
@@ -843,37 +875,9 @@ try {
   assert.doesNotMatch(overviewText, /Interner Quellhinweis/);
   await mobile.page.screenshot({ path: '/tmp/finance-connected-mobile.png', fullPage: true });
 
-  const overviewRing = mobile.page.locator('.overview-screen .circular-allocation');
-  const statusTrigger = overviewRing.getByRole('button');
-  await assertRingCenterFits(mobile.page, '.overview-screen .circular-allocation', 'Übersichtsring 412px');
-  await assertLayeredRing(mobile.page, '.overview-screen .circular-allocation', 'Übersichtsring');
-  const ringSegments = await overviewRing.locator('[data-allocation-id]').evaluateAll((elements) => elements.map((element) => ({
-    amountCents: Number(element.getAttribute('data-amount-cents')),
-    id: element.getAttribute('data-allocation-id'),
-  })));
-  assert.deepEqual(ringSegments, [
-    { id: 'expenses', amountCents: 215_000 },
-    { id: 'reserves', amountCents: 30_000 },
-    { id: 'free', amountCents: 14_132 },
-  ]);
-  assert.equal(ringSegments.reduce((sum, segment) => sum + segment.amountCents, 0), Number(await overviewRing.getAttribute('data-total-cents')));
-  assert.equal(Number(await overviewRing.getAttribute('data-summary-planned-cents')), 245_000);
-  assert.match(await overviewRing.getByTestId('allocation-accessible-summary').textContent(), /Ausgaben: 2\.150,00\s*€.*Rücklagen: 300,00\s*€.*Frei: 141,32\s*€/);
-  const statusBoundsBeforeToggle = await bounds(mobile.page.locator('.overview-screen .financial-hero'));
-  const followingBoundsBeforeToggle = await bounds(mobile.page.locator('.overview-screen .metric-grid'));
-  await overviewRing.locator('svg').evaluate((element) => { element.dataset.persistenceProbe = 'same-svg'; });
-  await statusTrigger.click();
-  assert.equal(await statusTrigger.getAttribute('aria-pressed'), 'true');
-  assert.equal(await overviewRing.getAttribute('data-detailed'), 'true');
-  assert.equal(await overviewRing.locator('svg').getAttribute('data-persistence-probe'), 'same-svg');
-  assert.deepEqual(await bounds(mobile.page.locator('.overview-screen .financial-hero')), statusBoundsBeforeToggle);
-  assert.deepEqual(await bounds(mobile.page.locator('.overview-screen .metric-grid')), followingBoundsBeforeToggle);
-  await mobile.page.screenshot({ path: '/tmp/finance-overview-detailed.png', fullPage: true });
-  await statusTrigger.press('Enter');
-  assert.equal(await statusTrigger.getAttribute('aria-pressed'), 'false');
-  await statusTrigger.focus();
-  await mobile.page.keyboard.press('Tab');
-  await mobile.page.keyboard.press('Shift+Tab');
+  await assertOverviewAllocationHero(mobile.page, 'Übersichts-Hero 412px');
+  const overviewSummary = await mobile.page.getByTestId('overview-allocation-accessible-summary').textContent();
+  assert.match(overviewSummary, /Ausgaben: 2\.150,00\s*€.*Rücklagen: 300,00\s*€.*Frei: 141,32\s*€/);
 
   const fallbackAccent = await accentSnapshot(mobile.page);
   await mobile.page.evaluate(() => {
@@ -884,7 +888,6 @@ try {
   const injectedAccent = await accentSnapshot(mobile.page);
   assert.notEqual(injectedAccent.navigation, fallbackAccent.navigation, 'Injizierter Akzent änderte den Navigationsindikator nicht');
   assert.notEqual(injectedAccent.expense, fallbackAccent.expense, 'Injizierter Akzent änderte die ausgewählte Ringrolle nicht');
-  assert.notEqual(injectedAccent.focus, fallbackAccent.focus, 'Injizierter Akzent änderte den Fokusrahmen nicht');
   assert.equal(injectedAccent.reserve, fallbackAccent.reserve, 'Systemakzent veränderte die semantische Rücklagenfarbe');
   assert.equal(injectedAccent.free, fallbackAccent.free, 'Systemakzent veränderte die semantische Frei-Farbe');
   await mobile.page.evaluate(() => {
@@ -917,7 +920,6 @@ try {
   await assertNoVisibleTextBelow12px(mobile.page, '.overview-screen', 'Mobile Übersicht');
   await assertAdaptiveNavigation(mobile.page, 412, 'Mobile Übersicht');
 
-  await assertConcentric(mobile.page, '.overview-screen .financial-hero', '.overview-screen .allocation-legend__item', 'Übersichts-Hero');
   await assertConcentric(mobile.page, '.overview-screen .metric-grid', '.overview-screen .metric-card', 'Paarmetriken');
   await assertConcentric(mobile.page, '.overview-screen .data-list', '.overview-screen .data-list__item', 'Kontenliste');
   await assertConcentric(mobile.page, '.pocket-collection', '.pocket-collection .pocket', 'Pockets eingeklappt');
@@ -947,7 +949,7 @@ try {
 
   await mobile.page.getByRole('link', { name: 'Demnächst', exact: true }).click();
   await mobile.page.getByRole('heading', { name: 'Demnächst' }).waitFor();
-  assertSharedFinanceRoles(overviewRoleGeometry, await financeRoleGeometry(mobile.page, '.upcoming-screen'), 'Demnächst');
+  const sharedFinanceRoleGeometry = await financeRoleGeometry(mobile.page, '.upcoming-screen');
   assert.equal(await mobile.page.locator('[data-destination="upcoming"]').getAttribute('data-entrance'), 'first');
   assert.match(await mobile.page.locator('.upcoming-screen').innerText(), /Bis Gehalt verfügbar/);
   assert.match(await mobile.page.locator('.upcoming-screen').innerText(), /5 Tage vor Gehalt/);
@@ -958,7 +960,7 @@ try {
   const navigationSamples = await navigationTransitionSamples(mobile.page);
   navigationSamples.forEach((sample, index) => assertStableNavigationGeometry(overviewNavigationGeometry, sample, `Indikatorframe ${index}`));
   await mobile.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
-  assertSharedFinanceRoles(overviewRoleGeometry, await financeRoleGeometry(mobile.page, '.budget-screen'), 'Budget');
+  assertSharedFinanceRoles(sharedFinanceRoleGeometry, await financeRoleGeometry(mobile.page, '.budget-screen'), 'Budget');
   assert.equal(await mobile.page.locator('[data-destination="budget"]').getAttribute('data-entrance'), 'first');
   assert.equal(await navigationIndicator.getAttribute('data-persistence-probe'), 'same-node');
   const budgetNavigationGeometry = await navigationGeometry(mobile.page);
@@ -1026,7 +1028,7 @@ try {
 
   await mobile.page.getByRole('link', { name: 'Schulden', exact: true }).click();
   await mobile.page.getByRole('heading', { name: 'Dein Weg auf null' }).waitFor();
-  assertSharedFinanceRoles(overviewRoleGeometry, await financeRoleGeometry(mobile.page, '.debt-screen'), 'Schulden');
+  assertSharedFinanceRoles(sharedFinanceRoleGeometry, await financeRoleGeometry(mobile.page, '.debt-screen'), 'Schulden');
   assert.equal(await mobile.page.locator('[data-destination="debt"]').getAttribute('data-entrance'), 'first');
   const debtNavigationGeometry = await navigationGeometry(mobile.page);
   assertStableNavigationGeometry(overviewNavigationGeometry, debtNavigationGeometry, 'Budget → Schulden');
@@ -1127,7 +1129,7 @@ try {
     await test.page.getByRole('heading', { name: overviewHeading }).waitFor();
     await test.page.waitForTimeout(360);
     await assertGoogleSansFlex(test.page, `Light ${viewport.name}`);
-    await assertRingCenterFits(test.page, '.overview-screen .circular-allocation', `Übersichtsring ${viewport.name}`);
+    await assertOverviewAllocationHero(test.page, `Übersichts-Hero ${viewport.name}`);
     await assertNoOverflow(test.page, `Light Übersicht ${viewport.name}`);
     await assertNoVisibleTextBelow12px(test.page, '.overview-screen', `Light Übersicht ${viewport.name}`);
     await assertAdaptiveNavigation(test.page, viewport.width, `Light Übersicht ${viewport.name}`);
@@ -1178,14 +1180,11 @@ try {
     assert.equal(resolvedDarkTheme.resolved, 'dark');
     assert.match(resolvedDarkTheme.page, /^#[\dA-F]{6}$/i);
     await assertGoogleSansFlex(dark.page, `Dark ${viewport.name}`);
-    await assertRingCenterFits(dark.page, '.overview-screen .circular-allocation', `Dark Übersichtsring ${viewport.name}`);
+    await assertOverviewAllocationHero(dark.page, `Dark Übersichts-Hero ${viewport.name}`);
     await assertNoOverflow(dark.page, `Dark Übersicht ${viewport.name}`);
-    await assertConcentric(dark.page, '.overview-screen .financial-hero', '.overview-screen .allocation-legend__item', `Dark-Mode-Hero ${viewport.name}`);
     await dark.page.screenshot({ path: `/tmp/finance-dark-${viewport.name}-overview.png`, fullPage: true });
     if (viewport.width === 412) {
       await dark.page.screenshot({ path: '/tmp/finance-connected-dark.png', fullPage: true });
-      await dark.page.locator('.overview-screen .circular-allocation__button').click();
-      await dark.page.screenshot({ path: '/tmp/finance-dark-412x915-overview-detailed.png', fullPage: true });
     }
     await dark.page.getByRole('link', { name: 'Budget', exact: true }).click();
     await dark.page.getByRole('heading', { name: 'Dein Budget' }).waitFor();
@@ -1213,9 +1212,7 @@ try {
   const reducedScreen = reduced.locator('[data-destination="overview"]');
   assert.equal(await reducedScreen.getAttribute('data-entrance'), 'reduced');
   assert.equal(await reducedScreen.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
-  const reducedStatusTrigger = reduced.locator('.overview-screen .circular-allocation__button');
-  await reducedStatusTrigger.click();
-  assert.equal(await reducedStatusTrigger.getAttribute('aria-pressed'), 'true');
+  await assertOverviewAllocationHero(reduced, 'Reduced-Motion Übersichts-Hero');
   await reduced.getByRole('link', { name: 'Budget', exact: true }).click();
   assert.equal(await reduced.locator('[data-destination="budget"]').getAttribute('data-entrance'), 'reduced');
   assert.equal(await reduced.locator('.budget-chart').getAttribute('data-animation-active'), 'false');
@@ -1239,7 +1236,7 @@ try {
   await forced.goto(baseUrl, { waitUntil: 'networkidle' });
   await forced.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.equal(await forced.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'Forced Colors wurde nicht emuliert');
-  assert.notEqual(await forced.locator('.financial-hero').evaluate((element) => getComputedStyle(element).borderStyle), 'none', 'Hero verliert in Forced Colors seine Begrenzung');
+  assert.notEqual(await forced.locator('.overview-allocation-bar').first().evaluate((element) => getComputedStyle(element).borderStyle), 'none', 'Overview-Balken verliert in Forced Colors seine Begrenzung');
   await assertAdaptiveNavigation(forced, 412, 'Forced Colors Übersicht');
   await assertNoOverflow(forced, 'Forced Colors Übersicht');
   await assertNoVisibleTextBelow12px(forced, '.overview-screen', 'Forced Colors Übersicht');
@@ -1266,6 +1263,23 @@ try {
   const activeToggle = privacyPage.getByRole('button', { name: 'Beträge anzeigen' });
   assert.equal(await activeToggle.getAttribute('aria-pressed'), 'true');
   assert.equal(await privacyPage.evaluate(() => document.documentElement.dataset.privacyMode), 'true');
+  const privateOverview = await privacyPage.locator('#overview-hero').evaluate((hero) => ({
+    barFills: [...hero.querySelectorAll('.overview-allocation-bar')].map((bar) => ({
+      bar: bar.getBoundingClientRect().width,
+      fill: bar.querySelector('.overview-allocation-bar__fill').getBoundingClientRect().width,
+    })),
+    centerFilter: getComputedStyle(hero.querySelector('[data-testid="overview-allocation-center-value"]')).filter,
+    incomeFilter: getComputedStyle(hero.querySelector('.overview-allocation-ring__income')).filter,
+    maskedValueOverflow: [...hero.querySelectorAll('.overview-allocation-bar__value > .money-value--masked, .overview-allocation-bar__value .money-value__blur')]
+      .map((value) => getComputedStyle(value).overflow),
+    sectorIds: [...hero.querySelectorAll('.overview-allocation-ring__sector')]
+      .map((sector) => sector.getAttribute('data-allocation-id')),
+  }));
+  assert.deepEqual(privateOverview.sectorIds, ['private'], 'Privatsphäre-Modus verrät weiterhin die Ringverteilung');
+  assert.equal(privateOverview.barFills.every(({ bar, fill }) => approximately(bar, fill)), true, 'Privatsphäre-Modus verrät weiterhin Balkenverhältnisse');
+  assert.notEqual(privateOverview.centerFilter, 'none', 'Prozentwert im Ring wird nicht weichgezeichnet');
+  assert.notEqual(privateOverview.incomeFilter, 'none', 'Einkommen im Ring wird nicht weichgezeichnet');
+  assert.equal(privateOverview.maskedValueOverflow.every((overflow) => overflow === 'visible'), true, 'Balken schneiden den Blur ab');
 
   await privacyPage.reload({ waitUntil: 'networkidle' });
   await privacyPage.getByRole('heading', { name: overviewHeading }).waitFor();
