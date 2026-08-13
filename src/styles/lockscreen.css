@@ -86,20 +86,42 @@ html[data-app-covered='true'] body > dialog {
   display: grid;
   width: 16px;
   height: 16px;
-  opacity: 0;
   place-items: center;
-  transform: scale(0);
+  transform: scale(1);
   transform-origin: center;
-  transition: opacity var(--motion-fast) linear, transform 380ms var(--motion-spatial-fast);
 }
 
-.pin-indicator__shape--visible {
-  opacity: 1;
-  transform: scale(1);
+.pin-indicator__settle,
+.pin-indicator__grow {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  transform-origin: center;
+}
+
+.pin-indicator__settle {
+  animation: pin-dot-settle var(--pin-shape-morph) var(--motion-emphasized) var(--pin-shape-hold) both;
+}
+
+.pin-indicator__grow {
+  animation: pin-dot-grow 160ms var(--motion-emphasized) both;
 }
 
 .pin-indicator[data-indicator-state='exiting'] .pin-indicator__shape {
+  opacity: 0;
+  transform: scale(0);
   transition: opacity 160ms linear, transform 160ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes pin-dot-grow {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(2); }
+}
+
+@keyframes pin-dot-settle {
+  from { transform: scale(1); }
+  to { transform: scale(0.5); }
 }
 
 .pin-indicator svg {
@@ -527,6 +549,12 @@ html[data-app-covered='true'] body > dialog {
   .settings-switch-row__track,
   .settings-switch-row__track i {
     transition: none;
+  }
+
+  .pin-indicator__settle,
+  .pin-indicator__grow {
+    animation: none;
+    transform: none;
   }
 
   .pin-key:active {

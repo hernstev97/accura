@@ -1,6 +1,6 @@
 import { useReducedMotion } from 'motion/react';
 import { useMorph } from 'shape-morph/react';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from 'react';
 import { PIN_LENGTH } from '../privacy/appProtectionStore';
 import {
   chooseExpressivePinShape,
@@ -8,8 +8,9 @@ import {
 } from '../privacy/expressivePinShapes';
 import { Icon } from './Icon';
 
-const PIN_SHAPE_HOLD_MS = 80;
-const PIN_SHAPE_MORPH_MS = 220;
+const PIN_SHAPE_HOLD_MS = 260;
+const PIN_SHAPE_MORPH_MS = 140;
+const PIN_DOT_EXIT_MS = 160;
 const PIN_DOT_STEP_PX = 24;
 
 type PinIndicatorItem = {
@@ -29,7 +30,6 @@ function MorphingPinDot({
 }) {
   const reducedMotion = Boolean(useReducedMotion());
   const [morphToCircle, setMorphToCircle] = useState(reducedMotion);
-  const [visible, setVisible] = useState(reducedMotion && item.phase === 'active');
   const { pathD, progress } = useMorph(item.shape, 'Circle', {
     duration: PIN_SHAPE_MORPH_MS,
     progress: morphToCircle ? 1 : 0,
@@ -46,20 +46,13 @@ function MorphingPinDot({
   }, [reducedMotion]);
 
   useEffect(() => {
-    if (item.phase === 'exiting') {
-      if (reducedMotion) {
-        onExitComplete(item.id);
-        return;
-      }
-      setVisible(false);
-      return;
-    }
+    if (item.phase !== 'exiting') return;
     if (reducedMotion) {
-      setVisible(true);
+      onExitComplete(item.id);
       return;
     }
-    const frame = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(frame);
+    const fallback = window.setTimeout(() => onExitComplete(item.id), PIN_DOT_EXIT_MS + 40);
+    return () => window.clearTimeout(fallback);
   }, [item.id, item.phase, onExitComplete, reducedMotion]);
 
   return (
@@ -71,14 +64,22 @@ function MorphingPinDot({
       style={{ transform: `translateX(${position}px)` }}
     >
       <span
-        className={`pin-indicator__shape${visible ? ' pin-indicator__shape--visible' : ''}`}
+        className="pin-indicator__shape"
         onTransitionEnd={(event) => {
           if (item.phase === 'exiting' && event.propertyName === 'transform') onExitComplete(item.id);
         }}
+        style={{
+          '--pin-shape-hold': `${PIN_SHAPE_HOLD_MS}ms`,
+          '--pin-shape-morph': `${PIN_SHAPE_MORPH_MS}ms`,
+        } as CSSProperties}
       >
-        <svg focusable="false" viewBox="0 0 100 100">
-          <path d={pathD} />
-        </svg>
+        <span className="pin-indicator__settle">
+          <span className="pin-indicator__grow">
+            <svg focusable="false" viewBox="0 0 100 100">
+              <path d={pathD} />
+            </svg>
+          </span>
+        </span>
       </span>
     </span>
   );
