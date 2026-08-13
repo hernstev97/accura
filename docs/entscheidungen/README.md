@@ -21,3 +21,4 @@ Zulässige Statuswerte sind `Vorgeschlagen`, `Angenommen`, `Ersetzt` und `Verwor
 | [0009](0009-ereignisgesteuerte-aktualisierung.md) | Ereignisgesteuerte Aktualisierung | Angenommen |
 | [0010](0010-gehaltsbezogene-faelligkeitsprojektion.md) | Gehaltsbezogene Fälligkeitsprojektion | Angenommen |
 | [0011](0011-lokaler-privacy-modus.md) | Lokaler Privacy-Modus | Angenommen |
+| [0012](0012-app-vorschau-und-lokaler-pin-lock.md) | App-Vorschau und lokaler PIN-Lock | Angenommen |

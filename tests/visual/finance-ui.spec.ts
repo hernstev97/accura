@@ -6,12 +6,25 @@ import {
   emptyCollectionsFinanceData,
   extremeOverdrawnFinanceData,
 } from '../../scripts/fixtures/finance-edge-cases.mjs';
+import { APP_PROTECTION_STORAGE_KEY, PIN_PBKDF2_ITERATIONS } from '../../src/privacy/appProtectionStore';
 
 type Theme = 'light' | 'dark';
 type FinanceDestination = 'overview' | 'upcoming' | 'budget' | 'debt';
 type FinanceState = 'connected' | 'signed-out' | 'no-spreadsheet' | 'validation-error' | 'reconnect';
 const defaultVisualTime = new Date('2026-08-09T06:00:00Z');
 const overviewHeading = /^(?:Guten Morgen|Guten Tag|Guten Abend|Gute Nacht)$/;
+const protectedStorageState = JSON.stringify({
+  version: 1,
+  privacyScreenEnabled: true,
+  pin: {
+    algorithm: 'PBKDF2-HMAC-SHA-256',
+    iterations: PIN_PBKDF2_ITERATIONS,
+    salt: 'AAAAAAAAAAAAAAAAAAAAAA',
+    verifier: 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+  },
+  failedAttempts: 0,
+  blockedUntil: null,
+});
 const destinationPaths: Record<FinanceDestination, string> = {
   overview: '/',
   upcoming: '/demnaechst',
@@ -64,6 +77,38 @@ async function openDestination(page: Page, destination: FinanceDestination) {
 
 async function capture(page: Page, name: string) {
   await expect(page).toHaveScreenshot(name, { fullPage: true });
+}
+
+async function enterPin(page: Page, dialogName: string, pin: string) {
+  const dialog = page.getByRole('dialog', { name: dialogName, exact: true });
+  for (const digit of pin) await dialog.getByRole('button', { name: digit, exact: true }).click();
+  await dialog.getByRole('button', { name: 'PIN bestätigen' }).click();
+}
+
+async function seedPinProtection(page: Page) {
+  await page.addInitScript(({ key, state }) => {
+    localStorage.setItem(key, state);
+  }, { key: APP_PROTECTION_STORAGE_KEY, state: protectedStorageState });
+}
+
+async function hasCachedFinanceData(page: Page) {
+  return page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('finance-overview', 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const transaction = database.transaction('last-good', 'readonly');
+      const request = transaction.objectStore('last-good').get('finance-data-v1');
+      return await new Promise<boolean>((resolve, reject) => {
+        request.onsuccess = () => resolve(Boolean(request.result));
+        request.onerror = () => reject(request.error);
+      });
+    } finally {
+      database.close();
+    }
+  });
 }
 
 async function expectNoAxeViolations(page: Page, label: string) {
@@ -293,8 +338,18 @@ test('412 light info dialog', async ({ page, context }) => {
   await preparePage(page, context, 'connected', 'light', true);
   await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
   await page.getByLabel('Einstellungen öffnen').click();
-  await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
+  const settings = page.getByRole('dialog', { name: 'Informationen' });
+  await settings.waitFor();
+  await expect(settings.getByRole('status')).toHaveText('');
+  await expect(settings.getByRole('button', { name: 'PIN einrichten', exact: true })).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(settings.getByRole('checkbox', { name: /Mit PIN entsperren/ })).toHaveCount(0);
   await capture(page, '412-light-info-dialog.png');
+
+  await settings.getByRole('checkbox', { name: /App-Vorschau schützen/ }).check();
+  await expect(settings.getByRole('status')).toHaveText('App-Vorschau-Schutz aktiviert.');
+  await page.getByLabel('Informationen schließen').click();
+  await page.getByLabel('Einstellungen öffnen').click();
+  await expect(page.getByRole('dialog', { name: 'Informationen' }).getByRole('status')).toHaveText('');
 });
 
 test('412 light disconnect confirmation', async ({ page, context }) => {
@@ -305,6 +360,203 @@ test('412 light disconnect confirmation', async ({ page, context }) => {
   await page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
   await page.getByText('Google-Verbindung trennen?').waitFor();
   await capture(page, '412-light-disconnect-confirmation.png');
+});
+
+test('412 light app preview protection covers background and requires deliberate reveal', async ({ page, context }) => {
+  const runtimeErrors = trackRuntimeErrors(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'light', true);
+  await page.getByLabel('Einstellungen öffnen').click();
+  await page.getByRole('checkbox', { name: /App-Vorschau schützen/ }).check();
+
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  const cover = page.getByRole('dialog', { name: 'Accura ist geschützt' });
+  await expect(cover).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Informationen' })).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-app-covered', 'true');
+  await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
+  await expect(page.locator('.app-shell')).toHaveCSS('visibility', 'hidden');
+  await expectNoHorizontalOverflow(page);
+  await expectNoAxeViolations(page, 'App-Vorschau-Schutz');
+  await expect(page).toHaveScreenshot('412-light-app-preview-protection.png');
+
+  await cover.getByRole('button', { name: 'Inhalte anzeigen' }).click();
+  await expect(cover).toHaveCount(0);
+  await expect(page.locator('html')).not.toHaveAttribute('data-app-covered', 'true');
+  await expect(page.getByRole('heading', { name: 'Guten Morgen' })).toBeVisible();
+  await expect(page.getByLabel('Einstellungen öffnen')).toBeEnabled();
+  await expect(page.locator('.app-shell')).not.toHaveAttribute('inert', '');
+  expect(runtimeErrors).toEqual([]);
+});
+
+test('412 light PIN setup, expressive entry, reload lock, unlock, and disable', async ({ page, context }) => {
+  const runtimeErrors = trackRuntimeErrors(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'light', true);
+  await page.getByLabel('Einstellungen öffnen').click();
+  await page.getByRole('button', { name: 'PIN einrichten', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'PIN einrichten' })).toBeVisible();
+  await enterPin(page, 'PIN einrichten', '123456');
+  await expect(page.getByRole('dialog', { name: 'Neue PIN bestätigen' })).toBeVisible();
+  await enterPin(page, 'Neue PIN bestätigen', '123456');
+  await expect(page.getByRole('dialog', { name: 'Informationen' })).toBeVisible();
+  await expect(page.getByText('PIN-Sperre eingerichtet.')).toBeVisible();
+
+  const storedProtection = await page.evaluate(() => localStorage.getItem('finance-app-protection-v1'));
+  expect(storedProtection).toContain('PBKDF2-HMAC-SHA-256');
+  expect(storedProtection).not.toContain('123456');
+  await page.getByLabel('Informationen schließen').click();
+  await page.reload({ waitUntil: 'networkidle' });
+
+  const lock = page.getByRole('dialog', { name: 'PIN eingeben' });
+  await expect(lock).toBeVisible();
+  await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
+  await expect(lock.locator('.pin-indicator')).toHaveCount(0);
+  await expect(lock.locator('.app-lock-screen__logo')).toHaveCount(0);
+  await expect(lock).toHaveCSS('background-image', 'none');
+  expect(await lock.evaluate((element) => {
+    const lockStyle = getComputedStyle(element);
+    const probe = document.createElement('i');
+    probe.style.backgroundColor = 'var(--color-page)';
+    document.body.append(probe);
+    const themeColor = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return lockStyle.backgroundColor === themeColor;
+  })).toBe(true);
+  await expectNoAxeViolations(page, 'PIN-Lockscreen');
+  await expect(page).toHaveScreenshot('412-light-pin-lockscreen.png');
+
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' });
+  await lock.getByRole('button', { name: '1', exact: true }).click();
+  const activeShape = lock.locator('.pin-indicator');
+  const activeShapePath = activeShape.locator('path');
+  const expressivePath = await activeShapePath.getAttribute('d');
+  await expect(activeShape).toHaveCount(1);
+  await expect(activeShape).toHaveAttribute('data-start-shape', /^(?!Circle$).+/);
+  await expect(activeShape).toHaveCSS('animation-name', 'pin-dot-enter');
+  const centered = await activeShape.evaluate((element) => {
+    const indicator = element.getBoundingClientRect();
+    const group = element.parentElement!.getBoundingClientRect();
+    return Math.abs((indicator.left + indicator.width / 2) - (group.left + group.width / 2)) < 1;
+  });
+  expect(centered).toBe(true);
+  await expect(activeShape).toHaveAttribute('data-morph-progress', '1.000', { timeout: 1_000 });
+  await expect(activeShape).toHaveCSS('width', '16px');
+  await expect(activeShape).toHaveCSS('height', '16px');
+  expect(await activeShapePath.getAttribute('d')).not.toBe(expressivePath);
+  for (const digit of '23456') await lock.getByRole('button', { name: digit, exact: true }).click();
+  await lock.getByRole('button', { name: 'PIN bestätigen' }).click();
+
+  await expect(lock).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Guten Morgen' })).toBeVisible();
+  await expect(page.getByLabel('Beträge ausblenden')).toHaveAttribute('aria-pressed', 'false');
+
+  await page.getByLabel('Einstellungen öffnen').click();
+  const disablePinButton = page.getByRole('button', { name: 'PIN-Sperre deaktivieren', exact: true });
+  await expect(disablePinButton).toBeEnabled();
+  await disablePinButton.click();
+  await expect(page.getByRole('dialog', { name: 'PIN-Sperre deaktivieren' })).toBeVisible();
+  await enterPin(page, 'PIN-Sperre deaktivieren', '123456');
+  await expect(page.getByText('PIN-Sperre deaktiviert. Der App-Vorschau-Schutz bleibt aktiv.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'PIN einrichten', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /App-Vorschau schützen/ })).toBeChecked();
+  expect(runtimeErrors).toEqual([]);
+});
+
+test('PIN setup remains usable after an unexpected Web Crypto rejection', async ({ page, context }) => {
+  await preparePage(page, context, 'connected', 'light', true);
+  await page.evaluate(() => {
+    Object.defineProperty(SubtleCrypto.prototype, 'deriveBits', {
+      configurable: true,
+      value: () => Promise.reject(new Error('synthetic deriveBits failure')),
+    });
+  });
+  await page.getByLabel('Einstellungen öffnen').click();
+  await page.getByRole('button', { name: 'PIN einrichten', exact: true }).click();
+  await enterPin(page, 'PIN einrichten', '123456');
+  await enterPin(page, 'Neue PIN bestätigen', '123456');
+
+  const setup = page.getByRole('dialog', { name: 'PIN einrichten', exact: true });
+  await expect(setup.getByText(/PIN konnte unerwartet nicht gespeichert werden/)).toBeVisible();
+  await expect(setup.getByRole('button', { name: '1', exact: true })).toBeEnabled();
+  await expect(page.evaluate(() => localStorage.getItem('finance-app-protection-v1'))).resolves.toBeNull();
+});
+
+test('PIN lock remains usable after an unexpected Web Crypto rejection', async ({ page, context }) => {
+  await seedPinProtection(page);
+  await preparePage(page, context, 'connected', 'light', true);
+  await page.evaluate(() => {
+    Object.defineProperty(SubtleCrypto.prototype, 'deriveBits', {
+      configurable: true,
+      value: () => Promise.reject(new Error('synthetic deriveBits failure')),
+    });
+  });
+  const lock = page.getByRole('dialog', { name: 'PIN eingeben', exact: true });
+  await enterPin(page, 'PIN eingeben', '123456');
+
+  await expect(lock.getByText(/PIN-Prüfung ist unerwartet fehlgeschlagen/)).toBeVisible();
+  await expect(lock.getByRole('button', { name: '1', exact: true })).toBeEnabled();
+  await expect(page.locator('html')).toHaveAttribute('data-app-covered', 'true');
+});
+
+test('dark PIN lockscreen follows the active theme and remains usable in constrained modes', async ({ page, context }) => {
+  await seedPinProtection(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'dark', true);
+  const lock = page.getByRole('dialog', { name: 'PIN eingeben' });
+  await expect(lock).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme-resolved', 'dark');
+  await expect(page).toHaveScreenshot('412-dark-pin-lockscreen.png');
+
+  await page.setViewportSize({ width: 320, height: 640 });
+  await expectNoHorizontalOverflow(page);
+  await expect(lock.getByRole('button', { name: 'PIN vergessen?' })).toBeVisible();
+
+  await page.emulateMedia({ colorScheme: 'dark', forcedColors: 'active', reducedMotion: 'reduce' });
+  await expect(lock.getByRole('button', { name: '1', exact: true })).toHaveCSS('border-style', 'solid');
+  await expectNoAxeViolations(page, 'PIN-Lockscreen Forced Colors');
+});
+
+test('forgotten PIN recovery stays locked offline and clears protected local data after disconnect', async ({ page, context }) => {
+  const runtimeErrors = trackRuntimeErrors(page);
+  let disconnectRequests = 0;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/connection/disconnect') disconnectRequests += 1;
+  });
+  await seedPinProtection(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await preparePage(page, context, 'connected', 'light', true);
+  const lock = page.getByRole('dialog', { name: 'PIN eingeben' });
+  await expect(lock).toBeVisible();
+  const siblingPage = await context.newPage();
+  await installFinanceApiMocks(siblingPage, 'connected');
+  await siblingPage.goto('/', { waitUntil: 'networkidle' });
+  await expect(siblingPage.getByRole('dialog', { name: 'PIN eingeben' })).toBeVisible();
+  await expect.poll(() => hasCachedFinanceData(page)).toBe(true);
+
+  await lock.getByRole('button', { name: 'PIN vergessen?' }).click();
+  const recovery = page.getByRole('dialog', { name: 'App-Schutz zurücksetzen?' });
+  await context.setOffline(true);
+  await recovery.getByRole('button', { name: 'Sicher zurücksetzen' }).click();
+  await expect(recovery.getByText(/Internetverbindung benötigt/)).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-app-covered', 'true');
+  expect(disconnectRequests).toBe(0);
+
+  await context.setOffline(false);
+  await siblingPage.route('**/api/session', (route) => route.fulfill({ json: { authenticated: false } }));
+  const siblingReload = siblingPage.waitForEvent('framenavigated', (frame) => frame === siblingPage.mainFrame());
+  await recovery.getByRole('button', { name: 'Sicher zurücksetzen' }).click();
+  await expect(recovery).toHaveCount(0);
+  expect(await hasCachedFinanceData(page)).toBe(false);
+  await expect(page.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
+  await siblingReload;
+  await expect(siblingPage.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
+  await expect(siblingPage.getByRole('dialog', { name: 'PIN eingeben' })).toHaveCount(0);
+  expect(disconnectRequests).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('finance-app-protection-v1'))).toBeNull();
+  expect(await hasCachedFinanceData(page)).toBe(false);
+  await siblingPage.close();
+  expect(runtimeErrors).toEqual([]);
 });
 
 for (const scenario of [

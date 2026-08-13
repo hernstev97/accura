@@ -4,15 +4,25 @@ import type { FinanceDataV1, FinanceValidationIssue } from '../finance/types';
 import { createFinanceViewModel, type FinanceViewModel } from '../finance/viewModel';
 import { getCurrentUserDateISO, millisecondsUntilNextLocalDay } from '../lib/calendarDate';
 import { safeAppReturnPath } from '../navigation/appNavigation';
-import { clearCachedFinanceData, loadCachedFinanceData, saveCachedFinanceData } from './financeCache';
+import {
+  clearCachedFinanceData,
+  loadCachedFinanceData,
+  readFinanceCacheGeneration,
+  restoreFinanceCacheGeneration,
+  rotateFinanceCacheGeneration,
+  saveCachedFinanceData,
+} from './financeCache';
 import { FinanceApiError, productionFinanceApi, type FinanceApi, type FinanceSession } from './financeApi';
 import { launchGooglePicker, selectSpreadsheetWithPicker, type PickerLauncher } from './googlePicker';
+import { runWithAbortTimeout } from './requestTimeout';
 
 const STALE_AFTER_MS = 10 * 60 * 1000;
+export const PROTECTED_ACCESS_RECOVERY_TIMEOUT_MS = 15_000;
 
 export type AuthState = 'checking' | 'signed-out' | 'authenticated' | 'offline';
 export type ConnectionState = 'unknown' | 'disconnected' | 'no-spreadsheet' | 'connected' | 'reconnect';
 export type SyncState = 'initial' | 'syncing' | 'idle' | 'stale' | 'offline' | 'validation-error' | 'error';
+export type ProtectedAccessRecoveryResult = 'success' | 'offline' | 'error';
 
 export type FinanceUiError = {
   code: string;
@@ -106,6 +116,7 @@ type FinanceContextValue = FinanceProviderState & {
   selectSpreadsheet: () => Promise<void>;
   logout: () => Promise<void>;
   disconnect: () => Promise<void>;
+  recoverProtectedAccess: () => Promise<ProtectedAccessRecoveryResult>;
   signIn: () => void;
 };
 
@@ -139,17 +150,22 @@ export function FinanceDataProvider({
   const refreshPromise = useRef<Promise<void> | null>(null);
   const abortController = useRef<AbortController | null>(null);
   const generation = useRef(0);
+  const cacheGeneration = useRef(readFinanceCacheGeneration());
   stateRef.current = state;
 
-  const acceptFinanceResponse = useCallback(async (response: Awaited<ReturnType<FinanceApi['getFinance']>>, requestGeneration: number) => {
+  const acceptFinanceResponse = useCallback(async (
+    response: Awaited<ReturnType<FinanceApi['getFinance']>>,
+    requestGeneration: number,
+    requestCacheGeneration: string,
+  ) => {
     if (generation.current !== requestGeneration) return;
-    await saveCachedFinanceData({
+    const persisted = await saveCachedFinanceData({
       spreadsheetId: response.spreadsheet.id,
       spreadsheetName: response.spreadsheet.name,
       refreshedAt: response.refreshedAt,
       data: response.data,
-    });
-    if (generation.current !== requestGeneration) return;
+    }, requestCacheGeneration);
+    if (!persisted || generation.current !== requestGeneration) return;
     dispatch({ type: 'sync-succeeded', ...response });
   }, []);
 
@@ -158,13 +174,14 @@ export function FinanceDataProvider({
     const current = stateRef.current;
     if (!current.spreadsheet || (current.authState !== 'authenticated' && current.authState !== 'offline')) return;
     const requestGeneration = generation.current;
+    const requestCacheGeneration = cacheGeneration.current;
     const controller = new AbortController();
     abortController.current = controller;
     const task = (async () => {
       dispatch({ type: 'sync-started' });
       try {
         const response = await api.getFinance(controller.signal);
-        await acceptFinanceResponse(response, requestGeneration);
+        await acceptFinanceResponse(response, requestGeneration, requestCacheGeneration);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         if (generation.current !== requestGeneration) return;
@@ -277,12 +294,13 @@ export function FinanceDataProvider({
     generation.current += 1;
     abortController.current?.abort();
     const requestGeneration = generation.current;
+    const requestCacheGeneration = cacheGeneration.current;
     const controller = new AbortController();
     abortController.current = controller;
     dispatch({ type: 'picker-started' });
     try {
       const response = await selectSpreadsheetWithPicker(api, pickerLauncher, csrfToken, controller.signal);
-      if (response) await acceptFinanceResponse(response, requestGeneration);
+      if (response) await acceptFinanceResponse(response, requestGeneration, requestCacheGeneration);
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         const uiError = toUiError(error);
@@ -323,12 +341,63 @@ export function FinanceDataProvider({
     }
   }, [api]);
 
+  const recoverProtectedAccess = useCallback(async (): Promise<ProtectedAccessRecoveryResult> => {
+    if (!navigator.onLine || stateRef.current.authState === 'offline') return 'offline';
+    const current = stateRef.current;
+    let disconnectConnection: ((signal: AbortSignal) => Promise<void>) | null = null;
+    if (current.authState === 'authenticated') {
+      if (!current.csrfToken) return 'error';
+      const csrfToken = current.csrfToken;
+      disconnectConnection = (signal) => api.disconnect(csrfToken, signal);
+    } else if (current.authState !== 'signed-out') {
+      return 'error';
+    }
+    const previousCacheGeneration = cacheGeneration.current;
+    const recoveryCacheGeneration = rotateFinanceCacheGeneration();
+    if (!recoveryCacheGeneration) return 'error';
+    cacheGeneration.current = recoveryCacheGeneration;
+    let connectionRemoved = disconnectConnection === null;
+    try {
+      if (disconnectConnection) {
+        await runWithAbortTimeout(
+          disconnectConnection,
+          PROTECTED_ACCESS_RECOVERY_TIMEOUT_MS,
+        );
+        connectionRemoved = true;
+      }
+      generation.current += 1;
+      abortController.current?.abort();
+      // Reset in-memory data before the fallible IndexedDB cleanup. If cleanup
+      // fails after a successful server disconnect, a retry can then finish it
+      // through the signed-out path without exposing the stale finance state.
+      stateRef.current = financeProviderReducer(stateRef.current, { type: 'reset' });
+      dispatch({ type: 'reset' });
+      await clearCachedFinanceData();
+      return 'success';
+    } catch {
+      if (!connectionRemoved && restoreFinanceCacheGeneration(previousCacheGeneration)) {
+        cacheGeneration.current = previousCacheGeneration;
+      }
+      return navigator.onLine ? 'error' : 'offline';
+    }
+  }, [api]);
+
   const signIn = useCallback(() => {
     const parameters = new URLSearchParams({ return_to: safeAppReturnPath(window.location.pathname) });
     window.location.assign(`/api/auth/google/start?${parameters.toString()}`);
   }, []);
   const viewModel = useMemo(() => state.data ? createFinanceViewModel(state.data, projectionDate) : null, [state.data, projectionDate]);
-  const value = useMemo<FinanceContextValue>(() => ({ ...state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn }), [state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn]);
+  const value = useMemo<FinanceContextValue>(() => ({
+    ...state,
+    viewModel,
+    online,
+    refresh,
+    selectSpreadsheet,
+    logout,
+    disconnect,
+    recoverProtectedAccess,
+    signIn,
+  }), [state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, recoverProtectedAccess, signIn]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }

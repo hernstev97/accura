@@ -25,6 +25,10 @@
 | Netzwerk-/Serverfehler mit Daten | Daten bleiben sichtbar und als veraltet markiert | später erneut laden |
 | Netzwerk-/Serverfehler ohne Daten | zentrale Fehler-/Einrichtungsansicht | Ursache beheben |
 | Privacy aus/ein | Geldbeträge sichtbar/maskiert | Umschalter betätigen |
+| App-Vorschau geschützt | gesamte App nach Hintergrundwechsel verdeckt | bewusst Inhalte anzeigen |
+| PIN-Lock | Start, Reload oder Hintergrundrückkehr gesperrt | sechsstellige PIN eingeben |
+| PIN-Wartezeit | zu viele Fehlversuche; Sperre bleibt aktiv | angezeigte Wartezeit abwarten |
+| PIN-Recovery offline/fehlgeschlagen | Sperre und lokale Daten bleiben erhalten | Netzwerk wiederherstellen/erneut versuchen |
 | Appearance-Entwurf | Vorschau im Dialog, noch nicht gespeichert | anwenden oder abbrechen |
 | Appearance angewandt | Tokens und optionale Vorschau lokal gespeichert | weiter nutzen/resetten |
 | Bild entfernt | Vorschau aus IndexedDB gelöscht; Nicht-Bild-Palette aktiv | neues Bild wählen oder Palette nutzen |
@@ -65,7 +69,7 @@ Bei Anmeldung oder erneuter Google-Verbindung sendet der Client nur einen der vi
 
 ## Abmelden und Trennen
 
-Abmelden löscht nur das signierte Session-Cookie im Browser. Trennen widerruft nach Möglichkeit das Google-Token und löscht selbst bei fehlgeschlagener Widerruf-Anfrage den Verbindungsdatensatz; im Client wird danach der Finance-Cache gelöscht. Appearance und Privacy sind unabhängige Geräteeinstellungen und bleiben in beiden Fällen erhalten.
+Abmelden löscht nur das signierte Session-Cookie im Browser. Trennen widerruft nach Möglichkeit das Google-Token und löscht selbst bei fehlgeschlagener Widerruf-Anfrage den Verbindungsdatensatz; im Client wird danach der Finance-Cache gelöscht. Appearance, Privacy und App-Schutz sind unabhängige Geräteeinstellungen und bleiben in beiden Fällen erhalten. Nur die ausdrücklich bestätigte Recovery einer vergessenen PIN entfernt den App-Schutz nach erfolgreicher Online-Bereinigung.
 
 ## Appearance-Transaktion
 
@@ -74,6 +78,6 @@ Der Farben-Dialog hält Modus, Quelle, Palette und Bild zunächst als Entwurf. *
 ## Implementierung und Tests
 
 - Reducer und Übergänge: [src/data/FinanceDataProvider.tsx](../../src/data/FinanceDataProvider.tsx)
-- Privacy-Tabsynchronisierung: [src/privacy/PrivacyProvider.tsx](../../src/privacy/PrivacyProvider.tsx)
+- Privacy-, App-Schutz- und Lifecycle-Zustand: [src/privacy/PrivacyProvider.tsx](../../src/privacy/PrivacyProvider.tsx)
 - Appearance-Dialog: [src/components/ColorThemeDialog.tsx](../../src/components/ColorThemeDialog.tsx)
 - Zustands-Golden-Screens: [tests/visual/finance-ui.spec.ts](../../tests/visual/finance-ui.spec.ts)

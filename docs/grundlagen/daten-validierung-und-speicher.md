@@ -18,7 +18,7 @@ Jede Systemgrenze liefert zunächst unbekannte Daten: Google Sheets, HTTP-Antwor
 | --- | --- | --- |
 | signiertes `HttpOnly`-Cookie | Sitzung | Browser sendet es same-origin; JavaScript kann es nicht lesen; Logout/Disconnect löschen es |
 | kurzlebiges OAuth-Cookie | State, Nonce, PKCE-Verifier | etwa zehn Minuten, nur während Anmeldung |
-| `localStorage` | kleine Geräteeinstellungen | Appearance und Privacy; bleibt bei Logout/Disconnect |
+| `localStorage` | kleine Geräteeinstellungen | Appearance, Privacy, versionierter App-Schutz/PIN-Verifier und eine fachinhaltsfreie Cache-Generation für tabübergreifende Recovery-Invalidierung; bleibt bei Logout/Disconnect |
 | `sessionStorage` | Tab-Sitzung | besuchte Screens für einmalige Entrance-Motion |
 | IndexedDB | strukturierte größere lokale Daten | ein Finance-Snapshot und optional eine reduzierte Wallpaper-Vorschau in getrennten Datenbanken |
 | Service-Worker-Cache | statische App-Shell | keine `/api/*`-Antworten |
@@ -34,6 +34,6 @@ Browserdaten sind nicht automatisch verschlüsselt und können durch Gerätezugr
 - HTTP-Laufzeitprüfung: [src/data/financeApi.ts](../../src/data/financeApi.ts)
 - Finance-Cache: [src/data/financeCache.ts](../../src/data/financeCache.ts), [Cache-Tests](../../src/data/financeCache.test.ts)
 - Appearance-Store: [src/appearance/appearanceStore.ts](../../src/appearance/appearanceStore.ts)
-- Privacy-Store: [src/privacy/privacyStore.ts](../../src/privacy/privacyStore.ts)
+- Privacy- und App-Schutz-Stores: [src/privacy/privacyStore.ts](../../src/privacy/privacyStore.ts), [src/privacy/appProtectionStore.ts](../../src/privacy/appProtectionStore.ts)
 
 Primärquellen: [MDN IndexedDB](https://developer.mozilla.org/docs/Web/API/IndexedDB_API), [MDN Web Storage](https://developer.mozilla.org/docs/Web/API/Web_Storage_API), [MDN Cookies](https://developer.mozilla.org/docs/Web/HTTP/Cookies).

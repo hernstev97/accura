@@ -16,7 +16,7 @@
 | `src/data/` | Browser-API, Picker, Finance-Provider, IndexedDB-Finance-Cache |
 | `src/finance/` | Schemaheader, Parser, Laufzeitschema, Typen, Selektoren, Upcoming, View-Model |
 | `src/appearance/` | Präferenz, Paletten, Tokens, Worker und Wallpaper-IndexedDB |
-| `src/privacy/` | lokaler Privacy-Store und Context |
+| `src/privacy/` | Geldmaskierung, App-Schutz-/PIN-Store, Expressive-PIN-Formen und gemeinsamer Context |
 | `src/navigation/` | kanonische App-Pfade, History-/Startauflösung und letzte Destination |
 | `src/design/` | zentrale CSS-Tokens, Schriftimport, Diagramm-/Motion-Helfer |
 | `src/styles/` | Basis, Shell, Primitives, Screens, Zustände, Responsive Regeln |
@@ -41,4 +41,5 @@ Für einen Geldwert beginnt die Spur in einem Header aus [src/finance/schema.ts]
 - Neue Geldanzeige: View-Model/Formatierung und `MoneyValue` verwenden, damit Privacy greift.
 - Neue API-Aktion: Methode, Auth, Origin/CSRF, Zod-Grenze und öffentliche Fehlerform berücksichtigen.
 - Neue Appearance-Eigenschaft: versioniertes Speicherparsing, Pre-Render und Cross-Tab-Verhalten berücksichtigen.
+- Neue App-Schutz-Eigenschaft: fail-closed Parsing, Pre-Render-Abdeckung, Lifecycle und Recovery gemeinsam prüfen.
 - Neue Dokumentseite: im [zentralen Index](../README.md) und in der Themenmatrix aufnehmen.

@@ -21,7 +21,7 @@ flowchart LR
   G -->|zehn Tabellenbereiche| V
   V -->|FinanceDataV1| B
   B -->|Last-known-good| I[(IndexedDB)]
-  B -->|Appearance / Privacy| L[(localStorage)]
+  B -->|Appearance / Privacy / App-Schutz| L[(localStorage)]
 
   subgraph Geraet[Vertrauensbereich: Gerät und Browserprofil]
     B
@@ -39,7 +39,7 @@ Implementierung und Tests: [src/main.tsx](../../src/main.tsx), [api/_lib/http.ts
 ## Startvorgang
 
 1. `index.html` stellt Root-Element, Manifest und frühe Theme-Metadaten bereit.
-2. `src/main.tsx` registriert den Service Worker und liest Appearance sowie Privacy vor dem ersten React-Render, damit kein sichtbarer Moduswechsel aufblitzt.
+2. `src/main.tsx` registriert den Service Worker und liest Appearance, Privacy und App-Schutz vor dem ersten React-Render, damit weder Theme noch eine konfigurierte Sperre sichtbar nachladen.
 3. React mountet unter `StrictMode` die Provider in der Reihenfolge Privacy → Appearance → FinanceData.
 4. `FinanceDataProvider` lädt parallel fachlich zuerst den Cache und prüft danach die Sitzung. Eine vorhandene Auswahl löst einen Sync aus.
 5. `App` zeigt eine Connection-State-Seite oder die vier Ziele. Nur die Übersicht ist initial geladen; weitere Ziele werden lazy importiert.
@@ -54,4 +54,4 @@ Die Gründe sind in [ADRs](../entscheidungen/README.md) festgehalten. Besonders 
 
 ## Grenzen und Sicherheitsannahmen
 
-Das Modell setzt ein vertrauenswürdiges Betreiberkonto, korrekte Secrets, HTTPS sowie ein geschütztes Endgerät/Browserprofil voraus. Lokale Finance-Daten sind nicht durch Privacy oder Appearance verschlüsselt. Es gibt keine Mandantentrennung, weil nur eine Identität erlaubt ist.
+Das Modell setzt ein vertrauenswürdiges Betreiberkonto, korrekte Secrets, HTTPS sowie ein geschütztes Endgerät/Browserprofil voraus. Lokale Finance-Daten sind weder durch Privacy, App-Schutz noch Appearance verschlüsselt. Es gibt keine Mandantentrennung, weil nur eine Identität erlaubt ist.

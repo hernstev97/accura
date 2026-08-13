@@ -5,6 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type MouseEve
 import { AdaptiveNavigation } from './components/AdaptiveNavigation';
 import { AccuraLogo } from './components/AccuraLogo';
 import { AppButton } from './components/AppButton';
+import { AppLockScreen } from './components/AppLockScreen';
 import { ConnectionStateLayout } from './components/ConnectionStateLayout';
 import { Icon } from './components/Icon';
 import { LoadingIndicator } from './components/LoadingIndicator';
@@ -174,6 +175,7 @@ function App({ initialDestination }: AppProps) {
           <Analytics />
         </>
       ) : null}
+      <AppLockScreen />
       <div className="app-shell">
         <div className={`app-content ${hasData ? 'app-content--connected' : ''}`}>
           <header className="top-app-bar">

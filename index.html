@@ -33,6 +33,39 @@
     <script>
       (() => {
         try {
+          const root = document.documentElement;
+          if (localStorage.getItem('finance-privacy-v1') === 'true') {
+            root.dataset.privacyMode = 'true';
+          }
+          const protectionRaw = localStorage.getItem('finance-app-protection-v1');
+          if (protectionRaw !== null) {
+            // Keep synchronized with PIN_PBKDF2_ITERATIONS in appProtectionStore.ts.
+            const pinPbkdf2Iterations = 600000;
+            let protectionValid = false;
+            let pinConfigured = false;
+            try {
+              const protection = JSON.parse(protectionRaw);
+              const pin = protection?.pin;
+              pinConfigured = Boolean(pin);
+              protectionValid = protection?.version === 1
+                && typeof protection.privacyScreenEnabled === 'boolean'
+                && Number.isSafeInteger(protection.failedAttempts) && protection.failedAttempts >= 0
+                && (protection.blockedUntil === null || (Number.isSafeInteger(protection.blockedUntil) && protection.blockedUntil > 0))
+                && (pin === null || (
+                  protection.privacyScreenEnabled === true
+                  && pin?.algorithm === 'PBKDF2-HMAC-SHA-256'
+                  && pin?.iterations === pinPbkdf2Iterations
+                  && typeof pin?.salt === 'string'
+                  && typeof pin?.verifier === 'string'
+                ));
+            } catch {
+              protectionValid = false;
+            }
+            if (!protectionValid || pinConfigured) {
+              root.dataset.appCovered = 'true';
+              root.dataset.privacyMode = 'true';
+            }
+          }
           const preference = JSON.parse(localStorage.getItem('finance-appearance-v1') || 'null');
           const tokenNames = ['--color-page', '--color-container-low', '--color-container', '--color-container-high', '--color-surface-bright', '--color-on-surface', '--color-on-surface-variant', '--color-primary', '--color-on-primary', '--color-primary-container', '--color-on-primary-container', '--color-secondary', '--color-on-secondary', '--color-secondary-container', '--color-on-secondary-container', '--color-tertiary', '--color-on-tertiary', '--color-tertiary-container', '--color-on-tertiary-container', '--color-outline', '--color-outline-variant', '--color-scrim'];
           const validMode = ['system', 'light', 'dark'].includes(preference?.mode);
@@ -47,7 +80,6 @@
           const validTokens = ['light', 'dark'].every((mode) => tokenNames.every((name) => /^#[\da-f]{6}$/i.test(preference?.theme?.[mode]?.[name] || '')));
           if (!preference || preference.version !== 1 || !validMode || !validSource || !validPalette || !validWallpaper || !validTokens) return;
           const resolved = preference.mode === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference.mode;
-          const root = document.documentElement;
           root.dataset.themeMode = preference.mode;
           root.dataset.themeResolved = resolved;
           root.dataset.colorSource = preference.source;
@@ -56,9 +88,6 @@
           tokenNames.forEach((name) => root.style.setProperty(name, preference.theme[resolved][name]));
           const meta = document.querySelector('meta[data-appearance-theme-color]');
           if (meta) meta.content = preference.theme[resolved]['--color-page'];
-          if (localStorage.getItem('finance-privacy-v1') === 'true') {
-            root.dataset.privacyMode = 'true';
-          }
         } catch {
           // CSS light/dark fallbacks remain authoritative when storage is unavailable.
         }

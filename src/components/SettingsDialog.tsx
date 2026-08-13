@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAppearance } from '../appearance/AppearanceProvider';
 import { useFinanceData } from '../data/FinanceDataProvider';
+import { usePrivacy } from '../privacy/PrivacyProvider';
 import {
   ACCURA_LICENSE_URL,
   ACCURA_SOURCE_SHORT_SHA,
@@ -11,6 +12,7 @@ import { AdaptiveDialog } from './AdaptiveDialog';
 import { AppButton } from './AppButton';
 import { ColorThemeDialog } from './ColorThemeDialog';
 import { Icon } from './Icon';
+import { PinManagementDialog, type PinManagementMode } from './PinManagementDialog';
 
 const sourceLabels = {
   browser: 'System',
@@ -27,32 +29,39 @@ const modeLabels = {
 export function SettingsEntry() {
   const finance = useFinanceData();
   const appearance = useAppearance();
+  const privacy = usePrivacy();
   const [open, setOpen] = useState(false);
   const [colorsOpen, setColorsOpen] = useState(false);
+  const [pinDialogMode, setPinDialogMode] = useState<PinManagementMode | null>(null);
+  const [protectionMessage, setProtectionMessage] = useState<string | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const colorsRef = useRef<HTMLButtonElement>(null);
+  const privacyScreenRef = useRef<HTMLInputElement>(null);
+  const pinProtectionRef = useRef<HTMLButtonElement>(null);
   const cancelDisconnectRef = useRef<HTMLButtonElement>(null);
 
   const closeSettings = useCallback(() => {
     setConfirmDisconnect(false);
     setColorsOpen(false);
+    setPinDialogMode(null);
+    setProtectionMessage(null);
     setOpen(false);
   }, []);
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
     if (!surface) return;
-    if (colorsOpen) {
+    if (colorsOpen || pinDialogMode) {
       surface.setAttribute('inert', '');
       surface.setAttribute('aria-hidden', 'true');
     } else {
       surface.removeAttribute('inert');
       surface.removeAttribute('aria-hidden');
     }
-  }, [colorsOpen]);
+  }, [colorsOpen, pinDialogMode]);
 
   useEffect(() => {
     if (!confirmDisconnect) return;
@@ -60,9 +69,35 @@ export function SettingsEntry() {
     return () => cancelAnimationFrame(frame);
   }, [confirmDisconnect]);
 
+  useEffect(() => {
+    if (!open || !privacy.appProtection.privacyScreenEnabled) return;
+    const closeWhenHidden = () => {
+      if (document.visibilityState === 'hidden') closeSettings();
+    };
+    document.addEventListener('visibilitychange', closeWhenHidden);
+    window.addEventListener('pagehide', closeSettings);
+    return () => {
+      document.removeEventListener('visibilitychange', closeWhenHidden);
+      window.removeEventListener('pagehide', closeSettings);
+    };
+  }, [closeSettings, open, privacy.appProtection.privacyScreenEnabled]);
+
   const closeColors = useCallback(() => {
     setColorsOpen(false);
   }, []);
+
+  const closePinDialog = useCallback(() => {
+    setPinDialogMode(null);
+  }, []);
+
+  const togglePrivacyScreen = (enabled: boolean) => {
+    const result = privacy.setPrivacyScreenEnabled(enabled);
+    if (result.status === 'success') {
+      setProtectionMessage(enabled ? 'App-Vorschau-Schutz aktiviert.' : 'App-Vorschau-Schutz deaktiviert.');
+    } else {
+      setProtectionMessage('Die Einstellung konnte nicht dauerhaft gespeichert werden.');
+    }
+  };
 
   const activeTokens = appearance.preference.theme[appearance.resolvedMode];
   const summary = `${sourceLabels[appearance.preference.source]} · ${modeLabels[appearance.preference.mode]}`;
@@ -79,6 +114,8 @@ export function SettingsEntry() {
     : localDataOnly
       ? 'Dieser Datenstand ist lokal auf diesem Gerät verfügbar. Es werden keine Google-Zugangsdaten im Browser gespeichert.'
       : 'Es sind weder eine Google-Verbindung noch lokale Finanzdaten auf diesem Gerät aktiv.';
+  const pinConfigured = Boolean(privacy.appProtection.pin);
+  const pinSetupAvailable = privacy.pinSecurityAvailable && privacy.appProtectionStorageAvailable;
 
   return (
     <>
@@ -112,7 +149,7 @@ export function SettingsEntry() {
           <div className="disconnect-confirmation" role="alert" aria-live="assertive">
             <h3>Google-Verbindung trennen?</h3>
             <p>Google-Zugriff, gespeicherte Verbindung und der Offline-Datenstand auf diesem Gerät werden entfernt.</p>
-            <p>Farben und Design bleiben als gerätebezogene Einstellungen erhalten.</p>
+            <p>Farben, Design und App-Schutz bleiben als gerätebezogene Einstellungen erhalten.</p>
             <div className="dialog-actions">
               <AppButton className="secondary-action" onClick={() => setConfirmDisconnect(false)} ref={cancelDisconnectRef} variant="tonal">Abbrechen</AppButton>
               <AppButton className="danger-action" onClick={() => void finance.disconnect().then(closeSettings)} variant="danger">Endgültig trennen</AppButton>
@@ -150,12 +187,64 @@ export function SettingsEntry() {
               ) : null}
             </section>
 
+            <section className="settings-group" aria-labelledby="settings-protection-title">
+              <h3 id="settings-protection-title">App-Schutz</h3>
+              <div className="settings-switch-list">
+                <label className="settings-switch-row">
+                  <span className="settings-switch-row__icon"><Icon name="eyeOff" /></span>
+                  <span className="settings-switch-row__copy">
+                    <strong>App-Vorschau schützen</strong>
+                    <small id="privacy-screen-support">Verdeckt Accura beim Wechsel in den Hintergrund, bis du die Inhalte bewusst wieder anzeigst.</small>
+                  </span>
+                  <input
+                    aria-describedby="privacy-screen-support"
+                    checked={privacy.appProtection.privacyScreenEnabled}
+                    disabled={pinConfigured}
+                    onChange={(event) => togglePrivacyScreen(event.target.checked)}
+                    ref={privacyScreenRef}
+                    type="checkbox"
+                  />
+                  <span aria-hidden="true" className="settings-switch-row__track"><i /></span>
+                </label>
+                <div className="settings-switch-row settings-switch-row--action">
+                  <span className="settings-switch-row__icon"><Icon name="lock" /></span>
+                  <span className="settings-switch-row__copy">
+                    <strong>Mit PIN entsperren</strong>
+                    <small id="pin-lock-support">Verlangt nach jedem Hintergrundwechsel sowie bei App-Start und Reload eine sechsstellige PIN.</small>
+                  </span>
+                  <AppButton
+                    aria-haspopup="dialog"
+                    aria-label={pinConfigured ? 'PIN-Sperre deaktivieren' : 'PIN einrichten'}
+                    aria-describedby="pin-lock-support"
+                    className="settings-switch-row__action"
+                    disabled={!pinConfigured && !pinSetupAvailable}
+                    onClick={() => setPinDialogMode(pinConfigured ? 'disable' : 'setup')}
+                    ref={pinProtectionRef}
+                    size="small"
+                    variant="tonal"
+                  >
+                    {pinConfigured ? 'Deaktivieren' : 'Einrichten'}
+                  </AppButton>
+                </div>
+              </div>
+              {pinConfigured ? (
+                <div className="settings-actions settings-actions--secondary app-protection-actions">
+                  <AppButton className="settings-action" leadingIcon={<Icon name="lock" size={20} />} onClick={() => setPinDialogMode('change')} variant="tonal">PIN ändern</AppButton>
+                </div>
+              ) : null}
+              {!pinSetupAvailable && !pinConfigured ? (
+                <p className="settings-group__supporting app-protection-support">PIN-Schutz benötigt verfügbaren lokalen Speicher und Web Crypto über HTTPS.</p>
+              ) : null}
+              {pinConfigured ? <p className="settings-group__supporting app-protection-support">Der App-Vorschau-Schutz bleibt aktiv, solange die PIN-Sperre eingerichtet ist.</p> : null}
+              <p aria-atomic="true" aria-live="polite" className="settings-inline-status" role="status">{protectionMessage ?? ''}</p>
+            </section>
+
             <section className="settings-group" aria-labelledby="settings-account-title">
               <h3 id="settings-account-title">{authenticated ? 'Konto & Datenschutz' : 'Datenschutz'}</h3>
               <p className="settings-group__supporting">
                 {authenticated
-                  ? 'Abmelden blendet Finanzdaten aus. Nur das Trennen entfernt die Google-Verbindung und lokale Offline-Finanzdaten; deine gerätebezogenen Farben bleiben erhalten.'
-                  : 'Farben und Design bleiben ausschließlich auf diesem Gerät. Lokale Finanzdaten werden nur als letzter gültiger Offline-Stand gespeichert.'}
+                  ? 'Abmelden blendet Finanzdaten aus. Nur das Trennen entfernt die Google-Verbindung und lokale Offline-Finanzdaten; Farben, Design und App-Schutz bleiben erhalten.'
+                  : 'Farben, Design und App-Schutz bleiben ausschließlich auf diesem Gerät. Lokale Finanzdaten werden nur als letzter gültiger Offline-Stand gespeichert.'}
               </p>
               {authenticated ? (
                 <div className="settings-actions settings-actions--secondary">
@@ -181,6 +270,15 @@ export function SettingsEntry() {
       </AdaptiveDialog>
 
       <ColorThemeDialog onClose={closeColors} open={colorsOpen} returnFocusRef={colorsRef} />
+      {pinDialogMode ? (
+        <PinManagementDialog
+          key={pinDialogMode}
+          mode={pinDialogMode}
+          onClose={closePinDialog}
+          onComplete={(message) => { setProtectionMessage(message); closePinDialog(); }}
+          returnFocusRef={pinProtectionRef}
+        />
+      ) : null}
     </>
   );
 }

@@ -2,7 +2,14 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { parseSheetsBatchResponse } from '../finance/parser';
 import { anonymousSheetsResponse } from '../mocks/anonymousWorkbook';
-import { clearCachedFinanceData, loadCachedFinanceData, saveCachedFinanceData } from './financeCache';
+import {
+  clearCachedFinanceData,
+  FINANCE_CACHE_GENERATION_STORAGE_KEY,
+  loadCachedFinanceData,
+  readFinanceCacheGeneration,
+  rotateFinanceCacheGeneration,
+  saveCachedFinanceData,
+} from './financeCache';
 
 const parsed = parseSheetsBatchResponse(anonymousSheetsResponse);
 if (!parsed.success) throw new Error('Anonymous workbook is invalid.');
@@ -26,6 +33,26 @@ describe('last-known-good IndexedDB cache', () => {
   it('removes cached personal finance data on disconnect cleanup', async () => {
     await saveCachedFinanceData({ spreadsheetId: 'id', spreadsheetName: 'Name', refreshedAt: '2026-08-08T10:00:00.000Z', data: parsed.data });
     await clearCachedFinanceData();
+    await expect(loadCachedFinanceData()).resolves.toBeNull();
+  });
+
+  it('rejects a cache write started before a protected-access recovery generation change', async () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    };
+    const requestGeneration = readFinanceCacheGeneration(storage);
+    expect(rotateFinanceCacheGeneration(storage)).not.toBeNull();
+    expect(values.get(FINANCE_CACHE_GENERATION_STORAGE_KEY)).not.toBe(requestGeneration);
+
+    await expect(saveCachedFinanceData({
+      spreadsheetId: 'stale-id',
+      spreadsheetName: 'Veralteter Stand',
+      refreshedAt: '2026-08-08T10:00:00.000Z',
+      data: parsed.data,
+    }, requestGeneration, storage)).resolves.toBe(false);
     await expect(loadCachedFinanceData()).resolves.toBeNull();
   });
 });
