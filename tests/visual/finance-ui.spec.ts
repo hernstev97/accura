@@ -501,7 +501,7 @@ test('412 light PIN setup, expressive entry, reload lock, unlock, and disable', 
     element.getAnimations().flatMap((animation) => (
       (animation.effect as KeyframeEffect).getKeyframes().map((keyframe) => keyframe.transform)
     ))
-  ))).toContain('scale(2)');
+  ))).toContain('scale(1.5)');
   const centered = await activeShape.evaluate((element) => {
     const indicator = element.getBoundingClientRect();
     const group = element.parentElement!.getBoundingClientRect();
