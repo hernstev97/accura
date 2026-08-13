@@ -70,7 +70,7 @@ try {
   assert.equal(await offlineOverview.getAttribute('data-entrance'), 'visited', 'Service-Worker-Reload spielte den Eingang erneut ab');
   assert.equal(await offlineOverview.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.animationName === 'screen-entrance').length), 0);
   const offlineText = await page.locator('body').innerText();
-  const offlineHeroValue = await page.locator('#overview-hero .financial-hero__value').innerText();
+  const offlineHeroValue = await page.locator('#overview-hero .overview-allocation-bar[data-allocation-id="free"] .overview-allocation-bar__value').innerText();
   assert.match(offlineHeroValue, /^141,32\s*€$/, 'Offline-Hero zeigt nicht den erwarteten Betrag ohne frei-Zusatz');
   assert.match(offlineText, /Finanzierung A endet im September 2026/);
   assert.match(offlineText, /Danach voraussichtlich 261,32\s*€ frei/);

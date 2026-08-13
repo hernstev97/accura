@@ -28,11 +28,19 @@ function fillRatio(amountCents: number, incomeCents: number) {
 
 export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCents, segments }: OverviewAllocationHeroProps) {
   const { privacyMode } = usePrivacy();
-  const sectors = createOverviewAllocationSectors(segments, incomeCents);
+  const sectors = privacyMode
+    ? createOverviewAllocationSectors([{
+        amountCents: 1,
+        color: 'var(--color-system-accent)',
+        id: 'private',
+        label: 'Aufteilung ausgeblendet',
+      }], 1)
+    : createOverviewAllocationSectors(segments, incomeCents);
   const hasDeficit = segments.some(({ amountCents }) => amountCents < 0);
   const summary = describeAllocationRing([...segments], incomeCents, privacyMode);
   const formattedIncome = formatCurrencyCents(incomeCents);
   const visibleIncome = privacyMode ? maskMoneyShape(formattedIncome) : formattedIncome;
+  const visibleCenterValue = privacyMode ? maskMoneyShape(centerValue) : centerValue;
   const incomeSize = formattedIncome.length >= 19 ? 'long' : formattedIncome.length >= 14 ? 'medium' : 'default';
   const incomePathId = `${id}-income-path`;
 
@@ -72,14 +80,22 @@ export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCen
               fill="none"
               id={incomePathId}
             />
-            <text className="overview-allocation-ring__income" data-income-size={incomeSize}>
+            <text
+              className={`overview-allocation-ring__income ${privacyMode ? 'overview-allocation-ring__income--masked' : ''}`.trim()}
+              data-income-size={incomeSize}
+            >
               <textPath href={`#${incomePathId}`} startOffset="50%" textAnchor="middle">
                 von {visibleIncome}
               </textPath>
             </text>
           </svg>
           <span aria-hidden="true" className="overview-allocation-ring__center">
-            <strong data-testid="overview-allocation-center-value">{centerValue}</strong>
+            <strong
+              className={privacyMode ? 'overview-allocation-ring__center-value--masked' : undefined}
+              data-testid="overview-allocation-center-value"
+            >
+              {visibleCenterValue}
+            </strong>
             <small>{centerLabel}</small>
           </span>
           <span className="sr-only" data-testid="overview-allocation-accessible-summary">{summary}</span>
@@ -87,7 +103,7 @@ export function OverviewAllocationHero({ centerLabel, centerValue, id, incomeCen
 
         <div aria-label="Werte der Einkommensaufteilung" className="overview-allocation-bars" role="list">
           {segments.map((segment) => {
-            const ratio = fillRatio(segment.amountCents, incomeCents);
+            const ratio = privacyMode ? 1 : fillRatio(segment.amountCents, incomeCents);
             const style: BarStyle = {
               '--overview-allocation-color': segment.color,
               '--overview-allocation-fill': `${ratio * 100}%`,

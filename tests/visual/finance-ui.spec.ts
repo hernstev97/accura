@@ -353,9 +353,27 @@ test('overview allocation masks income, values, and derived geometry in privacy 
   await expect(page.getByLabel('Beträge anzeigen')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#overview-hero .overview-allocation-bar .money-value--masked')).toHaveCount(3);
   await expect(page.locator('#overview-hero .overview-allocation-ring__income')).not.toContainText(/\d/);
+  await expect(page.locator('#overview-hero [data-testid="overview-allocation-center-value"]')).not.toContainText(/\d/);
+  await expect(page.locator('#overview-hero .overview-allocation-ring__sector')).toHaveCount(1);
+  await expect(page.locator('#overview-hero .overview-allocation-ring__sector')).toHaveAttribute('data-allocation-id', 'private');
   await expect(page.locator('#overview-hero .overview-allocation-ring__sector').first()).not.toHaveAttribute('data-share', /.+/);
   await expect(page.locator('#overview-hero .overview-allocation-bar').first()).not.toHaveAttribute('data-fill-ratio', /.+/);
   await expect(page.locator('#overview-hero [data-testid="overview-allocation-accessible-summary"]')).toContainText('Monatseinkommen Betrag ausgeblendet');
+  const privacyGeometry = await page.locator('#overview-hero').evaluate((hero) => ({
+    barFills: [...hero.querySelectorAll('.overview-allocation-bar')].map((bar) => {
+      const barBounds = bar.getBoundingClientRect();
+      const fillBounds = bar.querySelector('.overview-allocation-bar__fill')?.getBoundingClientRect();
+      return { barWidth: barBounds.width, fillWidth: fillBounds?.width ?? 0 };
+    }),
+    centerFilter: getComputedStyle(hero.querySelector('[data-testid="overview-allocation-center-value"]') as Element).filter,
+    incomeFilter: getComputedStyle(hero.querySelector('.overview-allocation-ring__income') as Element).filter,
+    moneyOverflow: [...hero.querySelectorAll('.overview-allocation-bar__value > .money-value--masked, .overview-allocation-bar__value .money-value__blur')]
+      .map((value) => getComputedStyle(value).overflow),
+  }));
+  expect(privacyGeometry.barFills.every(({ barWidth, fillWidth }) => Math.abs(barWidth - fillWidth) <= 0.5)).toBe(true);
+  expect(privacyGeometry.centerFilter).not.toBe('none');
+  expect(privacyGeometry.incomeFilter).not.toBe('none');
+  expect(privacyGeometry.moneyOverflow.every((overflow) => overflow === 'visible')).toBe(true);
   const result = await new AxeBuilder({ page })
     .include('#overview-hero')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])

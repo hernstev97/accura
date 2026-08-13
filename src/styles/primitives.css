@@ -1605,6 +1605,13 @@ button:disabled {
   font-size: clamp(6px, 2.9cqi, 9px);
 }
 
+.overview-allocation-ring__income--masked,
+.overview-allocation-ring__center-value--masked {
+  filter: blur(calc(7em / 32));
+  opacity: 0.78;
+  user-select: none;
+}
+
 .overview-allocation-ring__center {
   position: absolute;
   top: 28%;
@@ -1683,7 +1690,7 @@ button:disabled {
 
 .overview-allocation-bar__label {
   overflow: hidden;
-  font-size: clamp(10px, 7cqi, 16px);
+  font-size: clamp(12px, 7cqi, 16px);
   font-variation-settings: 'ROND' var(--type-component-rond), 'wdth' 96;
   font-weight: var(--type-component-weight);
   line-height: 1.15;
@@ -1712,6 +1719,16 @@ button:disabled {
 
 .overview-allocation-bar__value > .money-value wbr {
   display: none;
+}
+
+.overview-allocation-bar__value > .money-value--masked,
+.overview-allocation-bar__value > .money-value--masked .money-value__blur {
+  overflow: visible;
+}
+
+.overview-allocation-bar__value > .money-value--masked .money-value__blur {
+  padding: 0.28em;
+  margin: -0.28em;
 }
 
 .surface-section {
@@ -1910,6 +1927,12 @@ dialog.adaptive-dialog::backdrop { background: color-mix(in srgb, var(--color-sc
 }
 
 @media (forced-colors: active) {
+  .overview-allocation-ring__income--masked,
+  .overview-allocation-ring__center-value--masked {
+    filter: none;
+    opacity: 0.6;
+  }
+
   .money-value__blur {
     filter: none;
     opacity: 0.6;
