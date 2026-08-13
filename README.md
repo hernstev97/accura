@@ -28,6 +28,8 @@ npm run dev:mock
 
 Der Mock-Modus verwendet ausschließlich anonyme Repository-Daten. Für Google OAuth, Picker, Sheets, PostgreSQL und Vercel Functions gilt die [Produktions-Setup-Anleitung](docs/anleitungen/produktions-setup.md).
 
+Der Integrationsstand auf `develop` ist unter [accura-preview.kiumu.app](https://accura-preview.kiumu.app/) mit derselben anonymen, bereits angemeldeten Mock-Sitzung verfügbar. Pull Requests zielen standardmäßig auf `develop`; `master` bleibt der bewusst freizugebende Produktionsstand.
+
 ## Prüfen
 
 ```bash

@@ -20,7 +20,7 @@ const initialProtection = initializeAppProtectionBeforeRender();
 
 let financeApi = productionFinanceApi;
 let mockPicker: PickerLauncher | undefined;
-if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_API === 'true') {
+if (__ACCURA_MOCK_API_ENABLED__) {
   financeApi = (await import('./mocks/mockFinanceApi')).mockFinanceApi;
   mockPicker = async () => ({ id: 'mock-spreadsheet-id', name: 'Anonyme Beispieldaten' });
 }

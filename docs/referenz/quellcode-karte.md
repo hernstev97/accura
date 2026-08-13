@@ -13,7 +13,7 @@
 | `src/App.tsx` | App-Shell, Connection States, Zielnavigation, Lazy Loading |
 | `src/screens/` | vier Finance-Ansichten |
 | `src/components/` | gemeinsame UI-, Dialog-, Navigation-, Privacy- und Diagrammrollen |
-| `src/data/` | Browser-API, Picker, Finance-Provider, IndexedDB-Finance-Cache |
+| `src/data/` | Browser-API, Picker, Finance-Provider, Laufzeitmodus und IndexedDB-Finance-Cache |
 | `src/finance/` | Schemaheader, Parser, Laufzeitschema, Typen, Selektoren, Upcoming, View-Model |
 | `src/appearance/` | Präferenz, Paletten, Tokens, Worker und Wallpaper-IndexedDB |
 | `src/privacy/` | Geldmaskierung, App-Schutz-/PIN-Store, Expressive-PIN-Formen und gemeinsamer Context |
@@ -21,6 +21,7 @@
 | `src/design/` | zentrale CSS-Tokens, Schriftimport, Diagramm-/Motion-Helfer |
 | `src/styles/` | Basis, Shell, Primitives, Screens, Zustände, Responsive Regeln |
 | `src/mocks/` | ausschließlich anonyme Entwicklungsdaten und Mock-API |
+| `build/` | geprüfte Buildzeit-Auflösung für Source-Link und Preview-Modus |
 | `api/` | Vercel Function Entry Points |
 | `api/_lib/` | Konfiguration, HTTP, Security, Google, Repository, Finance-Service |
 | `migrations/` | PostgreSQL-Migrationen |

@@ -61,7 +61,9 @@ Chromes nativer Installationsdialog, Android-Launcher, Task-Switcher und OS-Spla
 
 ## Release-Entscheidung
 
-Ein Release erfolgt nur, wenn automatische Prüfungen grün, Änderungen und Migrationen verstanden, Secrets/Finanzwerte ausgeschlossen und relevante manuelle Szenarien abgenommen sind. GitHub-CI prüft Pushes auf `master` und Pull Requests mit Lint, Unit, Build und Smoke. Reale Google-/Datenbankabläufe bleiben außerhalb CI.
+Arbeitsbranches entstehen von `develop` und werden per Pull Request dorthin integriert. Vercel stellt sie und den dauerhaften `develop`-Stand mit anonymer, bereits angemeldeter Mock-Sitzung bereit. Dieser Pfad darf keine realen Google-/Datenbankabläufe vortäuschen.
+
+Ein Produktionsrelease von `develop` nach `master` erfolgt nur als eigener bewusster Schritt, wenn automatische Prüfungen grün, Änderungen und Migrationen verstanden, Secrets/Finanzwerte ausgeschlossen und relevante reale Szenarien abgenommen sind. GitHub-CI prüft Pushes auf `develop` und `master` sowie Pull Requests mit Lint, Unit, Build und Smoke. Reale Google-/Datenbankabläufe bleiben außerhalb CI.
 
 ## Nachweis
 

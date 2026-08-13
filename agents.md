@@ -144,6 +144,10 @@ Ich bevorzuge einfache, gezielte Lösungen. Unnötige Komplexität muss unbeding
 ## Git, Linear und externe Aktionen
 
 * Sei extrem vorsichtig mit destruktiven Commands, die nicht ausdrücklich angewiesen wurden.
+* `master` ist der Produktionsbranch. `develop` ist der dauerhafte Integrationsbranch und läuft mit anonymen Mock-Daten unter `https://accura-preview.kiumu.app/`.
+* Erstelle Arbeitsbranches grundsätzlich von `develop` und richte Pull Requests gegen `develop`, sofern ich nicht ausdrücklich einen Produktionsrelease oder ein anderes Ziel beauftrage.
+* Ein Release nach `master` ist ein eigener bewusster Schritt. Merge oder pushe weder `develop` noch `master` ohne ausdrücklichen Auftrag.
+* Die Mock-Preview beweist UI-, PWA- und Clientverhalten mit anonymen Daten, aber keine realen Google-, PostgreSQL- oder Vercel-Function-Abläufe.
 * Lösche keine Dateien, Daten, Branches oder Konfigurationen, wenn der Auftrag dies nicht eindeutig verlangt.
 * Erstelle keine Commits, pushe keine Branches, merge keine Pull Requests und führe keine Deployments durch, sofern ich das nicht ausdrücklich beauftragt habe.
 * Bearbeite keine Tasks in Linear und ändere keine anderen externen Systeme, wenn ich nur um Analyse, Prüfung oder einen Vorschlag gebeten habe.
