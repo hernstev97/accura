@@ -66,7 +66,7 @@ export const anonymousFinanceData = {
   ].map(([debtId, date, balanceCents]) => ({ debtId, date, balanceCents })),
   reliefMilestones: [
     { date: '2031-08', monthlyReliefCents: 25000, event: 'Ratenkredit', eventDetail: 'Letzte Rate' },
-    { date: '2026-09', monthlyReliefCents: 12000, event: 'debt-payment-ends', eventDetail: 'Finanzierung A' },
+    { date: '2026-09', monthlyReliefCents: 12000, event: 'Finanzierung A', eventDetail: 'Letzte Rate' },
     { date: '2027-01', monthlyReliefCents: 6000, event: 'Finanzierung B', eventDetail: 'Letzte Rate' },
     { date: '2026-10', monthlyReliefCents: 3000, event: 'Finanzierung C', eventDetail: 'Letzte Rate' },
     { date: '2026-12', monthlyReliefCents: 1500, event: 'Finanzierung D', eventDetail: 'Letzte Rate' },

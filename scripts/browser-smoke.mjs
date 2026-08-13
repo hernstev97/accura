@@ -1038,6 +1038,7 @@ try {
   assert.doesNotMatch(debtText, /70,00\s*€/);
   assert.doesNotMatch(debtText, /debt-payment-ends|Interner Quellhinweis/);
   assert.match(debtText, /Ratenkredit[\s\S]*Kredit mit monatlicher Rate/);
+  assert.match(await mobile.page.locator('.milestone-row').filter({ hasText: 'Finanzierung A' }).innerText(), /Letzte Rate/);
   await assertGoogleSansFlex(mobile.page, 'Schulden');
   await assertConcentric(mobile.page, '.creditors-section .data-list', '.creditors-section .data-list__item', 'Gläubigerliste');
   await assertChartsHaveLayout(mobile.page, 'Schulden');

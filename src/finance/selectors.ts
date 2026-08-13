@@ -138,8 +138,10 @@ const milestoneDateForComparison = (date: string) => date.length === 7 ? `${date
 export function selectDebtBalanceMilestoneTotals(data: FinanceDataV1): DebtBalanceMilestoneTotal[] {
   const activeDebtIds = new Set(data.debts.filter(({ active }) => active).map(({ id }) => id));
   if (activeDebtIds.size === 0) return [];
-  const activeDebtMilestones = data.debtMilestones.filter(({ debtId }) => activeDebtIds.has(debtId));
-  if (activeDebtMilestones.length === 0) return [];
+  const futureActiveDebtMilestones = data.debtMilestones.filter(({ debtId, date }) => (
+    activeDebtIds.has(debtId) && milestoneDateForComparison(date) > data.asOf
+  ));
+  if (futureActiveDebtMilestones.length === 0) return [];
 
   const balances = new Map<string, number>();
   activeDebtIds.forEach((debtId) => {
@@ -150,13 +152,11 @@ export function selectDebtBalanceMilestoneTotals(data: FinanceDataV1): DebtBalan
   const result: DebtBalanceMilestoneTotal[] = [{ date: data.asOf, balanceCents: total() }];
   const futureByDate = new Map<string, Array<{ debtId: string; balanceCents: number }>>();
 
-  activeDebtMilestones
-    .filter(({ date }) => milestoneDateForComparison(date) > data.asOf)
-    .forEach(({ debtId, date, balanceCents }) => {
-      const updates = futureByDate.get(date) ?? [];
-      updates.push({ debtId, balanceCents });
-      futureByDate.set(date, updates);
-    });
+  futureActiveDebtMilestones.forEach(({ debtId, date, balanceCents }) => {
+    const updates = futureByDate.get(date) ?? [];
+    updates.push({ debtId, balanceCents });
+    futureByDate.set(date, updates);
+  });
 
   [...futureByDate.entries()]
     .sort(([left], [right]) => milestoneDateForComparison(left).localeCompare(milestoneDateForComparison(right)) || left.localeCompare(right))

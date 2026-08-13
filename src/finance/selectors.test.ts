@@ -199,6 +199,7 @@ describe('cent-based finance selectors', () => {
     expect(view.totals.currentCashCents).toBe(135_075);
     expect(view.nextDebtRelief).toMatchObject({ eventLabel: 'Finanzierung A', monthlyRelief: 120, freeAfter: 261.32 });
     expect(view.nextDebtRelief).toMatchObject({ monthlyReliefCents: 12_000, freeAfterCents: 26_132 });
+    expect(view.debtReliefMilestones[1]).toMatchObject({ event: 'Finanzierung A', eventDetail: 'Letzte Rate' });
     expect(view.debtBalanceMilestones.map(({ balance }) => balance)).toEqual([12825.67, 12705.67, 12615.67, 12585.67, 11000, 5000, 0]);
     expect(view.debtBalanceMilestones.map(({ balanceCents }) => balanceCents)).toEqual([1_282_567, 1_270_567, 1_261_567, 1_258_567, 1_100_000, 500_000, 0]);
     expect(view.budgetStatus).toEqual({
@@ -239,5 +240,12 @@ describe('cent-based finance selectors', () => {
 
   it('keeps the debt trajectory empty when no milestones are configured', () => {
     expect(selectDebtBalanceMilestoneTotals({ ...data, debtMilestones: [] })).toEqual([]);
+  });
+
+  it('keeps the debt trajectory empty when all milestones are on or before the data date', () => {
+    const pastMilestonesOnly = data.debtMilestones.filter(({ date }) => date <= '2026-08');
+
+    expect(pastMilestonesOnly.length).toBeGreaterThan(0);
+    expect(selectDebtBalanceMilestoneTotals({ ...data, debtMilestones: pastMilestonesOnly })).toEqual([]);
   });
 });
