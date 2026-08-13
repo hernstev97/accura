@@ -1,6 +1,6 @@
 import { useReducedMotion } from 'motion/react';
 import { useMorph } from 'shape-morph/react';
-import { useEffect, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { PIN_LENGTH } from '../privacy/appProtectionStore';
 import {
   chooseExpressivePinShape,
@@ -10,11 +10,27 @@ import { Icon } from './Icon';
 
 const PIN_SHAPE_HOLD_MS = 80;
 const PIN_SHAPE_MORPH_MS = 220;
+const PIN_DOT_STEP_PX = 24;
 
-function MorphingPinDot({ shape }: { shape: ExpressivePinShapeName }) {
+type PinIndicatorItem = {
+  id: number;
+  phase: 'active' | 'exiting';
+  shape: ExpressivePinShapeName;
+};
+
+function MorphingPinDot({
+  item,
+  onExitComplete,
+  position,
+}: {
+  item: PinIndicatorItem;
+  onExitComplete: (id: number) => void;
+  position: number;
+}) {
   const reducedMotion = Boolean(useReducedMotion());
   const [morphToCircle, setMorphToCircle] = useState(reducedMotion);
-  const { pathD, progress } = useMorph(shape, 'Circle', {
+  const [visible, setVisible] = useState(reducedMotion && item.phase === 'active');
+  const { pathD, progress } = useMorph(item.shape, 'Circle', {
     duration: PIN_SHAPE_MORPH_MS,
     progress: morphToCircle ? 1 : 0,
     size: 100,
@@ -29,41 +45,102 @@ function MorphingPinDot({ shape }: { shape: ExpressivePinShapeName }) {
     return () => window.clearTimeout(timer);
   }, [reducedMotion]);
 
+  useEffect(() => {
+    if (item.phase === 'exiting') {
+      if (reducedMotion) {
+        onExitComplete(item.id);
+        return;
+      }
+      setVisible(false);
+      return;
+    }
+    if (reducedMotion) {
+      setVisible(true);
+      return;
+    }
+    const frame = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(frame);
+  }, [item.id, item.phase, onExitComplete, reducedMotion]);
+
   return (
     <span
-      className={`pin-indicator${reducedMotion ? '' : ' pin-indicator--entering'}`}
+      className="pin-indicator"
+      data-indicator-state={item.phase}
       data-morph-progress={progress.toFixed(3)}
-      data-start-shape={shape}
+      data-start-shape={item.shape}
+      style={{ transform: `translateX(${position}px)` }}
     >
-      <svg focusable="false" viewBox="0 0 100 100">
-        <path d={pathD} />
-      </svg>
+      <span
+        className={`pin-indicator__shape${visible ? ' pin-indicator__shape--visible' : ''}`}
+        onTransitionEnd={(event) => {
+          if (item.phase === 'exiting' && event.propertyName === 'transform') onExitComplete(item.id);
+        }}
+      >
+        <svg focusable="false" viewBox="0 0 100 100">
+          <path d={pathD} />
+        </svg>
+      </span>
     </span>
   );
 }
 
 function PinIndicators({ length, resetToken }: { length: number; resetToken?: number }) {
-  const [shapes, setShapes] = useState<ExpressivePinShapeName[]>(() =>
-    Array.from({ length }, chooseExpressivePinShape));
+  const nextIndicatorId = useRef(0);
+  const previousResetToken = useRef(resetToken);
+  const [indicators, setIndicators] = useState<PinIndicatorItem[]>(() =>
+    Array.from({ length }, () => ({
+      id: nextIndicatorId.current++,
+      phase: 'active',
+      shape: chooseExpressivePinShape(),
+    })));
+  const activeLength = indicators.filter(({ phase }) => phase === 'active').length;
+  const removeIndicator = useCallback((id: number) => {
+    setIndicators((current) => current.filter((indicator) => indicator.id !== id));
+  }, []);
 
   useEffect(() => {
-    setShapes((current) => {
-      if (length < current.length) return current.slice(0, length);
-      if (length === current.length) return current;
-      return [
-        ...current,
-        ...Array.from({ length: length - current.length }, chooseExpressivePinShape),
-      ];
+    if (length === activeLength) return;
+    if (length < activeLength) {
+      setIndicators((current) => {
+        let keptActive = 0;
+        return current.map((indicator) => {
+          if (indicator.phase === 'exiting') return indicator;
+          if (keptActive++ < length) return indicator;
+          return { ...indicator, phase: 'exiting' };
+        });
+      });
+      return;
+    }
+
+    const additions = Array.from({ length: length - activeLength }, () => ({
+      id: nextIndicatorId.current++,
+      phase: 'active' as const,
+      shape: chooseExpressivePinShape(),
+    }));
+    setIndicators((current) => {
+      const missing = length - current.filter(({ phase }) => phase === 'active').length;
+      return missing > 0 ? [...current, ...additions.slice(0, missing)] : current;
     });
-  }, [length]);
+  }, [activeLength, length]);
 
   useEffect(() => {
-    setShapes([]);
+    if (previousResetToken.current === resetToken) return;
+    previousResetToken.current = resetToken;
+    setIndicators((current) => current.map((indicator) => (
+      indicator.phase === 'exiting' ? indicator : { ...indicator, phase: 'exiting' }
+    )));
   }, [resetToken]);
 
   return (
     <div aria-hidden="true" className="pin-indicators" data-filled={length}>
-      {shapes.map((shape, index) => <MorphingPinDot key={`${index}-${shape}`} shape={shape} />)}
+      {indicators.map((item, index) => (
+        <MorphingPinDot
+          item={item}
+          key={item.id}
+          onExitComplete={removeIndicator}
+          position={(index - (indicators.length - 1) / 2) * PIN_DOT_STEP_PX}
+        />
+      ))}
     </div>
   );
 }
