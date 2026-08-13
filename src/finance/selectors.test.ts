@@ -11,6 +11,8 @@ import {
   selectFutureDebtReliefMilestones,
   selectFutureDebtCostCents,
   selectLatestAccountSnapshot,
+  selectLatestDebtSnapshot,
+  selectLatestPocketSnapshot,
   selectNecessityTotalsCents,
   selectBudgetAllocationCents,
   selectBudgetStatusCents,
@@ -22,6 +24,8 @@ import {
   selectRemainingPaymentCount,
   selectRemainingScheduledTotalCents,
 } from './selectors';
+import type { FinanceDataV1 } from './types';
+import { selectSafeToSpendCents } from './upcoming';
 import { createFinanceViewModel } from './viewModel';
 
 const parsed = parseSheetsBatchResponse(anonymousSheetsResponse);
@@ -248,4 +252,125 @@ describe('cent-based finance selectors', () => {
     expect(pastMilestonesOnly.length).toBeGreaterThan(0);
     expect(selectDebtBalanceMilestoneTotals({ ...data, debtMilestones: pastMilestonesOnly })).toEqual([]);
   });
+
+  describe('temporal and negative calculation edge cases', () => {
+    const edge = temporalEdgeFinanceData();
+
+    it('selects the latest snapshot on or before as_of and skips later months', () => {
+      const onStichtag = { ...edge, asOf: '2026-07-31' };
+      expect(selectLatestAccountSnapshot(onStichtag, 'checking')).toMatchObject({ asOf: '2026-07-31', balanceCents: 100_000 });
+      expect(selectLatestPocketSnapshot(onStichtag, 'tax')).toMatchObject({ asOf: '2026-07-31', balanceCents: -7_000 });
+      expect(selectLatestDebtSnapshot(onStichtag, 'loan-a')).toMatchObject({ asOf: '2026-07-31', payoffBalanceCents: 280_000 });
+
+      const missingAugust = { ...edge, asOf: '2026-08-15' };
+      expect(selectLatestAccountSnapshot(missingAugust, 'checking')?.balanceCents).toBe(100_000);
+      expect(selectLatestPocketSnapshot(missingAugust, 'tax')?.balanceCents).toBe(-7_000);
+      expect(selectLatestDebtSnapshot(missingAugust, 'loan-a')?.payoffBalanceCents).toBe(280_000);
+
+      const beforeJuly = { ...edge, asOf: '2026-06-15' };
+      expect(selectLatestAccountSnapshot(beforeJuly, 'checking')).toMatchObject({ asOf: '2026-05-31', balanceCents: 80_000 });
+      expect(selectLatestPocketSnapshot(beforeJuly, 'tax')?.balanceCents).toBe(3_000);
+      expect(selectLatestDebtSnapshot(beforeJuly, 'loan-a')?.payoffBalanceCents).toBe(300_000);
+    });
+
+    it('sums same-as_of snapshots of active entities and ignores inactive ones', () => {
+      const onStichtag = { ...edge, asOf: '2026-07-31' };
+
+      expect(selectCurrentAccountTotalCents(onStichtag)).toBe(60_000);
+      expect(selectCurrentPocketTotalCents(onStichtag)).toBe(-7_000);
+      expect(selectCurrentPayoffCents(onStichtag)).toBe(330_000);
+    });
+
+    it('carries the unchanged second debt across a two-month milestone gap', () => {
+      expect(selectDebtBalanceMilestoneTotals({ ...edge, asOf: '2026-07-31' })).toEqual([
+        { date: '2026-07-31', balanceCents: 330_000 },
+        { date: '2026-09', balanceCents: 310_000 },
+      ]);
+    });
+
+    it('keeps negative account totals, excludes pockets from cash, and does not clamp derived cents', () => {
+      const mixed = { ...edge, asOf: '2026-07-31' };
+      expect(selectCurrentAccountTotalCents(mixed)).toBe(60_000);
+      expect(selectCurrentPocketTotalCents(mixed)).toBe(-7_000);
+      expect(selectSafeToSpendCents(selectCurrentAccountTotalCents(mixed), 80_000)).toBe(-20_000);
+
+      const onlyNegative = {
+        ...mixed,
+        accounts: mixed.accounts.filter(({ id }) => id === 'overdraft'),
+        accountSnapshots: mixed.accountSnapshots.filter(({ accountId }) => accountId === 'overdraft'),
+      };
+      expect(selectCurrentAccountTotalCents(onlyNegative)).toBe(-40_000);
+      expect(createFinanceViewModel(onlyNegative, onlyNegative.asOf).totals.currentCashCents).toBe(-40_000);
+      expect(selectSafeToSpendCents(-40_000, 0)).toBe(-40_000);
+
+      expect(selectBudgetStatusCents(mixed)).toEqual({
+        kind: 'overdrawn',
+        balanceCents: -30_000,
+        deficitCents: 30_000,
+        plannedCents: 80_000,
+        utilizationBasisPoints: 16_000,
+      });
+      expect(selectFreeMoneyCents(mixed)).toBe(-30_000);
+    });
+  });
 });
+
+function temporalEdgeFinanceData(): FinanceDataV1 {
+  return {
+    ...data,
+    monthlyIncomeCents: 50_000,
+    salaryDay: 25,
+    accounts: [
+      { id: 'checking', name: 'Girokonto', kind: 'bank', displayOrder: 1, active: true },
+      { id: 'overdraft', name: 'Dispo', kind: 'bank', displayOrder: 2, active: true },
+      { id: 'closed', name: 'Geschlossen', kind: 'bank', displayOrder: 3, active: false },
+    ],
+    accountSnapshots: [
+      { accountId: 'checking', asOf: '2026-09-01', balanceCents: 140_000 },
+      { accountId: 'checking', asOf: '2026-05-31', balanceCents: 80_000 },
+      { accountId: 'checking', asOf: '2026-07-31', balanceCents: 100_000 },
+      { accountId: 'overdraft', asOf: '2026-09-01', balanceCents: -20_000 },
+      { accountId: 'overdraft', asOf: '2026-05-31', balanceCents: -10_000 },
+      { accountId: 'overdraft', asOf: '2026-07-31', balanceCents: -40_000 },
+      { accountId: 'closed', asOf: '2026-07-31', balanceCents: 500_000 },
+    ],
+    pockets: [
+      { id: 'tax', accountId: 'checking', name: 'Steuer', displayOrder: 1, active: true },
+      { id: 'old-pocket', accountId: 'checking', name: 'Alt', displayOrder: 2, active: false },
+    ],
+    pocketSnapshots: [
+      { pocketId: 'tax', asOf: '2026-09-01', balanceCents: 1_000 },
+      { pocketId: 'tax', asOf: '2026-05-31', balanceCents: 3_000 },
+      { pocketId: 'tax', asOf: '2026-07-31', balanceCents: -7_000 },
+      { pocketId: 'old-pocket', asOf: '2026-07-31', balanceCents: 9_000 },
+    ],
+    budgetItems: [{
+      id: 'rent',
+      label: 'Miete',
+      monthlyAmountCents: 80_000,
+      necessityId: 'essential',
+      kind: 'expense',
+      displayOrder: 1,
+      active: true,
+      note: null,
+      dueDay: 10,
+    }],
+    debts: [
+      { id: 'loan-a', name: 'Kredit A', kind: 'loan', monthlyPaymentCents: 10_000, displayOrder: 1, active: true, note: null, dueDay: null },
+      { id: 'loan-b', name: 'Kredit B', kind: 'installment', monthlyPaymentCents: 5_000, displayOrder: 2, active: true, note: null, dueDay: null },
+      { id: 'loan-closed', name: 'Alt', kind: 'loan', monthlyPaymentCents: 1_000, displayOrder: 3, active: false, note: null, dueDay: null },
+    ],
+    debtSnapshots: [
+      { debtId: 'loan-a', asOf: '2026-09-01', payoffBalanceCents: 250_000, remainingPaymentCount: 25, remainingScheduledTotalCents: 275_000 },
+      { debtId: 'loan-a', asOf: '2026-05-31', payoffBalanceCents: 300_000, remainingPaymentCount: 30, remainingScheduledTotalCents: 330_000 },
+      { debtId: 'loan-a', asOf: '2026-07-31', payoffBalanceCents: 280_000, remainingPaymentCount: 28, remainingScheduledTotalCents: 308_000 },
+      { debtId: 'loan-b', asOf: '2026-05-31', payoffBalanceCents: 60_000, remainingPaymentCount: 12, remainingScheduledTotalCents: 66_000 },
+      { debtId: 'loan-b', asOf: '2026-07-31', payoffBalanceCents: 50_000, remainingPaymentCount: 10, remainingScheduledTotalCents: 55_000 },
+      { debtId: 'loan-closed', asOf: '2026-07-31', payoffBalanceCents: 1, remainingPaymentCount: 1, remainingScheduledTotalCents: 1 },
+    ],
+    debtMilestones: [
+      { debtId: 'loan-a', date: '2026-09', balanceCents: 260_000 },
+    ],
+    reliefMilestones: [],
+  };
+}

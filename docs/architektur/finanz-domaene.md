@@ -29,7 +29,7 @@ Implementierung und Tests: [api/_lib/google.ts](../../api/_lib/google.ts), [src/
 
 Ein Euro-Quellwert `x` wird als `sign(x) × round((abs(x) + Number.EPSILON) × 100)` normalisiert und muss ein sicherer JavaScript-Integer sein. Danach rechnen Selektoren ausschließlich in Cents. Ratenanzahlen bleiben separate Ganzzahlen.
 
-Für aktive Konten, Pockets und Schulden wird der jeweils jüngste Snapshot mit `snapshot.asOf <= FinanceDataV1.asOf` gewählt. `_Meta.as_of` ist damit fachlicher Stichtag und nicht die aktuelle Browser-Uhr. Aktive Entitäten ohne passenden Snapshot machen das Workbook ungültig.
+Für aktive Konten, Pockets und Schulden wird der jeweils jüngste Snapshot mit `snapshot.asOf <= FinanceDataV1.asOf` gewählt. `_Meta.as_of` ist damit fachlicher Stichtag und nicht die aktuelle Browser-Uhr. Fehlende Zwischenmonate werden nicht interpoliert. Aktive Entitäten ohne passenden Snapshot machen das Workbook ungültig.
 
 Dieser Datenstichtag ist vom Projektionstag getrennt. Wiederkehrende Fälligkeiten werden ab dem aktuellen Kalendertag in der IANA-Zeitzone des Nutzers projiziert. Die UI ermittelt diesen Tag explizit und übergibt ihn an das View-Model; ein veralteter Snapshot hält dadurch bereits vergangene Fälligkeiten nicht künstlich offen.
 

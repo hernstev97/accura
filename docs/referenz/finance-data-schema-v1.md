@@ -185,7 +185,7 @@ Folgende Referenzen müssen existieren: AccountSnapshot → Account, Pocket → 
 
 ## Snapshot-Auswahl
 
-Für jede aktive Entität wird der jüngste Snapshot mit Datum `<= _Meta.as_of` verwendet. Zukünftige Snapshots bleiben gespeichert, werden aber am früheren Stichtag nicht ausgewählt. Mehrere gültige ältere Snapshots sind erlaubt. Fehlt für eine aktive Entität ein solcher Stand, ist das Workbook ungültig.
+Für jede aktive Entität wird der jüngste Snapshot mit Datum `<= _Meta.as_of` verwendet. Zukünftige Snapshots bleiben gespeichert, werden aber am früheren Stichtag nicht ausgewählt. Mehrere gültige ältere Snapshots sind erlaubt; Monate ohne eigenen Stand gelten als unverändert zum letzten bekannten Wert. Fehlt für eine aktive Entität ein solcher Stand, ist das Workbook ungültig.
 
 ## Normalisierte Grenze `FinanceDataV1`
 
