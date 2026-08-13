@@ -395,7 +395,16 @@ test('412 light PIN setup, expressive entry, reload lock, unlock, and disable', 
   await preparePage(page, context, 'connected', 'light', true);
   await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('button', { name: 'PIN einrichten', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'PIN einrichten' })).toBeVisible();
+  const setupDialog = page.getByRole('dialog', { name: 'PIN einrichten' });
+  await expect(setupDialog).toBeVisible();
+  const mobileSurfaceBox = await setupDialog.locator('.pin-management-dialog').boundingBox();
+  expect(mobileSurfaceBox?.width).toBe(412);
+  expect(mobileSurfaceBox?.height).toBe(915);
+  const mobileKey = setupDialog.getByRole('button', { name: '1', exact: true });
+  await expect(mobileKey).toHaveCSS('border-style', 'none');
+  expect((await mobileKey.boundingBox())?.width).toBeCloseTo(85, 0);
+  expect(Number.parseFloat(await mobileKey.evaluate((element) => getComputedStyle(element).fontSize))).toBeGreaterThan(30);
+  await expect(setupDialog).toHaveScreenshot('412-light-pin-setup.png');
   await enterPin(page, 'PIN einrichten', '123456');
   await expect(page.getByRole('dialog', { name: 'Neue PIN bestätigen' })).toBeVisible();
   await enterPin(page, 'Neue PIN bestätigen', '123456');
@@ -433,7 +442,12 @@ test('412 light PIN setup, expressive entry, reload lock, unlock, and disable', 
   const expressivePath = await activeShapePath.getAttribute('d');
   await expect(activeShape).toHaveCount(1);
   await expect(activeShape).toHaveAttribute('data-start-shape', /^(?!Circle$).+/);
-  await expect(activeShape).toHaveCSS('animation-name', 'pin-dot-enter');
+  await expect(activeShape).toHaveAttribute('data-indicator-state', 'active');
+  expect(await activeShape.locator('.pin-indicator__grow').evaluate((element) => (
+    element.getAnimations().flatMap((animation) => (
+      (animation.effect as KeyframeEffect).getKeyframes().map((keyframe) => keyframe.transform)
+    ))
+  ))).toContain('scale(2)');
   const centered = await activeShape.evaluate((element) => {
     const indicator = element.getBoundingClientRect();
     const group = element.parentElement!.getBoundingClientRect();
@@ -444,6 +458,38 @@ test('412 light PIN setup, expressive entry, reload lock, unlock, and disable', 
   await expect(activeShape).toHaveCSS('width', '16px');
   await expect(activeShape).toHaveCSS('height', '16px');
   expect(await activeShapePath.getAttribute('d')).not.toBe(expressivePath);
+
+  await lock.getByRole('button', { name: '2', exact: true }).click();
+  await expect(lock.locator('.pin-indicator')).toHaveCount(2);
+  await expect(lock.locator('.pin-indicator').nth(1)).toHaveAttribute('data-morph-progress', '1.000', { timeout: 1_000 });
+  const firstCenterBeforeDeletion = await lock.locator('.pin-indicator').first().evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return box.left + box.width / 2;
+  });
+  await lock.getByRole('button', { name: 'Letzte PIN-Stelle löschen' }).click();
+  const exitingIndicator = lock.locator('.pin-indicator[data-indicator-state="exiting"]');
+  await expect(exitingIndicator).toHaveCount(1);
+  await expect.poll(() => exitingIndicator.locator('.pin-indicator__shape').evaluate((element) => (
+    element.getBoundingClientRect().width
+  ))).toBeLessThan(16);
+  const firstCenterWhileDeleting = await lock.locator('.pin-indicator').first().evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return box.left + box.width / 2;
+  });
+  expect(firstCenterWhileDeleting).toBeCloseTo(firstCenterBeforeDeletion, 0);
+  await expect(lock.locator('.pin-indicator')).toHaveCount(1);
+  const distanceFromCenterAfterDeletion = await lock.locator('.pin-indicator').first().evaluate((element) => {
+    const indicator = element.getBoundingClientRect();
+    const group = element.parentElement!.getBoundingClientRect();
+    return Math.abs((indicator.left + indicator.width / 2) - (group.left + group.width / 2));
+  });
+  expect(distanceFromCenterAfterDeletion).toBeGreaterThan(1);
+  await expect.poll(() => lock.locator('.pin-indicator').first().evaluate((element) => {
+    const indicator = element.getBoundingClientRect();
+    const group = element.parentElement!.getBoundingClientRect();
+    return Math.abs((indicator.left + indicator.width / 2) - (group.left + group.width / 2));
+  })).toBeLessThan(1);
+
   for (const digit of '23456') await lock.getByRole('button', { name: digit, exact: true }).click();
   await lock.getByRole('button', { name: 'PIN bestätigen' }).click();
 
@@ -461,6 +507,32 @@ test('412 light PIN setup, expressive entry, reload lock, unlock, and disable', 
   await expect(page.getByRole('button', { name: 'PIN einrichten', exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /App-Vorschau schützen/ })).toBeChecked();
   expect(runtimeErrors).toEqual([]);
+});
+
+test('desktop PIN setup and confirmation share stable modal geometry', async ({ page, context }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await preparePage(page, context, 'connected', 'light', true);
+  await page.getByLabel('Einstellungen öffnen').click();
+  await page.getByRole('button', { name: 'PIN einrichten', exact: true }).click();
+
+  const setup = page.getByRole('dialog', { name: 'PIN einrichten', exact: true });
+  const setupSurface = setup.locator('.pin-management-dialog');
+  await expect(setupSurface).toBeVisible();
+  const setupBox = await setupSurface.boundingBox();
+  expect(setupBox?.width).toBe(339);
+  expect(setupBox?.height).toBeLessThan(900);
+  expect(setupBox?.height).toBeGreaterThan(0);
+  await expect(setup.getByRole('button', { name: '1', exact: true })).toHaveCSS('width', '85px');
+  await expect(setupSurface).toHaveScreenshot('1024-light-pin-setup.png');
+
+  await enterPin(page, 'PIN einrichten', '123456');
+  const confirmation = page.getByRole('dialog', { name: 'Neue PIN bestätigen', exact: true });
+  const confirmationSurface = confirmation.locator('.pin-management-dialog');
+  await expect(confirmationSurface).toBeVisible();
+  const confirmationBox = await confirmationSurface.boundingBox();
+  expect(confirmationBox?.width).toBe(setupBox?.width);
+  expect(confirmationBox?.height).toBe(setupBox?.height);
+  await expect(confirmationSurface).toHaveScreenshot('1024-light-pin-confirmation.png');
 });
 
 test('PIN setup remains usable after an unexpected Web Crypto rejection', async ({ page, context }) => {
