@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components -- provider hooks and reducer intentionally share one state boundary */
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import type { FinanceDataV1, FinanceValidationIssue } from '../finance/types';
 import { createFinanceViewModel, type FinanceViewModel } from '../finance/viewModel';
+import { getCurrentUserDateISO, millisecondsUntilNextLocalDay } from '../lib/calendarDate';
 import { safeAppReturnPath } from '../navigation/appNavigation';
 import { clearCachedFinanceData, loadCachedFinanceData, saveCachedFinanceData } from './financeCache';
 import { FinanceApiError, productionFinanceApi, type FinanceApi, type FinanceSession } from './financeApi';
@@ -133,6 +134,7 @@ export function FinanceDataProvider({
 }) {
   const [state, dispatch] = useReducer(financeProviderReducer, initialState);
   const [online, setOnline] = useReducer((_current: boolean, next: boolean) => next, typeof navigator === 'undefined' ? true : navigator.onLine);
+  const [projectionDate, setProjectionDate] = useState(getCurrentUserDateISO);
   const stateRef = useRef(state);
   const refreshPromise = useRef<Promise<void> | null>(null);
   const abortController = useRef<AbortController | null>(null);
@@ -181,6 +183,24 @@ export function FinanceDataProvider({
     refreshPromise.current = task;
     return task;
   }, [acceptFinanceResponse, api]);
+
+  useEffect(() => {
+    let dayChangeTimer: number;
+    const updateProjectionDate = () => {
+      window.clearTimeout(dayChangeTimer);
+      setProjectionDate(getCurrentUserDateISO());
+      dayChangeTimer = window.setTimeout(updateProjectionDate, millisecondsUntilNextLocalDay());
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') updateProjectionDate();
+    };
+    updateProjectionDate();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearTimeout(dayChangeTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -307,7 +327,7 @@ export function FinanceDataProvider({
     const parameters = new URLSearchParams({ return_to: safeAppReturnPath(window.location.pathname) });
     window.location.assign(`/api/auth/google/start?${parameters.toString()}`);
   }, []);
-  const viewModel = useMemo(() => state.data ? createFinanceViewModel(state.data) : null, [state.data]);
+  const viewModel = useMemo(() => state.data ? createFinanceViewModel(state.data, projectionDate) : null, [state.data, projectionDate]);
   const value = useMemo<FinanceContextValue>(() => ({ ...state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn }), [state, viewModel, online, refresh, selectSpreadsheet, logout, disconnect, signIn]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;

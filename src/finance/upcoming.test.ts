@@ -158,6 +158,31 @@ describe('Upcoming recurring payments calculation domain logic', () => {
       expect(todayPayment?.dueDate).toBe('2026-08-15');
     });
 
+    it('excludes a payment from yesterday even when the finance snapshot is dated yesterday', () => {
+      const dataWithYesterdayPayment: FinanceDataV1 = {
+        ...baseData,
+        asOf: '2026-08-12',
+        budgetItems: [
+          ...baseData.budgetItems,
+          {
+            id: 'example-subscription',
+            label: 'Beispiel-Abo',
+            monthlyAmountCents: 2300,
+            necessityId: 'worthwhile',
+            kind: 'expense',
+            displayOrder: 99,
+            active: true,
+            note: null,
+            dueDay: 12,
+          },
+        ],
+      };
+
+      const payments = selectUpcomingPayments(dataWithYesterdayPayment, '2026-08-13');
+
+      expect(payments.find((payment) => payment.id === 'example-subscription')).toBeUndefined();
+    });
+
     it('returns empty payments list when no salary configuration is set', () => {
       const dataNoSalary = { ...baseData, salaryDay: null };
       const summary = selectUpcomingSummary(dataNoSalary, '2026-08-08');

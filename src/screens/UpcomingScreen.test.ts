@@ -7,10 +7,11 @@ import type { FinanceDataV1, TabularWorkbook } from '../finance/types';
 const parsed = validateFinanceWorkbook(anonymousWorkbook as TabularWorkbook);
 if (!parsed.success) throw new Error('Anonymous workbook invalid');
 const baseData = parsed.data;
+const projectionDate = baseData.asOf;
 
 describe('UpcomingScreen view model integration', () => {
   it('prepares formatted upcoming data for UpcomingScreen from FinanceDataV1', () => {
-    const viewModel = createFinanceViewModel(baseData);
+    const viewModel = createFinanceViewModel(baseData, projectionDate);
     const upcoming = viewModel.upcoming;
 
     expect(upcoming.salaryDay).toBe(25);
@@ -46,7 +47,7 @@ describe('UpcomingScreen view model integration', () => {
 
   it('handles missing salary configuration cleanly', () => {
     const noSalaryData: FinanceDataV1 = { ...baseData, salaryDay: null };
-    const viewModel = createFinanceViewModel(noSalaryData);
+    const viewModel = createFinanceViewModel(noSalaryData, projectionDate);
     const upcoming = viewModel.upcoming;
 
     expect(upcoming.salaryDay).toBeNull();
@@ -76,7 +77,7 @@ describe('UpcomingScreen view model integration', () => {
         },
       ],
     };
-    const viewModel = createFinanceViewModel(highPendingData);
+    const viewModel = createFinanceViewModel(highPendingData, projectionDate);
     const upcoming = viewModel.upcoming;
 
     expect(upcoming.totalPending).toBe(2350);
@@ -102,7 +103,7 @@ describe('UpcomingScreen view model integration', () => {
         },
       ],
     };
-    const viewModel = createFinanceViewModel(dataWithPaydayBill);
+    const viewModel = createFinanceViewModel(dataWithPaydayBill, projectionDate);
     const upcoming = viewModel.upcoming;
 
     expect(upcoming.payments.find((p) => p.id === 'payday-bill')).toBeUndefined();

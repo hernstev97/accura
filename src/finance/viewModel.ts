@@ -54,7 +54,7 @@ export type BudgetStatus =
   | (BudgetStatusBase & { kind: 'within-budget' })
   | (BudgetStatusBase & { kind: 'overdrawn'; deficit: number; deficitCents: number });
 
-export function createFinanceViewModel(data: FinanceDataV1) {
+export function createFinanceViewModel(data: FinanceDataV1, projectionDateISO: string) {
   const necessityTotals = selectNecessityTotalsCents(data);
   const overviewAllocation = selectOverviewAllocationCents(data);
   const budgetAllocation = selectBudgetAllocationCents(data);
@@ -160,7 +160,7 @@ export function createFinanceViewModel(data: FinanceDataV1) {
     freeAfterCents: nextFreeMoneyCents,
   } : null;
 
-  const upcomingSummary = selectUpcomingSummary(data);
+  const upcomingSummary = selectUpcomingSummary(data, projectionDateISO);
   const currentCashCents = selectCurrentAccountTotalCents(data);
   const plannedAmountCents = selectPlannedAmountCents(data);
   const plannedReservesCents = selectPlannedReserveCents(data);

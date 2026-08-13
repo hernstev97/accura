@@ -31,15 +31,17 @@ Ein Euro-Quellwert `x` wird als `sign(x) × round((abs(x) + Number.EPSILON) × 1
 
 Für aktive Konten, Pockets und Schulden wird der jeweils jüngste Snapshot mit `snapshot.asOf <= FinanceDataV1.asOf` gewählt. `_Meta.as_of` ist damit fachlicher Stichtag und nicht die aktuelle Browser-Uhr. Aktive Entitäten ohne passenden Snapshot machen das Workbook ungültig.
 
+Dieser Datenstichtag ist vom Projektionstag getrennt. Wiederkehrende Fälligkeiten werden ab dem aktuellen Kalendertag in der IANA-Zeitzone des Nutzers projiziert. Die UI ermittelt diesen Tag explizit und übergibt ihn an das View-Model; ein veralteter Snapshot hält dadurch bereits vergangene Fälligkeiten nicht künstlich offen.
+
 ## Gehaltsbezogene Fälligkeitsprojektion
 
 ```mermaid
 flowchart TD
-  A[_Meta.as_of + salary_day] --> S[naechster Gehaltstag]
+  A[Nutzer-Kalendertag + salary_day] --> S[naechster Gehaltstag]
   B[aktive BudgetItems mit due_day] --> O[naechste Faelligkeit]
   C[aktive Debts mit due_day] --> O
   O --> K[Monatstag auf Monatsende begrenzen]
-  K --> F{as_of <= dueDate < salaryDate?}
+  K --> F{projectionDate <= dueDate < salaryDate?}
   F -->|ja| L[chronologisch aufnehmen]
   F -->|nein| X[ausschliessen]
   L --> T[totalPendingCents]
@@ -52,11 +54,11 @@ Implementierung und Tests: [src/finance/upcoming.ts](../../src/finance/upcoming.
 
 Verbindliche Regeln:
 
-1. Berechnungsstichtag ist `data.asOf` aus `_Meta.as_of`.
+1. Projektionstag ist der aktuelle Kalendertag in der IANA-Zeitzone des Nutzers. `data.asOf` bleibt ausschließlich Daten- und Snapshot-Stichtag.
 2. `salaryDay` bestimmt den nächsten Gehaltstag; `dueDay` die nächste monatlich wiederkehrende Fälligkeit.
 3. Ein Tag 29–31 wird in kürzeren Monaten auf deren letzten gültigen Tag begrenzt, einschließlich Schaltjahr.
 4. Nur aktive Budgetpositionen und Schulden mit `dueDay` werden berücksichtigt.
-5. Das Intervall ist inklusive Stichtag, aber exklusiv Gehaltstag: `asOf <= dueDate < nextSalaryDate`.
+5. Das Intervall ist inklusive Projektionstag, aber exklusiv Gehaltstag: `projectionDate <= dueDate < nextSalaryDate`.
 6. Zahlungen am Gehaltstag zählen nicht zur offenen Summe davor.
 7. `totalPendingCents` ist die Summe der aufgenommenen Beträge.
 8. `currentlyAvailableCents` ist das aktuelle Kontoguthaben; `safeToSpendCents = currentlyAvailableCents - totalPendingCents`.
@@ -69,7 +71,9 @@ Verbindliche Regeln:
 
 Das View-Model erzeugt die vier Screenmodelle gemeinsam; dadurch teilen UI und Tests dieselbe Ableitung. Es ist eine Projektion, keine Speicherung. Der zentrale discriminated `budgetStatus` unterscheidet `empty` ohne aktive Budgetpositionen, `within-budget` mit nicht negativem Saldo und `overdrawn` mit positivem Fehlbetrag. Alle Varianten enthalten geplante Summe, vorzeichenbehafteten Budgetsaldo und die Auslastung in Basis Points. Bei Einkommen kleiner oder gleich null ist diese Auslastung `null`; ein negativer Budgetsaldo wird weder für Anzeige noch zugängliche Zusammenfassungen auf null begrenzt. Alle Beträge werden bis zur Präsentationsgrenze in Integer-Cents berechnet.
 
-Die Demnächst-Logik nimmt monatliche Wiederholung an und berücksichtigt weder einmalige Termine noch Feiertags-/Bankarbeitstagverschiebungen. Negative `safeToSpendCents` sind möglich und werden nicht künstlich auf null begrenzt. Dasselbe gilt für reale negative Konto- und Pocketstände sowie den daraus abgeleiteten aktuellen Gesamtbestand.
+Die Demnächst-Logik nimmt monatliche Wiederholung an und berücksichtigt weder einmalige Termine noch Feiertags-/Bankarbeitstagverschiebungen. Der Browser liefert nach Möglichkeit eine IANA-Zeitzone wie `Europe/Berlin`; fehlt sie, wird der lokale Gerätekalender verwendet. Das View-Model wird beim Sichtbarwerden der App und nach dem nächsten lokalen Tageswechsel mit einem neuen Projektionstag berechnet. Tests übergeben feste ISO-Daten und bleiben dadurch deterministisch. Negative `safeToSpendCents` sind möglich und werden nicht künstlich auf null begrenzt. Dasselbe gilt für reale negative Konto- und Pocketstände sowie den daraus abgeleiteten aktuellen Gesamtbestand.
+
+Bei einer späteren Migration zu PostgreSQL gelten dieselben Grenzen: reine fachliche Kalendertage wie Snapshot-, Fälligkeits- und Meilensteindaten werden als `date` gespeichert; tatsächliche Ereigniszeitpunkte wie Synchronisationen oder Änderungen als `timestamptz` und damit als UTC-Zeitpunkte. Die bevorzugte IANA-Zeitzone gehört zum Nutzerprofil und darf nicht aus der Server- oder Datenbank-Session-Zeitzone abgeleitet werden. Der Projektionstag wird aus einem UTC-Zeitpunkt und dieser Zone gebildet, beispielsweise mit `(CURRENT_TIMESTAMP AT TIME ZONE user_time_zone)::date`. IANA-Zonen müssen gegen PostgreSQLs Zeitzonenkatalog validiert werden; feste UTC-Offsets reichen wegen Sommerzeit und Regeländerungen nicht aus.
 
 ## Referenzprüfung und synthetische Regression
 
@@ -87,7 +91,7 @@ Die Regressionstests bilden dieselben Rechenregeln mit erfundenen Werten ab:
 | Budgetanteil frei | `_Meta` und `_BudgetItems` | freier Betrag geteilt durch Einkommen, in Basis Points gerundet |
 | Jetzt verfügbar | aktive `_Accounts` und `_AccountSnapshots` | jüngster Snapshot je aktivem Konto, dann Summe |
 | Pockets | aktive `_Pockets` und `_PocketSnapshots` | jüngster Snapshot je aktivem Pocket; nur Aufschlüsselung |
-| Demnächst offen | aktive Budgetpositionen und Schulden mit Fälligkeit | Summe ab Stichtag bis ausschließlich zum nächsten Gehaltstag |
+| Demnächst offen | aktive Budgetpositionen und Schulden mit Fälligkeit | Summe ab Nutzer-Kalendertag bis ausschließlich zum nächsten Gehaltstag |
 | Sicher verfügbar | Kontosumme und Demnächst | Kontosumme minus offene Zahlungen |
 | Ablösesumme heute | aktive `_Debts` und `_DebtSnapshots.payoff_balance` | jüngster Snapshot je aktiver Schuld, dann Summe |
 | Noch planmäßig zu zahlen | `_DebtSnapshots.remaining_scheduled_total` | Summe über aktive Schulden |
