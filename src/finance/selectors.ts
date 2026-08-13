@@ -120,6 +120,54 @@ export const selectRemainingScheduledTotalCents = (data: FinanceDataV1) => sumCe
 
 export const selectFutureDebtCostCents = (data: FinanceDataV1) => selectRemainingScheduledTotalCents(data) - selectCurrentPayoffCents(data);
 
+export type DebtBalanceMilestoneTotal = {
+  date: string;
+  balanceCents: number;
+};
+
+const milestoneDateForComparison = (date: string) => date.length === 7 ? `${date}-01` : date;
+
+/**
+ * Builds the total debt trajectory from per-debt milestones.
+ *
+ * The current point comes from the authoritative debt snapshots. Future
+ * milestone rows update one debt at a time; balances for all other active debts
+ * are carried forward. This prevents a single-creditor milestone from being
+ * presented as the total debt balance.
+ */
+export function selectDebtBalanceMilestoneTotals(data: FinanceDataV1): DebtBalanceMilestoneTotal[] {
+  const activeDebtIds = new Set(data.debts.filter(({ active }) => active).map(({ id }) => id));
+  if (activeDebtIds.size === 0) return [];
+  const futureActiveDebtMilestones = data.debtMilestones.filter(({ debtId, date }) => (
+    activeDebtIds.has(debtId) && milestoneDateForComparison(date) > data.asOf
+  ));
+  if (futureActiveDebtMilestones.length === 0) return [];
+
+  const balances = new Map<string, number>();
+  activeDebtIds.forEach((debtId) => {
+    balances.set(debtId, selectLatestDebtSnapshot(data, debtId)?.payoffBalanceCents ?? 0);
+  });
+
+  const total = () => sumCents([...balances.values()]);
+  const result: DebtBalanceMilestoneTotal[] = [{ date: data.asOf, balanceCents: total() }];
+  const futureByDate = new Map<string, Array<{ debtId: string; balanceCents: number }>>();
+
+  futureActiveDebtMilestones.forEach(({ debtId, date, balanceCents }) => {
+    const updates = futureByDate.get(date) ?? [];
+    updates.push({ debtId, balanceCents });
+    futureByDate.set(date, updates);
+  });
+
+  [...futureByDate.entries()]
+    .sort(([left], [right]) => milestoneDateForComparison(left).localeCompare(milestoneDateForComparison(right)) || left.localeCompare(right))
+    .forEach(([date, updates]) => {
+      updates.forEach(({ debtId, balanceCents }) => balances.set(debtId, balanceCents));
+      result.push({ date, balanceCents: total() });
+    });
+
+  return result;
+}
+
 export type DebtReliefMilestoneGroup = {
   date: string;
   monthlyReliefCents: number;

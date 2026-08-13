@@ -72,8 +72,8 @@ try {
   const offlineText = await page.locator('body').innerText();
   const offlineHeroValue = await page.locator('#overview-hero .financial-hero__value').innerText();
   assert.match(offlineHeroValue, /^141,32\s*€$/, 'Offline-Hero zeigt nicht den erwarteten Betrag ohne frei-Zusatz');
-  assert.match(offlineText, /Coolblue endet im September 2026/);
-  assert.match(offlineText, /Danach voraussichtlich 305,32\s*€ frei/);
+  assert.match(offlineText, /Finanzierung A endet im September 2026/);
+  assert.match(offlineText, /Danach voraussichtlich 261,32\s*€ frei/);
   assert.match(offlineText, /Offline · gespeicherter Stand/);
   await page.getByLabel('Einstellungen öffnen').click();
   const offlineInfo = await page.getByRole('dialog', { name: 'Informationen' }).innerText();

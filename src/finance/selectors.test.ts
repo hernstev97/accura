@@ -5,6 +5,7 @@ import {
   selectCurrentAccountTotalCents,
   selectCurrentPayoffCents,
   selectCurrentPocketTotalCents,
+  selectDebtBalanceMilestoneTotals,
   selectFreeMoneyCents,
   selectFreePercentageBasisPoints,
   selectFutureDebtReliefMilestones,
@@ -121,32 +122,32 @@ describe('cent-based finance selectors', () => {
   });
 
   it('keeps installment counts separate from cent-based scheduled totals', () => {
-    expect(data.debtSnapshots.map(({ remainingPaymentCount }) => remainingPaymentCount)).toEqual([86, 1, 5, 3, 4]);
+    expect(data.debtSnapshots.map(({ remainingPaymentCount }) => remainingPaymentCount)).toEqual([60, 1, 4, 3, 2]);
     expect(data.debtSnapshots.map(({ remainingScheduledTotalCents }) => remainingScheduledTotalCents)).toEqual([
-      1_893_914,
-      16_424,
-      19_352,
-      5_515,
-      2_000,
+      1_500_000,
+      12_000,
+      24_000,
+      9_000,
+      3_000,
     ]);
-    expect(selectRemainingPaymentCount(data)).toBe(99);
-    expect(selectRemainingScheduledTotalCents(data)).toBe(1_937_205);
-    expect(selectCurrentPayoffCents(data)).toBe(1_432_293);
-    expect(selectFutureDebtCostCents(data)).toBe(504_912);
+    expect(selectRemainingPaymentCount(data)).toBe(70);
+    expect(selectRemainingScheduledTotalCents(data)).toBe(1_548_000);
+    expect(selectCurrentPayoffCents(data)).toBe(1_282_567);
+    expect(selectFutureDebtCostCents(data)).toBe(265_433);
     expect(Number.isSafeInteger(selectRemainingScheduledTotalCents(data))).toBe(true);
     expect(Number.isSafeInteger(selectFutureDebtCostCents(data))).toBe(true);
   });
 
-  it('selects Coolblue as the earliest future relief from an unsorted list without mutating it', () => {
+  it('selects Finanzierung A as the earliest future relief from an unsorted list without mutating it', () => {
     const reliefMilestonesBefore = structuredClone(data.reliefMilestones);
 
-    expect(data.reliefMilestones[0]?.event).toBe('DKB');
+    expect(data.reliefMilestones[0]?.event).toBe('Ratenkredit');
     expect(selectNextDebtReliefMilestone(data)).toEqual({
       date: '2026-09',
-      monthlyReliefCents: 16_400,
-      events: [{ event: 'Coolblue', eventDetail: 'Letzte Rate' }],
+      monthlyReliefCents: 12_000,
+      events: [{ event: 'Finanzierung A', eventDetail: 'Letzte Rate' }],
     });
-    expect(selectNextFreeMoneyCents(data)).toBe(30_532);
+    expect(selectNextFreeMoneyCents(data)).toBe(26_132);
     expect(data.reliefMilestones).toEqual(reliefMilestonesBefore);
   });
 
@@ -159,7 +160,7 @@ describe('cent-based finance selectors', () => {
       ],
     };
 
-    expect(selectNextDebtReliefMilestone(withPastMilestone)?.events[0]?.event).toBe('Coolblue');
+    expect(selectNextDebtReliefMilestone(withPastMilestone)?.events[0]?.event).toBe('Finanzierung A');
   });
 
   it('groups same-month milestones deterministically and adds their monthly relief', () => {
@@ -173,13 +174,13 @@ describe('cent-based finance selectors', () => {
 
     expect(selectFutureDebtReliefMilestones(withSameMonthMilestone)[0]).toEqual({
       date: '2026-09',
-      monthlyReliefCents: 17_400,
+      monthlyReliefCents: 13_000,
       events: [
         { event: 'Alpha', eventDetail: 'Gleicher Monat' },
-        { event: 'Coolblue', eventDetail: 'Letzte Rate' },
+        { event: 'Finanzierung A', eventDetail: 'Letzte Rate' },
       ],
     });
-    expect(selectNextFreeMoneyCents(withSameMonthMilestone)).toBe(31_532);
+    expect(selectNextFreeMoneyCents(withSameMonthMilestone)).toBe(27_132);
   });
 
   it('represents the absence of future relief explicitly', () => {
@@ -196,10 +197,11 @@ describe('cent-based finance selectors', () => {
     expect(view.meta.monthLabel).toBe('August 2026');
     expect(view.totals.currentCash).toBe(1350.75);
     expect(view.totals.currentCashCents).toBe(135_075);
-    expect(view.nextDebtRelief).toMatchObject({ eventLabel: 'Coolblue', monthlyRelief: 164, freeAfter: 305.32 });
-    expect(view.nextDebtRelief).toMatchObject({ monthlyReliefCents: 16_400, freeAfterCents: 30_532 });
-    expect(view.debtBalanceMilestones.map(({ balance }) => balance)).toEqual([14322.93, 13000, 8000, 0]);
-    expect(view.debtBalanceMilestones.map(({ balanceCents }) => balanceCents)).toEqual([1_432_293, 1_300_000, 800_000, 0]);
+    expect(view.nextDebtRelief).toMatchObject({ eventLabel: 'Finanzierung A', monthlyRelief: 120, freeAfter: 261.32 });
+    expect(view.nextDebtRelief).toMatchObject({ monthlyReliefCents: 12_000, freeAfterCents: 26_132 });
+    expect(view.debtReliefMilestones[1]).toMatchObject({ event: 'Finanzierung A', eventDetail: 'Letzte Rate' });
+    expect(view.debtBalanceMilestones.map(({ balance }) => balance)).toEqual([12825.67, 12705.67, 12615.67, 12585.67, 11000, 5000, 0]);
+    expect(view.debtBalanceMilestones.map(({ balanceCents }) => balanceCents)).toEqual([1_282_567, 1_270_567, 1_261_567, 1_258_567, 1_100_000, 500_000, 0]);
     expect(view.budgetStatus).toEqual({
       kind: 'within-budget',
       balance: 141.32,
@@ -210,17 +212,40 @@ describe('cent-based finance selectors', () => {
     });
   });
 
-  it('keeps machine event codes and a raw DKB note out of presentation values', () => {
+  it('keeps machine event codes and a raw loan note out of presentation values', () => {
     const withCopyLeaks = {
       ...data,
-      debts: data.debts.map((debt) => debt.name === 'DKB' ? { ...debt, note: 'Raw English spreadsheet instruction' } : debt),
+      debts: data.debts.map((debt) => debt.kind === 'loan' ? { ...debt, note: 'Raw English spreadsheet instruction' } : debt),
       reliefMilestones: [
-        { date: '2026-09', monthlyReliefCents: 16_400, event: 'debt-payment-ends', eventDetail: 'Coolblue' },
+        { date: '2026-09', monthlyReliefCents: 12_000, event: 'debt-payment-ends', eventDetail: 'Finanzierung A' },
       ],
     };
     const view = createFinanceViewModel(withCopyLeaks);
-    expect(view.nextDebtRelief?.eventLabel).toBe('Coolblue');
+    expect(view.nextDebtRelief?.eventLabel).toBe('Finanzierung A');
     expect(view.nextDebtRelief?.eventLabel).not.toContain('debt-payment-ends');
-    expect(view.debts.find(({ name }) => name === 'DKB')?.supportingText).toBe('Kredit mit monatlicher Rate');
+    expect(view.debts.find(({ kind }) => kind === 'loan')?.supportingText).toBe('Kredit mit monatlicher Rate');
+  });
+
+  it('carries unchanged synthetic debt balances through creditor-specific milestones', () => {
+    expect(selectDebtBalanceMilestoneTotals(data)).toEqual([
+      { date: '2026-08-08', balanceCents: 1_282_567 },
+      { date: '2026-09', balanceCents: 1_270_567 },
+      { date: '2026-10', balanceCents: 1_261_567 },
+      { date: '2026-12', balanceCents: 1_258_567 },
+      { date: '2027-01', balanceCents: 1_100_000 },
+      { date: '2029-01', balanceCents: 500_000 },
+      { date: '2031-08', balanceCents: 0 },
+    ]);
+  });
+
+  it('keeps the debt trajectory empty when no milestones are configured', () => {
+    expect(selectDebtBalanceMilestoneTotals({ ...data, debtMilestones: [] })).toEqual([]);
+  });
+
+  it('keeps the debt trajectory empty when all milestones are on or before the data date', () => {
+    const pastMilestonesOnly = data.debtMilestones.filter(({ date }) => date <= '2026-08');
+
+    expect(pastMilestonesOnly.length).toBeGreaterThan(0);
+    expect(selectDebtBalanceMilestoneTotals({ ...data, debtMilestones: pastMilestonesOnly })).toEqual([]);
   });
 });

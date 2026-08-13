@@ -131,10 +131,10 @@ describe('ACC-62 Privacy Mode', () => {
         <UpcomingScreen />
       </TestWrapper>
     );
-    // SafeToSpend 1030.53, TotalPending 320.22, DKB 220.22, Insurance 100
-    expect(html).not.toContain('1.030,53');
-    expect(html).not.toContain('320,22');
-    expect(html).not.toContain('220,22');
+    // Synthetic fixture values: safe to spend 1000.75, pending 350, loan 250, insurance 100.
+    expect(html).not.toContain('1.000,75');
+    expect(html).not.toContain('350,00');
+    expect(html).not.toContain('250,00');
     expect(html).toContain('Betrag ausgeblendet');
   });
 
@@ -155,7 +155,7 @@ describe('ACC-62 Privacy Mode', () => {
         <DebtScreen />
       </TestWrapper>
     );
-    // PayoffToday 4800, DKB 4800
+    // Separate synthetic component fixture: payoff today 4800.
     expect(html).not.toContain('4.800,00');
     expect(html).toContain('Betrag ausgeblendet');
   });

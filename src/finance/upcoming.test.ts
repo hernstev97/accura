@@ -116,15 +116,15 @@ describe('Upcoming recurring payments calculation domain logic', () => {
 
     it('returns payments due from today up to next salary, sorted chronologically', () => {
       // baseData has asOf 2026-08-08, salaryDay 25 (next salary: 2026-08-25)
-      // Budget items with dueDay: insurance (15th, 100 EUR). Debt: DKB (20th, 220.22 EUR).
+      // Budget items with dueDay: insurance (15th, 100 EUR). Debt: primary loan (20th, 250 EUR).
       // Housing (1st) and groceries (5th) already passed for August.
       const payments = selectUpcomingPayments(baseData, '2026-08-08');
       expect(payments).toHaveLength(2);
       expect(payments[0]).toMatchObject({ id: 'insurance', dueDate: '2026-08-15', amountCents: 10000, isShortlyBeforeSalary: false });
-      expect(payments[1]).toMatchObject({ id: 'dkb', dueDate: '2026-08-20', amountCents: 22022, isShortlyBeforeSalary: true });
+      expect(payments[1]).toMatchObject({ id: 'primary-loan', dueDate: '2026-08-20', amountCents: 25000, isShortlyBeforeSalary: true });
 
       const total = selectUpcomingPaymentsTotalCents(payments);
-      expect(total).toBe(32022); // 320.22 EUR
+      expect(total).toBe(35000); // 350 EUR
     });
 
     it('excludes payments occurring ON salary day (same calendar day)', () => {
