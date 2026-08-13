@@ -6,7 +6,7 @@
 > **Kanonisch für:** Begründung von Google Sheets als Quelldatenspeicher.
 > **Verwandte Dokumente:** [Schema v1](../referenz/finance-data-schema-v1.md), [ADR-Index](README.md)
 
-- **Status:** Angenommen
+- **Status:** Ersetzt durch [ADR 0013](0013-postgresql-als-finanzquelle.md)
 
 ## Kontext
 

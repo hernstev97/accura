@@ -8,6 +8,8 @@
 
 ## Grundvertrag
 
+Im aktuell implementierten Übergangsstand ist dieser Vertrag zugleich die laufende Google-Sheets-Quelle. Nach dem beschlossenen Cutover aus [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) bleibt er als einmaliges Importformat erhalten; der normalisierte `FinanceDataV1`-Vertrag wird dann produktiv aus PostgreSQL gelesen.
+
 Die ausgewählte native Google-Sheets-Datei enthält genau die benötigten zehn underscore-präfigierten Maschinen-Tabs. Sichtbare Hilfs-Tabs sind zulässig, werden aber ignoriert. Die App liest je Maschinen-Tab `A:Z` mit `UNFORMATTED_VALUE`, verändert keine Zelle und erwartet die Header in Zeile 1. Leere Datenzeilen werden ignoriert.
 
 Pflicht-Tabs:

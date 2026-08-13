@@ -10,6 +10,8 @@
 
 Die Vercel Functions sind Backend-for-Frontend und Sicherheitsgrenze. Sie verifizieren die einzige erlaubte Identität, verwalten Google-Token und Datenbankverbindung, lesen Sheets, validieren das Finance-Schema und liefern eine kleine same-origin JSON-API. Der Browser spricht Google nur beim bewusst geöffneten Picker direkt an.
 
+Dies beschreibt den aktuell implementierten Übergangsstand. Im verbindlichen Zielbild aus [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) und [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md) liest der Server `FinanceDataV1` ownergebunden aus PostgreSQL. Google bleibt nur Identitätsanbieter; Picker, `drive.file`, Sheets-Laufzeitzugriff und persistierte Refresh-Tokens entfallen beim Cutover. Bis dahin bleibt der alte Pfad betriebsfähig, wird aber nicht weiter ausgebaut.
+
 ## OAuth-Sequenz
 
 ```mermaid
@@ -71,7 +73,7 @@ Widerrufene oder abgelaufene Google-Grants werden als `reconnect_required` abgeb
 
 ## Begründung und Nachweis
 
-Siehe [ADR 0003](../entscheidungen/0003-serverseitiger-google-zugriff-und-drive-file.md) und [ADR 0004](../entscheidungen/0004-single-user-sicherheitsmodell.md).
+Für den aktuellen Übergangsstand siehe die ersetzte [ADR 0003](../entscheidungen/0003-serverseitiger-google-zugriff-und-drive-file.md). Das Zielbild steht in [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) und [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md); [ADR 0004](../entscheidungen/0004-single-user-sicherheitsmodell.md) bleibt gültig.
 
 - Konfiguration: [api/_lib/config.ts](../../api/_lib/config.ts)
 - HTTP-Grenze: [api/_lib/http.ts](../../api/_lib/http.ts)

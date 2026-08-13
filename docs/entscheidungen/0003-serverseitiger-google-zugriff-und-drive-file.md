@@ -6,7 +6,7 @@
 > **Kanonisch für:** Begründung des serverseitigen Tokenflusses und `drive.file`-Scopes.
 > **Verwandte Dokumente:** [Web-Sicherheit und OAuth](../grundlagen/web-sicherheit-und-oauth.md), [ADR-Index](README.md)
 
-- **Status:** Angenommen
+- **Status:** Ersetzt durch [ADR 0014](0014-google-oauth-nur-als-identitaet.md)
 
 ## Kontext
 
