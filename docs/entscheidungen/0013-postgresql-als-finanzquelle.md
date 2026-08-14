@@ -47,7 +47,7 @@ Diese ADR legt das verbindliche Zielbild fest, beschreibt aber nicht den bereits
 Die Umsetzung erfolgt in klaren Schritten:
 
 1. ACC-71 erstellt Schema und Repository-Lesepfad, ohne die fachliche Grenze zu ändern.
-2. ACC-29 weist mit derselben anonymen Fixture identische Cents, Fälligkeiten und Snapshot-Auswahl für Parser- und PostgreSQL-Pfad nach.
+2. ACC-29 weist mit derselben anonymen Fixture identische Cents, Fälligkeiten und Snapshot-Auswahl für Parser- und PostgreSQL-Pfad nach. Dieser Nachweis ist umgesetzt.
 3. ACC-66 importiert den privaten Bestand vollständig, prüft die Parität und schaltet die einzige produktive Quelle auf PostgreSQL um.
 4. ACC-72 baut anschließend den eng begrenzten In-App-Editor.
 
@@ -77,4 +77,5 @@ Schema, Migration, Repository und Schreibgrenzen müssen sorgfältig umgesetzt u
 
 - Domänenvertrag und bestehender Produktionspfad: [FinanceDataV1](../../src/finance/types.ts), [Sheets-Parser](../../src/finance/parser.ts), [Finance-Service](../../api/_lib/financeService.ts)
 - Umgesetzter ACC-71-Stand: [Migration 002](../../migrations/002_finance_data_v1.sql), [PostgreSQL-Reader](../../api/_lib/financeRepository.ts), [Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts)
-- Weitere Nachweise und Cutover: ACC-29, ACC-66 und ACC-72 in Linear
+- Umgesetzter ACC-29-Nachweis: dieselbe Suite vergleicht Cents, `salaryDay`/`dueDay` und `selectLatest*Snapshot` von Parser- und PostgreSQL-Pfad an der anonymen Fixture
+- Weitere Nachweise und Cutover: ACC-66 und ACC-72 in Linear

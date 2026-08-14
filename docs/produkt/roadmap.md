@@ -20,7 +20,6 @@ Die Roadmap ist eine Absichtserklärung, kein Funktionsversprechen. „Now“ be
 
 - Architektur für den Quellenwechsel verbindlich festlegen und die sheetgebundenen ADRs ersetzen.
 - Das heutige `FinanceDataV1` mit internem `owner_id` in PostgreSQL abbilden und ownergebunden wieder als denselben Vertrag lesen.
-- Sheet-Parser und PostgreSQL-Lesepfad mit derselben anonymen Fixture auf identische Cents, Fälligkeiten und Snapshot-Auswahl prüfen.
 - Den bestehenden privaten Datenstand einmalig importieren und danach eindeutig auf PostgreSQL als einzige produktive Quelle umschalten.
 - Einen eng begrenzten In-App-Editor für Stände, Beträge, Fälligkeiten und Aktivstatus bauen.
 

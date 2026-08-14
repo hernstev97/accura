@@ -43,7 +43,7 @@ Die Tabellen `finance_meta`, `accounts`, `account_snapshots`, `pockets`, `pocket
 
 Das Repository liest bewusst jeden gespeicherten Snapshot einschließlich alter und zukünftiger Werte. Es wählt keinen „aktuellen“ Stand und berechnet keine Summe. Erst die unveränderten Selektoren verwenden `snapshot.asOf <= data.asOf`. Damit bleibt die fachliche Auswahlgrenze identisch zum Sheets-Pfad. Die Datenbank erzwingt strukturelle Owner-/Fremdschlüsselintegrität; das Repository ergänzt Laufzeitvertrag und die Parserregel, dass aktive Accounts, Pockets und Debts einen passenden Snapshot benötigen.
 
-Vollständiger Tabellenvertrag: [Datenbankreferenz](../referenz/datenbank.md). Implementierung und echter Datenbanktest: [financeRepository.ts](../../api/_lib/financeRepository.ts), [financeRepository.postgres.test.ts](../../tests/postgres/financeRepository.postgres.test.ts).
+Vollständiger Tabellenvertrag: [Datenbankreferenz](../referenz/datenbank.md). Implementierung und echter Datenbanktest: [financeRepository.ts](../../api/_lib/financeRepository.ts), [financeRepository.postgres.test.ts](../../tests/postgres/financeRepository.postgres.test.ts). Dieselbe Suite hält Cents, `salaryDay`/`dueDay` und die Selektor-Auswahl `selectLatest*Snapshot` der anonymen Fixture zwischen Parser und Reader fest.
 
 ## Integer-Cents und Snapshots
 
