@@ -78,7 +78,7 @@ try {
   await page.getByLabel('Einstellungen öffnen').click();
   const offlineInfo = await page.getByRole('dialog', { name: 'Informationen' }).innerText();
   assert.match(offlineInfo, /Andere Farben · Systemmodus/);
-  assert.match(offlineInfo, /Offline verfügbar[\s\S]*Anonyme Finanzen/);
+  assert.match(offlineInfo, /Offline verfügbar[\s\S]*Gespeicherter Finanzstand/);
   assert.match(offlineInfo, /lokal auf diesem Gerät verfügbar/);
   assert.doesNotMatch(offlineInfo, /Jetzt aktualisieren|Andere Tabelle auswählen|Abmelden blendet Finanzdaten aus/);
   await page.keyboard.press('Escape');
@@ -134,7 +134,7 @@ try {
   try {
     await installFinanceApiMocks(coldPage, 'signed-out');
     await coldPage.goto(baseUrl, { waitUntil: 'networkidle' });
-    await coldPage.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+    await coldPage.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
     await coldPage.evaluate(() => navigator.serviceWorker.ready);
     await coldPage.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await coldPage.unrouteAll({ behavior: 'wait' });

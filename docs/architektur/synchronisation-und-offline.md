@@ -12,7 +12,7 @@ Der Server liefert immer einen vollständigen validierten Snapshot. Der Browser 
 
 ## Aktualisierungsauslöser
 
-Synchronisiert wird beim Start mit vorhandener Sitzung und Tabelle, nach erfolgreicher Pickerauswahl, manuell, beim `online`-Ereignis und beim Zurückkehren in den sichtbaren Tab, wenn der letzte Erfolg mehr als zehn Minuten zurückliegt. Es gibt kein Polling, keinen Cron und keinen Push-Kanal.
+Synchronisiert wird beim Start mit vorhandener Sitzung, manuell, beim `online`-Ereignis und beim Zurückkehren in den sichtbaren Tab, wenn der letzte Erfolg mehr als zehn Minuten zurückliegt. Es gibt kein Polling, keinen Cron und keinen Push-Kanal.
 
 ## Race-Schutz
 
@@ -39,7 +39,7 @@ flowchart TB
   end
 ```
 
-Implementierung und Tests: [api/_lib/repository.ts](../../api/_lib/repository.ts), [api/_lib/security.ts](../../api/_lib/security.ts), [src/data/financeCache.ts](../../src/data/financeCache.ts), [src/appearance/wallpaperStore.ts](../../src/appearance/wallpaperStore.ts), [src/privacy/privacyStore.ts](../../src/privacy/privacyStore.ts), [src/privacy/appProtectionStore.ts](../../src/privacy/appProtectionStore.ts), [scripts/offline-smoke.mjs](../../scripts/offline-smoke.mjs).
+Implementierung und Tests: [api/_lib/security.ts](../../api/_lib/security.ts), [src/data/financeCache.ts](../../src/data/financeCache.ts), [src/appearance/wallpaperStore.ts](../../src/appearance/wallpaperStore.ts), [src/privacy/privacyStore.ts](../../src/privacy/privacyStore.ts), [src/privacy/appProtectionStore.ts](../../src/privacy/appProtectionStore.ts), [scripts/offline-smoke.mjs](../../scripts/offline-smoke.mjs).
 
 ## Service-Worker-Grenze
 

@@ -2,12 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { ServerConfig } from './config.js';
 import { getServerConfig } from './config.js';
 import { AppError, publicError } from './errors.js';
-import { getConnectionRepository, type ConnectionRepository } from './repository.js';
 import { assertCsrf, parseCookies, SESSION_COOKIE, verifySession, type AppSession } from './security.js';
 
 export type HandlerContext = {
   config: ServerConfig;
-  repository: ConnectionRepository;
   session: AppSession;
 };
 
@@ -36,7 +34,7 @@ export function authenticated(request: VercelRequest, csrfRequired = false): Han
     const origin = Array.isArray(request.headers.origin) ? request.headers.origin[0] : request.headers.origin;
     assertCsrf(session, csrfHeader, origin, config.appOrigin);
   }
-  return { config, repository: getConnectionRepository(config.databaseUrl), session };
+  return { config, session };
 }
 
 export async function handle(response: VercelResponse, task: () => Promise<void>) {

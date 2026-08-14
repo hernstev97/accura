@@ -26,7 +26,7 @@ Logout beendet weiterhin nur die Sitzung. Disconnect- und PIN-Recovery-Verhalten
 
 ## Übergang
 
-Diese ADR ist der verbindliche Zielzustand. Bis ACC-66 den importierten Datenbestand verifiziert und den Cutover ausführt, bleibt der bestehende `drive.file`- und Refresh-Token-Fluss funktionsfähig. Er wird nicht für neue Features erweitert. Erst der Cutover entfernt ihn aus Code, Konfiguration, API, UI und Betriebsdokumentation.
+Diese ADR ist umgesetzt: OAuth fordert nur noch `openid email profile`, Picker und persistierte Refresh-Tokens sind entfernt, `/api/finance` liest PostgreSQL. Der einmalige Import bleibt ein Operator-Pfad.
 
 ## Begründung
 
@@ -48,5 +48,5 @@ Der einmalige Import benötigt einen bewusst betriebenen Pfad. Der spätere Invi
 
 ## Implementierung und Tests
 
-- Aktueller, noch zu ersetzender Fluss: [Google-Client](../../api/_lib/google.ts), [OAuth-Callback](../../api/auth/google/callback.ts), [Google-Verbindungsrepository](../../api/_lib/repository.ts)
-- Geplanter Cutover: ACC-66; spätere Invite-only-Erweiterung: ACC-64
+- Identitätsfluss: [Google-Client](../../api/_lib/google.ts), [OAuth-Callback](../../api/auth/google/callback.ts)
+- Spätere Invite-only-Erweiterung: ACC-64

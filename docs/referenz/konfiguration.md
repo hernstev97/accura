@@ -11,17 +11,16 @@
 | Variable | Geheim? | Vertrag |
 | --- | --- | --- |
 | `APP_ORIGIN` | nein | absolute kanonische Origin ohne Pfad/abschließenden Slash; in Produktion HTTPS |
-| `GOOGLE_CLIENT_ID` | nein | OAuth-Web-Client-ID; wird authentifiziert an Picker geliefert |
+| `GOOGLE_CLIENT_ID` | nein | OAuth-Web-Client-ID für die Identitätsanmeldung |
 | `GOOGLE_CLIENT_SECRET` | ja | OAuth-Web-Client-Secret, nur Server |
-| `GOOGLE_API_KEY` | nein, aber einschränken | Picker-Key, auf Picker API und exakte Referrer beschränken |
-| `GOOGLE_CLOUD_PROJECT_NUMBER` | nein | ausschließlich Ziffern; Picker App ID, nicht Projektname |
 | `GOOGLE_OAUTH_REDIRECT_URI` | nein | absolute URL mit derselben Origin wie `APP_ORIGIN` und exakt `/api/auth/google/callback` |
 | `ALLOWED_GOOGLE_EMAIL` | personenbezogene Zugriffspolitik | gültige E-Mail; wird kleingeschrieben und bei Callback sowie Sitzung geprüft |
 | `DATABASE_URL` | ja | gepoolte PostgreSQL-Verbindungs-URL |
-| `TOKEN_ENCRYPTION_KEY` | ja | Base64-kodiert genau 32 Byte für AES-256-GCM |
 | `SESSION_SECRET` | ja | mindestens 32 UTF-8-Byte für HMAC-signierte OAuth-/Sessiontokens |
 
 Alle Variablen sind serverseitig erforderlich. `VERCEL_ENV=production` oder `NODE_ENV=production` aktiviert Produktion und damit HTTPS-Prüfung sowie `Secure`-Cookies.
+
+`GOOGLE_SUB` ist keine Runtime-Variable der App. Sie wird nur vom Operator-Import `npm run import:finance` gelesen.
 
 ## Öffentliche Build- und Entwicklungsvariablen
 
@@ -47,7 +46,7 @@ Wenn `APP_ORIGIN=https://accura.example` lautet, muss der Callback `https://accu
 
 ## Rotation
 
-Die Folgen von Schlüsselrotation stehen im [Produktions-Setup](../anleitungen/produktions-setup.md#secret-rotation). Besonders wichtig: Ohne Keyring kann ein neuer `TOKEN_ENCRYPTION_KEY` alte Token nicht lesen. `SESSION_SECRET` invalidiert bestehende Sessions unmittelbar.
+Die Folgen von Schlüsselrotation stehen im [Produktions-Setup](../anleitungen/produktions-setup.md#secret-rotation). `SESSION_SECRET` invalidiert bestehende Sessions unmittelbar.
 
 ## Implementierung und Tests
 

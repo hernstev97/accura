@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { isAppPath, type AppPath } from '../../src/navigation/appNavigation.js';
 import { AppError } from './errors.js';
@@ -145,25 +145,4 @@ export function assertCsrf(session: AppSession, csrfHeader: string | undefined, 
   }
 }
 
-function encryptionKey(key: string) {
-  const decoded = Buffer.from(key, 'base64');
-  if (decoded.length !== 32) throw new Error('TOKEN_ENCRYPTION_KEY must be a base64-encoded 32-byte key.');
-  return decoded;
-}
 
-export function encryptRefreshToken(token: string, key: string, googleSub: string) {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', encryptionKey(key), iv);
-  cipher.setAAD(Buffer.from(`finance-google-token:${googleSub}`, 'utf8'));
-  const encrypted = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
-  return `v1.${iv.toString('base64url')}.${encrypted.toString('base64url')}.${cipher.getAuthTag().toString('base64url')}`;
-}
-
-export function decryptRefreshToken(value: string, key: string, googleSub: string) {
-  const [version, iv, encrypted, tag, extra] = value.split('.');
-  if (version !== 'v1' || !iv || !encrypted || !tag || extra) throw new Error('Unsupported encrypted token format.');
-  const decipher = createDecipheriv('aes-256-gcm', encryptionKey(key), Buffer.from(iv, 'base64url'));
-  decipher.setAAD(Buffer.from(`finance-google-token:${googleSub}`, 'utf8'));
-  decipher.setAuthTag(Buffer.from(tag, 'base64url'));
-  return Buffer.concat([decipher.update(Buffer.from(encrypted, 'base64url')), decipher.final()]).toString('utf8');
-}

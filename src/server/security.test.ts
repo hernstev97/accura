@@ -4,25 +4,15 @@ import {
   assertCsrf,
   createOAuthTransaction,
   createSession,
-  decryptRefreshToken,
-  encryptRefreshToken,
   isAllowedGoogleUser,
   verifyOAuthTransaction,
   verifySession,
   sessionCookie,
 } from '../../api/_lib/security';
 
-const encryptionKey = Buffer.alloc(32, 7).toString('base64');
 const sessionSecret = 'test-session-secret-with-at-least-32-bytes';
 
 describe('server security primitives', () => {
-  it('encrypts refresh tokens with authenticated encryption and subject-bound AAD', () => {
-    const encrypted = encryptRefreshToken('refresh-token-value', encryptionKey, 'google-sub-1');
-    expect(encrypted).not.toContain('refresh-token-value');
-    expect(decryptRefreshToken(encrypted, encryptionKey, 'google-sub-1')).toBe('refresh-token-value');
-    expect(() => decryptRefreshToken(encrypted, encryptionKey, 'other-sub')).toThrow();
-  });
-
   it('accepts only the verified allowlisted Google email case-insensitively', () => {
     expect(isAllowedGoogleUser('OWNER@example.test', true, 'owner@example.test')).toBe(true);
     expect(isAllowedGoogleUser('owner@example.test', false, 'owner@example.test')).toBe(false);

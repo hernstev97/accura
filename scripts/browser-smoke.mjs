@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { installFinanceApiMocks, installPickerMock } from './fixtures/anonymous-finance-data.mjs';
+import { installFinanceApiMocks } from './fixtures/anonymous-finance-data.mjs';
 import { createAppearanceImageFixture } from './fixtures/appearance-image.mjs';
 
 const baseUrl = process.env.SMOKE_URL ?? 'http://127.0.0.1:5173';
@@ -495,16 +495,14 @@ async function statePage(state, viewport = { width: 412, height: 915 }, contextO
   const page = await context.newPage();
   const errors = collectErrors(page);
   await installFinanceApiMocks(page, state);
-  await installPickerMock(page);
   return { context, page, errors };
 }
 
 try {
   for (const [state, expected] of [
-    ['signed-out', 'Mit deiner Tabelle verbinden'],
-    ['no-spreadsheet', 'Google-Tabelle auswählen'],
-    ['validation-error', 'Tabelle konnte nicht übernommen werden'],
-    ['reconnect', 'Google erneut verbinden'],
+    ['signed-out', 'Bei accura anmelden'],
+    ['no-finance', 'Finanzstand fehlt'],
+    ['validation-error', 'Finanzstand konnte nicht geladen werden'],
   ]) {
     const test = await statePage(state);
     await test.page.goto(baseUrl, { waitUntil: 'networkidle' });
@@ -522,7 +520,7 @@ try {
       assert.notEqual(after, before, 'Injizierter Akzent änderte die primäre Aktion nicht');
       await test.page.evaluate(() => document.documentElement.style.removeProperty('--color-system-accent-source'));
     }
-    const expectedStatus = state === 'validation-error' ? '422' : state === 'reconnect' ? '401' : null;
+    const expectedStatus = state === 'validation-error' ? '422' : state === 'no-finance' ? '409' : null;
     const unexpectedErrors = expectedStatus ? test.errors.filter((error) => !error.includes(`status of ${expectedStatus}`)) : test.errors;
     assert.deepEqual(unexpectedErrors, [], unexpectedErrors.join('\n'));
     await test.context.close();
@@ -597,19 +595,17 @@ try {
   assert.deepEqual(routing.errors, [], routing.errors.join('\n'));
   await routing.context.close();
 
-  const picker = await statePage('no-spreadsheet');
-  await picker.page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await picker.page.getByRole('button', { name: 'Google-Tabelle auswählen' }).click();
-  await picker.page.getByRole('heading', { name: overviewHeading }).waitFor();
-  assert.match(await picker.page.locator('#overview-hero').innerText(), /Ausgaben[\s\S]*Rücklagen[\s\S]*Frei/);
-  assert.deepEqual(picker.errors, [], picker.errors.join('\n'));
-  await picker.context.close();
+  const missing = await statePage('no-finance');
+  await missing.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await missing.page.getByRole('heading', { name: 'Finanzstand fehlt' }).waitFor();
+  assert.deepEqual(missing.errors.filter((error) => !error.includes('status of 409')), [], missing.errors.join('\n'));
+  await missing.context.close();
 
   const logout = await statePage('connected');
   await logout.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await openSettings(logout.page);
   await logout.page.getByRole('button', { name: 'Abmelden' }).click();
-  await logout.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await logout.page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.deepEqual(logout.errors, [], logout.errors.join('\n'));
   await logout.context.close();
 
@@ -783,7 +779,7 @@ try {
   const themeBeforeLogout = await themeSnapshot(appearance.page);
   await openSettings(appearance.page);
   await appearance.page.getByRole('button', { name: 'Abmelden' }).click();
-  await appearance.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await appearance.page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.deepEqual(await themeSnapshot(appearance.page), themeBeforeLogout, 'Abmelden entfernt die gerätebezogene Appearance-Präferenz');
   assert.match(await appearance.page.evaluate(() => localStorage.getItem('finance-appearance-v1') ?? ''), /"version":1/);
   await assertNoOverflow(appearance.page, 'Appearance-Flow 412×915');
@@ -796,7 +792,6 @@ try {
   const peer = await tabSync.context.newPage();
   const peerErrors = collectErrors(peer);
   await installFinanceApiMocks(peer, 'connected');
-  await installPickerMock(peer);
   await peer.goto(baseUrl, { waitUntil: 'networkidle' });
   await openSettings(peer);
   const peerColors = await openColors(peer);
@@ -1098,7 +1093,7 @@ try {
   const themeBeforeDisconnect = await themeSnapshot(mobile.page);
   await mobile.page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
   await mobile.page.getByRole('button', { name: 'Endgültig trennen' }).click();
-  await mobile.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await mobile.page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   const cachedAfterDisconnect = await mobile.page.evaluate(() => new Promise((resolve, reject) => {
     const request = indexedDB.open('finance-overview', 1);
     request.onerror = () => reject(request.error);
@@ -1232,7 +1227,6 @@ try {
   const forced = await forcedContext.newPage();
   const forcedErrors = collectErrors(forced);
   await installFinanceApiMocks(forced);
-  await installPickerMock(forced);
   await forced.goto(baseUrl, { waitUntil: 'networkidle' });
   await forced.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.equal(await forced.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'Forced Colors wurde nicht emuliert');

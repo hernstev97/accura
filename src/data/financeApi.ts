@@ -2,32 +2,21 @@ import { z } from 'zod';
 import { financeDataV1Schema } from '../finance/runtime';
 import type { FinanceValidationIssue } from '../finance/types';
 
-const spreadsheetSchema = z.object({ id: z.string().min(1), name: z.string().min(1) });
 const sessionSchema = z.discriminatedUnion('authenticated', [
   z.object({ authenticated: z.literal(false) }),
   z.object({
     authenticated: z.literal(true),
     user: z.object({ email: z.string().email() }),
     csrfToken: z.string().min(1),
-    connection: z.object({ connected: z.boolean(), spreadsheet: spreadsheetSchema.nullable() }),
   }),
 ]);
 const financeResponseSchema = z.object({
-  spreadsheet: spreadsheetSchema,
   data: financeDataV1Schema,
   refreshedAt: z.string().datetime(),
-});
-const pickerConfigSchema = z.object({
-  accessToken: z.string().min(1),
-  expiresIn: z.number().positive(),
-  apiKey: z.string().min(1),
-  appId: z.string().min(1),
-  clientId: z.string().min(1),
 });
 
 export type FinanceSession = z.infer<typeof sessionSchema>;
 export type FinanceResponse = z.infer<typeof financeResponseSchema>;
-export type PickerConfig = z.infer<typeof pickerConfigSchema>;
 
 export class FinanceApiError extends Error {
   constructor(
@@ -66,22 +55,17 @@ async function request<T>(path: string, schema: z.ZodType<T>, options: RequestIn
 export interface FinanceApi {
   getSession(signal?: AbortSignal): Promise<FinanceSession>;
   getFinance(signal?: AbortSignal): Promise<FinanceResponse>;
-  getPickerConfig(signal?: AbortSignal): Promise<PickerConfig>;
-  saveSpreadsheet(fileId: string, csrfToken: string, signal?: AbortSignal): Promise<FinanceResponse>;
-  logout(csrfToken: string): Promise<void>;
-  disconnect(csrfToken: string, signal?: AbortSignal): Promise<void>;
+  logout(csrfToken: string, signal?: AbortSignal): Promise<void>;
 }
 
 export const productionFinanceApi: FinanceApi = {
   getSession: (signal) => request('/api/session', sessionSchema, { signal }),
   getFinance: (signal) => request('/api/finance', financeResponseSchema, { signal }),
-  getPickerConfig: (signal) => request('/api/google/picker', pickerConfigSchema, { signal }),
-  saveSpreadsheet: (fileId, csrfToken, signal) => request('/api/google/spreadsheet', financeResponseSchema, {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
-    body: JSON.stringify({ fileId }),
-    signal,
-  }),
-  logout: async (csrfToken) => { await request('/api/auth/logout', z.object({ ok: z.literal(true) }), { method: 'POST', headers: { 'x-csrf-token': csrfToken } }); },
-  disconnect: async (csrfToken, signal) => { await request('/api/connection/disconnect', z.object({ ok: z.literal(true) }), { method: 'POST', headers: { 'x-csrf-token': csrfToken }, signal }); },
+  logout: async (csrfToken, signal) => {
+    await request('/api/auth/logout', z.object({ ok: z.literal(true) }), {
+      method: 'POST',
+      headers: { 'x-csrf-token': csrfToken },
+      signal,
+    });
+  },
 };

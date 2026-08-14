@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "dev:mock": "VITE_USE_MOCK_API=true vite",
+    "import:finance": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/import-finance.ts",
     "docs:check": "node scripts/docs-check.mjs",
     "docs:check:external": "node scripts/docs-check.mjs --external",
     "build": "tsc -b && vite build",

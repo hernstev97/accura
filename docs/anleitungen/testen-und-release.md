@@ -52,7 +52,7 @@ Jedes geänderte Bild einzeln auf Layout, Texte, Theme, Fokuszustand und unerwar
 
 - zentrale Überschriften- und Quellcode-Zeilenanker;
 - alte Dokumentationspfade und alle fünf Lesepfade;
-- Login, Picker, Sync, Tabellenwechsel und Schemaprobleme;
+- Login, Sync, fehlender Finanzstand und Integritätsprobleme;
 - Offline-Start mit und ohne vorherigen Cache;
 - Logout versus Disconnect und anschließendes Wiederverbinden;
 - Appearance-Entwurf, Anwenden, Abbrechen, Bildentfernung und OS-Moduswechsel;

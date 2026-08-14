@@ -19,19 +19,16 @@ describe('last-known-good IndexedDB cache', () => {
 
   it('stores and loads only normalized FinanceDataV1 snapshots', async () => {
     await saveCachedFinanceData({
-      spreadsheetId: 'spreadsheet-id',
-      spreadsheetName: 'Anonyme Finanzen',
       refreshedAt: '2026-08-08T10:00:00.000Z',
       data: parsed.data,
     });
     await expect(loadCachedFinanceData()).resolves.toEqual(expect.objectContaining({
-      spreadsheetId: 'spreadsheet-id',
       data: expect.objectContaining({ schemaVersion: 1, monthlyIncomeCents: 259_132 }),
     }));
   });
 
-  it('removes cached personal finance data on disconnect cleanup', async () => {
-    await saveCachedFinanceData({ spreadsheetId: 'id', spreadsheetName: 'Name', refreshedAt: '2026-08-08T10:00:00.000Z', data: parsed.data });
+  it('removes cached personal finance data on local cleanup', async () => {
+    await saveCachedFinanceData({ refreshedAt: '2026-08-08T10:00:00.000Z', data: parsed.data });
     await clearCachedFinanceData();
     await expect(loadCachedFinanceData()).resolves.toBeNull();
   });
@@ -48,8 +45,6 @@ describe('last-known-good IndexedDB cache', () => {
     expect(values.get(FINANCE_CACHE_GENERATION_STORAGE_KEY)).not.toBe(requestGeneration);
 
     await expect(saveCachedFinanceData({
-      spreadsheetId: 'stale-id',
-      spreadsheetName: 'Veralteter Stand',
       refreshedAt: '2026-08-08T10:00:00.000Z',
       data: parsed.data,
     }, requestGeneration, storage)).resolves.toBe(false);

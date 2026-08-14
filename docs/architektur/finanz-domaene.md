@@ -10,24 +10,24 @@
 
 Die Tabelle enthält Quellen und zeitbezogene Snapshots, keine UI-Gesamtsummen. Der Parser validiert Beziehungen und normalisiert Geld in Integer-Cents. Reine Selektoren wählen den fachlich gültigen Stand und berechnen Summen. Das View-Model ergänzt lokalisierte Texte und Screen-Strukturen. React rendert diese Ausgabe.
 
-`FinanceDataV1` ist die quellenunabhängige Domänengrenze: Der einmalige Sheet-Import wird später denselben Vertrag erzeugen wie das bereits implementierte PostgreSQL-Repository. Die produktive API verwendet im aktuellen Übergangsstand weiterhin Sheets; der PostgreSQL-Reader ist nur intern und in Integrationstests erreichbar. Quelle, Owner-Zuordnung und SQL-Grenze legt [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) fest.
+`FinanceDataV1` ist die quellenunabhängige Domänengrenze: Der einmalige Sheet-Import erzeugt denselben Vertrag wie das produktive PostgreSQL-Repository. Die produktive API liest ausschließlich PostgreSQL. Quelle, Owner-Zuordnung und SQL-Grenze legt [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) fest.
 
-## Aktuelle Sheets- und Finance-Datenpipeline
+## Aktuelle Finance-Datenpipeline
 
 ```mermaid
 flowchart LR
-  S[Sheets batchGet A:Z] --> W[TabularWorkbook]
-  W --> P[Parser + Validierung]
-  P --> C[FinanceDataV1 / Integer-Cents]
+  I[Operator-Import: Sheets-batchGet oder FinanceDataV1] --> P[Parser + Validierung]
+  P --> R[PostgreSQL-Repository]
+  R --> C[FinanceDataV1 / Integer-Cents]
   C --> SEL[reine Selektoren]
   SEL --> VM[FinanceViewModel]
   VM --> UI[Overview / Upcoming / Budget / Debt]
   P -->|Fehler| ISS[tab, row, column, expected]
 ```
 
-Implementierung und Tests: [api/_lib/google.ts](../../api/_lib/google.ts), [src/finance/parser.ts](../../src/finance/parser.ts), [src/finance/selectors.ts](../../src/finance/selectors.ts), [src/finance/viewModel.ts](../../src/finance/viewModel.ts), [src/finance/parser.test.ts](../../src/finance/parser.test.ts).
+Implementierung und Tests: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts), [src/finance/parser.ts](../../src/finance/parser.ts), [src/finance/selectors.ts](../../src/finance/selectors.ts), [src/finance/viewModel.ts](../../src/finance/viewModel.ts), [src/finance/parser.test.ts](../../src/finance/parser.test.ts).
 
-## PostgreSQL-Abbildung im Übergangsstand
+## PostgreSQL-Abbildung
 
 ```mermaid
 flowchart LR

@@ -13,7 +13,7 @@ npm install
 npm run dev:mock
 ```
 
-Vite nennt die lokale URL. Dieser Modus lädt ausschließlich anonyme Daten aus `src/mocks`, simuliert Sitzung/API und Picker und benötigt weder Google noch PostgreSQL. Die Umschaltung ist nur aktiv, wenn Vite im Entwicklungsmodus läuft und `VITE_USE_MOCK_API=true` gesetzt ist. Ein Produktionsbuild verwendet den Mock nicht.
+Vite nennt die lokale URL. Dieser Modus lädt ausschließlich anonyme Daten aus `src/mocks`, simuliert Sitzung und API und benötigt weder Google noch PostgreSQL. Die Umschaltung ist nur aktiv, wenn Vite im Entwicklungsmodus läuft und `VITE_USE_MOCK_API=true` gesetzt ist. Ein Produktionsbuild verwendet den Mock nicht.
 
 ## Develop- und Vercel-Preview
 
@@ -32,7 +32,7 @@ npx vercel env pull .env.local --environment=development
 npx vercel dev --listen 3000
 ```
 
-Öffne `http://localhost:3000`. Google OAuth-Origin und Redirect müssen exakt darauf konfiguriert sein. Verwende eine Kopie der Tabelle, niemals die einzige produktive Quelle für erste Versuche. Die externen Schritte stehen im [Produktions-Setup](produktions-setup.md).
+Öffne `http://localhost:3000`. Google OAuth-Origin und Redirect müssen exakt darauf konfiguriert sein. Der Finanzstand kommt aus PostgreSQL; für lokale Realtests den anonymen Stand mit `npm run import:finance -- --from-fixture` importieren. Die externen Schritte stehen im [Produktions-Setup](produktions-setup.md).
 
 ## Arbeitsablauf
 

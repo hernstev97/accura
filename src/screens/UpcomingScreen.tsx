@@ -40,7 +40,7 @@ export function UpcomingScreen() {
         className="financial-hero--allocation"
         id="upcoming-hero"
         label="Bis Gehalt verfügbar"
-        supporting={upcoming.nextSalaryDateLabel ? `Frei bis zum Gehaltseingang am ${upcoming.nextSalaryDateLabel}` : 'Kein Gehaltstag in der Tabelle hinterlegt'}
+        supporting={upcoming.nextSalaryDateLabel ? `Frei bis zum Gehaltseingang am ${upcoming.nextSalaryDateLabel}` : 'Kein Gehaltstag hinterlegt'}
         tone={isNegativeSafeToSpend ? 'attention' : 'positive'}
         value={<MoneyValue valueCents={safeToSpendCents} />}
         visual={(
@@ -61,7 +61,7 @@ export function UpcomingScreen() {
         />
         <MetricCard
           label="Nächstes Gehalt"
-          supporting={hasSalaryConfig ? `Monatlich am ${upcoming.salaryDay}. Tag` : 'In Google-Tabelle angeben'}
+          supporting={hasSalaryConfig ? `Monatlich am ${upcoming.salaryDay}. Tag` : 'Noch nicht hinterlegt'}
           tone="accent"
           value={upcoming.nextSalaryDateLabel ?? 'Nicht konfiguriert'}
         />
@@ -77,10 +77,9 @@ export function UpcomingScreen() {
       ) : null}
 
       {!hasSalaryConfig ? (
-        <InlineNotice className="upcoming-notice" icon={<Icon name="sheet" size={22} />} title="Gehaltstag in Google-Tabelle angeben" tone="info">
+        <InlineNotice className="upcoming-notice" icon={<Icon name="info" size={22} />} title="Kein Gehaltstag hinterlegt" tone="info">
           <p>
-            Füge im Tab <code>_Meta</code> die Spalte <code>salary_day</code> mit deinem Gehaltstag (z.&nbsp;B. <code>25</code>) ein,
-            um deine ausstehenden Zahlungen und den verfügbaren Betrag bis zum nächsten Gehalt automatisch zu berechnen.
+            Ohne Gehaltstag kann Demnächst offene Zahlungen bis zum nächsten Gehaltseingang nicht berechnen.
           </p>
         </InlineNotice>
       ) : null}

@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { anonymousFinanceData, installFinanceApiMocks, installPickerMock } from '../../scripts/fixtures/anonymous-finance-data.mjs';
+import { anonymousFinanceData, installFinanceApiMocks } from '../../scripts/fixtures/anonymous-finance-data.mjs';
 import {
   denseOverviewFinanceData,
   emptyCollectionsFinanceData,
@@ -10,7 +10,7 @@ import { APP_PROTECTION_STORAGE_KEY, PIN_PBKDF2_ITERATIONS } from '../../src/pri
 
 type Theme = 'light' | 'dark';
 type FinanceDestination = 'overview' | 'upcoming' | 'budget' | 'debt';
-type FinanceState = 'connected' | 'signed-out' | 'no-spreadsheet' | 'validation-error' | 'reconnect';
+type FinanceState = 'connected' | 'signed-out' | 'no-finance' | 'validation-error';
 const defaultVisualTime = new Date('2026-08-09T06:00:00Z');
 const overviewHeading = /^(?:Guten Morgen|Guten Tag|Guten Abend|Gute Nacht)$/;
 const protectedStorageState = JSON.stringify({
@@ -47,8 +47,8 @@ async function preparePage(
   await page.addInitScript(() => {
     localStorage.removeItem('finance-appearance-v1');
     sessionStorage.clear();
+    indexedDB.deleteDatabase('finance-overview');
   });
-  await installPickerMock(page);
   if (state === 'offline-empty') {
     await page.addInitScript(() => {
       Object.defineProperty(Navigator.prototype, 'onLine', { configurable: true, get: () => false });
@@ -57,7 +57,15 @@ async function preparePage(
   } else {
     await installFinanceApiMocks(page, state, financeData);
   }
+  let sawFinanceApi = false;
+  page.on('request', (request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === '/api/session' || pathname === '/api/finance') sawFinanceApi = true;
+  });
   await page.goto(initialPath, { waitUntil: 'networkidle' });
+  if (state !== 'connected' && !sawFinanceApi) {
+    throw new Error('Visual-Tests haben /api/session nicht erreicht. Der Dev-Server läuft mit In-Bundle-Mock (VITE_USE_MOCK_API=true / npm run dev:mock). Diese Suite braucht productionFinanceApi und page.route.');
+  }
   await page.evaluate(() => {
     document.documentElement.style.setProperty('--color-system-accent-source', '#2F667A');
     document.documentElement.style.setProperty('--color-on-system-accent-source', '#FFFFFF');
@@ -309,9 +317,9 @@ for (const scenario of [
 }
 
 for (const scenario of [
-  { name: 'signed-out', state: 'signed-out' as const, heading: 'Mit deiner Tabelle verbinden' },
-  { name: 'no-spreadsheet', state: 'no-spreadsheet' as const, heading: 'Google-Tabelle auswählen' },
-  { name: 'validation-error', state: 'validation-error' as const, heading: 'Tabelle konnte nicht übernommen werden' },
+  { name: 'signed-out', state: 'signed-out' as const, heading: 'Bei accura anmelden' },
+  { name: 'no-finance', state: 'no-finance' as const, heading: 'Finanzstand fehlt' },
+  { name: 'validation-error', state: 'validation-error' as const, heading: 'Finanzstand konnte nicht geladen werden' },
   { name: 'offline-empty', state: 'offline-empty' as const, heading: 'Noch kein lokaler Datenstand' },
 ]) {
   test(`412 light state ${scenario.name}`, async ({ page, context }) => {
@@ -452,16 +460,6 @@ test('412 light info dialog', async ({ page, context }) => {
   await page.getByLabel('Informationen schließen').click();
   await page.getByLabel('Einstellungen öffnen').click();
   await expect(page.getByRole('dialog', { name: 'Informationen' }).getByRole('status')).toHaveText('');
-});
-
-test('412 light disconnect confirmation', async ({ page, context }) => {
-  await page.setViewportSize({ width: 412, height: 915 });
-  await preparePage(page, context, 'connected', 'light', true);
-  await page.getByRole('heading', { name: 'Guten Morgen' }).waitFor();
-  await page.getByLabel('Einstellungen öffnen').click();
-  await page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
-  await page.getByText('Google-Verbindung trennen?').waitFor();
-  await capture(page, '412-light-disconnect-confirmation.png');
 });
 
 test('412 light app preview protection covers background and requires deliberate reveal', async ({ page, context }) => {
@@ -691,11 +689,11 @@ test('dark PIN lockscreen follows the active theme and remains usable in constra
   await expectNoAxeViolations(page, 'PIN-Lockscreen Forced Colors');
 });
 
-test('forgotten PIN recovery stays locked offline and clears protected local data after disconnect', async ({ page, context }) => {
+test('forgotten PIN recovery stays locked offline and clears protected local data after logout', async ({ page, context }) => {
   const runtimeErrors = trackRuntimeErrors(page);
-  let disconnectRequests = 0;
+  let logoutRequests = 0;
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname === '/api/connection/disconnect') disconnectRequests += 1;
+    if (new URL(request.url()).pathname === '/api/auth/logout') logoutRequests += 1;
   });
   await seedPinProtection(page);
   await page.setViewportSize({ width: 412, height: 915 });
@@ -714,7 +712,7 @@ test('forgotten PIN recovery stays locked offline and clears protected local dat
   await recovery.getByRole('button', { name: 'Sicher zurücksetzen' }).click();
   await expect(recovery.getByText(/Internetverbindung benötigt/)).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-app-covered', 'true');
-  expect(disconnectRequests).toBe(0);
+  expect(logoutRequests).toBe(0);
 
   await context.setOffline(false);
   await siblingPage.route('**/api/session', (route) => route.fulfill({ json: { authenticated: false } }));
@@ -726,7 +724,7 @@ test('forgotten PIN recovery stays locked offline and clears protected local dat
   await siblingReload;
   await expect(siblingPage.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
   await expect(siblingPage.getByRole('dialog', { name: 'PIN eingeben' })).toHaveCount(0);
-  expect(disconnectRequests).toBe(1);
+  expect(logoutRequests).toBe(1);
   expect(await page.evaluate(() => localStorage.getItem('finance-app-protection-v1'))).toBeNull();
   expect(await hasCachedFinanceData(page)).toBe(false);
   await siblingPage.close();
@@ -749,7 +747,7 @@ for (const scenario of [
 test('412 dark validation error', async ({ page, context }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await preparePage(page, context, 'validation-error', 'dark');
-  await page.getByRole('heading', { name: 'Tabelle konnte nicht übernommen werden' }).waitFor();
+  await page.getByRole('heading', { name: 'Finanzstand konnte nicht geladen werden' }).waitFor();
   await capture(page, '412-dark-validation-error.png');
 });
 
@@ -786,7 +784,7 @@ test('WCAG AA finance screens', async ({ page, context }) => {
 });
 
 test('WCAG AA connection states and dialogs', async ({ browser }) => {
-  for (const state of ['signed-out', 'no-spreadsheet', 'validation-error', 'reconnect', 'offline-empty'] as const) {
+  for (const state of ['signed-out', 'no-finance', 'validation-error', 'offline-empty'] as const) {
     const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'de-DE', serviceWorkers: 'block' });
     const page = await context.newPage();
     await preparePage(page, context, state);
@@ -800,8 +798,6 @@ test('WCAG AA connection states and dialogs', async ({ browser }) => {
   await page.getByLabel('Einstellungen öffnen').click();
   await page.getByRole('dialog', { name: 'Informationen' }).waitFor();
   await expectNoAxeViolations(page, 'Info-Dialog');
-  await page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
-  await expectNoAxeViolations(page, 'Disconnect-Dialog');
   await context.close();
 });
 

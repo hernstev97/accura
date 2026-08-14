@@ -8,9 +8,9 @@
 
 ## Mentales Modell
 
-Die Vercel Functions sind Backend-for-Frontend und Sicherheitsgrenze. Sie verifizieren die einzige erlaubte Identität, verwalten Google-Token und Datenbankverbindung, lesen Sheets, validieren das Finance-Schema und liefern eine kleine same-origin JSON-API. Der Browser spricht Google nur beim bewusst geöffneten Picker direkt an. Ein zentraler Lazy-Pool mit höchstens einer Verbindung pro `DATABASE_URL` wird vom Google-Connection- und vom neuen Finance-Repository geteilt.
+Die Vercel Functions sind Backend-for-Frontend und Sicherheitsgrenze. Sie verifizieren die einzige erlaubte Identität, lesen den ownergebundenen Finanzstand aus PostgreSQL und liefern eine kleine same-origin JSON-API. Google wird nur für die Anmeldung angesprochen. Ein zentraler Lazy-Pool mit höchstens einer Verbindung pro `DATABASE_URL` bedient das Finance-Repository.
 
-Dies beschreibt den aktuell implementierten Übergangsstand. Der ownergebundene PostgreSQL-Reader aus [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) ist inzwischen implementiert und mit echter PostgreSQL-Instanz getestet, aber absichtlich an keinen HTTP-Endpunkt angeschlossen. `/api/finance` verwendet weiterhin ausschließlich den Sheets-Service. Erst ACC-66 importiert den produktiven Stand und führt den eindeutigen Cutover aus; bis dahin gibt es weder Dual-Read noch PostgreSQL-zu-Sheets-Fallback. Im Zielbild aus [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md) bleibt Google nur Identitätsanbieter, und Picker, `drive.file`, Sheets-Laufzeitzugriff sowie persistierte Refresh-Tokens entfallen.
+PostgreSQL ist die einzige produktive Finanzquelle. Es gibt weder Dual-Read noch einen Laufzeit-Fallback auf Sheets. Google OAuth fordert nur `openid email profile`. Picker, `drive.file`, Drive-/Sheets-Laufzeitzugriff und persistierte Refresh-Tokens sind entfernt. Der einmalige Import liegt außerhalb der Produkt-UI.
 
 ## Implementierter PostgreSQL-Reader
 
@@ -18,7 +18,7 @@ Dies beschreibt den aktuell implementierten Übergangsstand. Der ownergebundene 
 
 Der vollständige Read läuft `READ ONLY` und `REPEATABLE READ`. Meta, Stammdaten, sämtliche historische und zukünftige Snapshots sowie Meilensteine stammen deshalb aus einem konsistenten Datenbankstand. `DATE` wird direkt in SQL zu ISO-Text formatiert; `BIGINT` wird nur aus gültiger Integerdarstellung in einen sicheren JavaScript-Integer überführt. Anschließend validiert das gemeinsame Zod-Schema den vollständigen `FinanceDataV1`-Vertrag. Aktive Accounts, Pockets und Debts brauchen zusätzlich einen Snapshot mit Datum am oder vor `asOf`.
 
-Fehlender Owner oder fehlendes `finance_meta` liefert `null`. Ein ungültiger gespeicherter Stand erzeugt einen eigenen internen Integritätsfehler ohne Zeilen, IDs oder Finanzwerte. Da ACC-71 keinen produktiven Endpunkt umstellt, existiert noch keine neue öffentliche HTTP-Fehlerabbildung.
+Fehlender Owner oder fehlendes `finance_meta` liefert `null` und wird als `409 finance_missing` abgebildet. Ein ungültiger gespeicherter Stand erzeugt einen eigenen internen Integritätsfehler ohne Zeilen, IDs oder Finanzwerte und wird als `422 finance_data_integrity` ohne Details nach außen gegeben.
 
 Implementierung und Test: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts), [PostgreSQL-Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts).
 
@@ -40,9 +40,8 @@ sequenceDiagram
   B->>A: GET /api/auth/google/callback
   A->>A: Cookie/State prüfen
   A->>G: Code + PKCE-Verifier tauschen
-  G-->>A: ID-, Access- und Refresh-Token
+  G-->>A: ID-Token
   A->>A: Nonce, Signatur, Audience, verifizierte Allowlist-Mail prüfen
-  A->>P: Refresh-Token AES-256-GCM-verschlüsselt upserten
   A-->>B: signiertes HttpOnly-Session-Cookie + Redirect zum gebundenen Rückweg
 ```
 
@@ -54,23 +53,15 @@ Implementierung und Tests: [api/auth/google/start.ts](../../api/auth/google/star
 
 Das Session-Cookie heißt `finance_session`, ist `HttpOnly`, `SameSite=Lax`, auf `/` begrenzt und in Produktion `Secure`. Sein signierter Inhalt bindet Google-`sub`, normalisierte E-Mail, CSRF-Token sowie Ausgabe/Ablauf. Jeder authentifizierte Endpunkt prüft Signatur und die konfigurierte `ALLOWED_GOOGLE_EMAIL` erneut.
 
-Schreibende Aktionen (`PUT /api/google/spreadsheet`, Logout, Disconnect) verlangen den CSRF-Wert aus der Sitzung im Header `x-csrf-token` und eine exakte `Origin`, die `APP_ORIGIN` entspricht. Antworten tragen `Cache-Control: no-store`. Die vollständige Methoden-/Antworttabelle steht ausschließlich in der [API-Referenz](../referenz/api.md).
+Schreibende Aktionen (Logout) verlangen den CSRF-Wert aus der Sitzung im Header `x-csrf-token` und eine exakte `Origin`, die `APP_ORIGIN` entspricht. Antworten tragen `Cache-Control: no-store`. Die vollständige Methoden-/Antworttabelle steht ausschließlich in der [API-Referenz](../referenz/api.md).
 
-## Google Picker, Drive und Sheets
+## Identität ohne Drive-Zugriff
 
-Nach authentifizierter Anfrage erzeugt der Server über das gespeicherte Refresh-Token ein kurzes Access-Token und liefert es nur an die Picker-Konfiguration. Der Picker filtert auf eine native Google-Sheets-Datei. Die Auswahl-ID ist trotzdem untrusted: Der Server validiert sie mit Drive (`id`, `name`, MIME-Typ) und liest erst danach die zehn Bereiche via Sheets `batchGet`.
-
-Der Scope `drive.file` beschränkt den Zugriff auf mit der App geöffnete/ausgewählte Dateien. Die App schreibt keine Sheets-Werte. Eine Tabellen-ID wird erst nach vollständiger MIME-, Tab-, Header-, Werte-, Fremdschlüssel- und Snapshot-Prüfung gespeichert.
-
-## Token-Schutz
-
-Refresh-Token werden mit AES-256-GCM verschlüsselt. Eine zufällige Nonce und Auth-Tag erkennen Manipulation; die Google-Subjekt-ID ist Additional Authenticated Data und bindet das Chiffrat an den Datensatz. `TOKEN_ENCRYPTION_KEY` muss Base64-kodiert genau 32 Byte ergeben. Rotation erfordert derzeit erneute Verbindung oder eine bewusste Migration, weil kein Keyring implementiert ist.
-
-Der Picker-Access-Token ist kurzlebig und wird nicht persistiert. Client-Secret, Datenbank-URL, Token-Schlüssel und Session-Secret werden nie an den Browser ausgeliefert. Die Picker-API-Key und Client-ID sind öffentliche Identifikatoren, müssen aber auf API/Referrer eingeschränkt werden.
+Der Authorization-Code-Fluss fordert nur `openid email profile`. Ein kurzlebiges Access- oder Refresh-Token aus dem Tausch wird nicht persistiert. Die Sitzung entsteht ausschließlich aus dem verifizierten ID-Token. Client-Secret, Datenbank-URL und Session-Secret werden nie an den Browser ausgeliefert.
 
 ## Fehlerfälle
 
-Widerrufene oder abgelaufene Google-Grants werden als `reconnect_required` abgebildet. Eine ungültige Tabelle ergibt 422 mit strukturierten Issues. Fehlende Verbindung oder Auswahl ergibt 409. Unbekannte Serverfehler werden auf eine generische Meldung reduziert. Beim Disconnect wird die Postgres-Verbindung in `finally` gelöscht, selbst wenn die Google-Widerruf-Anfrage fehlschlägt.
+Fehlender Finanzstand ergibt `409 finance_missing`. Ein intern ungültiger gespeicherter Stand ergibt `422 finance_data_integrity` ohne Issues, IDs oder Beträge. Unbekannte Serverfehler werden auf eine generische Meldung reduziert. Logout löscht nur das Session-Cookie und niemals PostgreSQL-Finanzzeilen.
 
 ## Sicherheitsannahmen und Grenzen
 
@@ -83,12 +74,12 @@ Widerrufene oder abgelaufene Google-Grants werden als `reconnect_required` abgeb
 
 ## Begründung und Nachweis
 
-Für den aktuellen Übergangsstand siehe die ersetzte [ADR 0003](../entscheidungen/0003-serverseitiger-google-zugriff-und-drive-file.md). Das Zielbild steht in [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) und [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md); [ADR 0004](../entscheidungen/0004-single-user-sicherheitsmodell.md) bleibt gültig.
+Siehe [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md), [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md) und [ADR 0004](../entscheidungen/0004-single-user-sicherheitsmodell.md).
 
 - Konfiguration: [api/_lib/config.ts](../../api/_lib/config.ts)
 - Gemeinsamer Datenbankzugang: [api/_lib/database.ts](../../api/_lib/database.ts)
 - HTTP-Grenze: [api/_lib/http.ts](../../api/_lib/http.ts)
-- Google-Client: [api/_lib/google.ts](../../api/_lib/google.ts)
-- Finance-Service: [api/_lib/financeService.ts](../../api/_lib/financeService.ts)
-- Inaktiver PostgreSQL-Reader: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts)
+- Google-Identität: [api/_lib/google.ts](../../api/_lib/google.ts)
+- PostgreSQL-Finance-Repository: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts)
+- Operator-Import: [api/_lib/financeImport.ts](../../api/_lib/financeImport.ts), [scripts/import-finance.ts](../../scripts/import-finance.ts)
 - Server-Tests: [src/server](../../src/server)

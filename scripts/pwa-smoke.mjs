@@ -149,7 +149,7 @@ async function assertTheme(base, colorScheme, expectedMode) {
   const page = await context.newPage();
   try {
     await page.goto(base, { waitUntil: 'networkidle' });
-    await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+    await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
     const theme = await page.evaluate(() => ({
       active: document.querySelector('meta[data-appearance-theme-color]')?.getAttribute('content'),
       page: getComputedStyle(document.documentElement).getPropertyValue('--color-page').trim(),
@@ -174,7 +174,7 @@ page.on('pageerror', (error) => errors.push(`Laufzeit: ${error.message}`));
 
 try {
   await page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
 
   const manifestResponse = await context.request.get(`${baseUrl}/manifest.webmanifest`);
   assert.equal(manifestResponse.ok(), true, 'Manifest konnte nicht geladen werden');
@@ -209,10 +209,10 @@ try {
 
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload({ waitUntil: 'networkidle' });
-  if (!await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).isVisible().catch(() => false)) {
+  if (!await page.getByRole('heading', { name: 'Bei accura anmelden' }).isVisible().catch(() => false)) {
     throw new Error(`App failed after service-worker control. URL=${page.url()} errors=${errors.join(' | ')} body=${(await page.locator('body').innerText()).slice(0, 500)}`);
   }
-  await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   assert.equal(await controllerGeneration(page), 1);
 
@@ -315,12 +315,12 @@ try {
   assert.equal(await page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting)), true, 'Später aktivierte den wartenden Worker');
 
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   await notice.getByText('Neue Version verfügbar').waitFor();
   const navigationsBeforeUpdate = mainNavigations;
   await notice.getByRole('button', { name: 'Jetzt neu laden' }).click();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null && !document.querySelector('.pwa-update-notice'));
-  await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.equal(mainNavigations, navigationsBeforeUpdate + 1, 'Aktivierung lud die App nicht genau einmal neu');
   assert.equal(await controllerGeneration(page), 2, 'Generation 2 kontrolliert die App nach der Aktualisierung nicht');
   assert.deepEqual(errors, [], errors.join('\n'));

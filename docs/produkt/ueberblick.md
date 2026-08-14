@@ -43,7 +43,7 @@ Die App soll keine komplexe Budgetmethode lehren. Informationshierarchie, ruhige
 
 ## Heutiger Repository-Stand
 
-Aktuell ist `accura` eine private Single-User-PWA für genau eine serverseitig freigegebene Google-E-Mail-Adresse. Eine selbst gepflegte Google-Tabelle wird in vier Ansichten zusammengeführt: Übersicht, Demnächst, Budget und Schulden. Es gibt weder öffentliche Registrierung noch Rollen, Mandanten, geteilte Haushalte oder SaaS-Betrieb.
+Aktuell ist `accura` eine private Single-User-PWA für genau eine serverseitig freigegebene Google-E-Mail-Adresse. Der Finanzstand liegt in PostgreSQL und wird in vier Ansichten zusammengeführt: Übersicht, Demnächst, Budget und Schulden. Es gibt weder öffentliche Registrierung noch Rollen, Mandanten, geteilte Haushalte oder SaaS-Betrieb.
 
 Die implementierten Funktionen stehen ausschließlich unter [Funktionen](funktionen.md), der überprüfte Stand unter [Entwicklungsstand](entwicklungsstand.md). Die langfristige Positionierung beschreibt, woran künftige Entscheidungen gemessen werden; sie behauptet keine heute noch nicht implementierte Funktion.
 
@@ -51,13 +51,13 @@ Accura ist derzeit kein öffentlich angebotenes Fintech, keine regulierte Finanz
 
 ## Nutzen und Datenhoheit
 
-Die Google-Tabelle bleibt die vom Nutzer kontrollierte fachliche Datenquelle. `accura` liest ausschließlich die zehn Maschinen-Tabs des [Finance Data Schema v1](../referenz/finance-data-schema-v1.md), validiert sie serverseitig und liefert eine normalisierte, versionierte Darstellung an den Browser. Die App schreibt keine Finanzwerte in die Tabelle.
+PostgreSQL ist die fachliche Datenquelle. `accura` liest den ownergebundenen Stand als [Finance Data Schema v1](../referenz/finance-data-schema-v1.md) und liefert eine normalisierte, versionierte Darstellung an den Browser. Google Sheets ist nur noch ein einmaliges Importformat. Die Produkt-UI schreibt noch keine Finanzzeilen; das erledigt der kontrollierte Operator-Import.
 
 Ein erfolgreich validierter Stand wird auf dem Gerät in IndexedDB gespeichert. So kann die App nach einem späteren Offline-Start den zuletzt bekannten guten Stand zeigen. Sichtbarer Datenstand und Warnhinweise machen deutlich, wenn eine Aktualisierung fehlt. Weil eine falsche verfügbare Summe bei engem Spielraum besonders schädlich wäre, sind Centgenauigkeit, Laufzeitvalidierung und nachvollziehbare Annahmen zentrale Sicherheitsanforderungen.
 
 ## Datenschutzmodell
 
-Refresh-Token, Google-Client-Secret, Datenbank-URL, Token-Schlüssel und Session-Secret bleiben auf dem Server. Der Browser erhält nur die Finanzantwort sowie beim bewussten Öffnen des Pickers kurzzeitig ein Zugriffstoken. Details und Vertrauensgrenzen stehen unter [Backend und Sicherheit](../architektur/backend-und-sicherheit.md).
+Google-Client-Secret, Datenbank-URL und Session-Secret bleiben auf dem Server. Der Browser erhält nur die Finanzantwort. Details und Vertrauensgrenzen stehen unter [Backend und Sicherheit](../architektur/backend-und-sicherheit.md).
 
 Der [Privacy-Modus und App-Schutz](../architektur/privacy-modus.md) maskiert wahlweise Geldbeträge und kann die gesamte App nach einem Hintergrundwechsel verdecken oder mit einer lokalen PIN sperren. Diese Funktionen reduzieren beiläufiges Mitlesen, verschlüsseln jedoch weder Arbeitsspeicher noch IndexedDB und ersetzen keine Gerätesperre oder getrennte Browserprofile.
 
@@ -77,7 +77,7 @@ Diese Grenzen sind strategisch. Eine zusätzliche Funktion ist nur dann sinnvoll
 
 ## Technische und operative Ausschlüsse
 
-- kein Bearbeiten der Google-Tabelle durch die App;
+- kein Zurückschreiben nach Google Sheets;
 - keine Bankanbindung, Überweisung oder automatische Kategorisierung im aktuellen Produkt;
 - kein garantierter Echtzeitstand und kein Hintergrund-Polling;
 - keine Verschlüsselung lokaler Finance-Daten durch Privacy- oder App-Schutz;
@@ -93,7 +93,7 @@ Diese Grenzen sind strategisch. Eine zusätzliche Funktion ist nur dann sinnvoll
 ## Implementierung und Tests
 
 - Produkt-Shell: [src/App.tsx](../../src/App.tsx)
-- Server-Datenfluss: [api/_lib/financeService.ts](../../api/_lib/financeService.ts)
+- Server-Datenfluss: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts)
 - Finanzberechnungen: [src/finance/selectors.ts](../../src/finance/selectors.ts), [src/finance/upcoming.ts](../../src/finance/upcoming.ts)
 - Anonyme Testdaten: [scripts/fixtures/anonymous-finance-data.mjs](../../scripts/fixtures/anonymous-finance-data.mjs)
 - Browser-Smoke-Tests: [scripts/browser-smoke.mjs](../../scripts/browser-smoke.mjs)

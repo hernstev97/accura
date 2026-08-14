@@ -13,16 +13,12 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 const cacheSchema = z.object({
   key: z.literal(CACHE_KEY),
-  spreadsheetId: z.string().min(1),
-  spreadsheetName: z.string().min(1),
   refreshedAt: z.string().datetime(),
   data: financeDataV1Schema,
 });
 
 export type CachedFinanceSnapshot = {
   key: typeof CACHE_KEY;
-  spreadsheetId: string;
-  spreadsheetName: string;
   refreshedAt: string;
   data: FinanceDataV1;
 };

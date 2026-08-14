@@ -18,14 +18,14 @@ CSRF ist das Auslösen einer authentifizierten Aktion aus einer fremden Website.
 
 - Geheimnisse bleiben serverseitig und erhalten nie ein `VITE_`-Präfix.
 - Eingaben werden an jeder Grenze validiert; Fehlermeldungen geben keine internen Geheimnisse preis.
-- Least Privilege: `drive.file` statt vollständigem Drive-Zugriff.
+- Least Privilege: nur die tatsächlich benötigten Scopes; in accura nach dem Cutover `openid email profile`.
 - Single-User-Allowlist wird serverseitig anhand verifizierter E-Mail geprüft.
 - Token werden bei Speicherung mit AES-256-GCM verschlüsselt und an die Google-Subjekt-ID gebunden.
 - HTTPS ist in Produktion Pflicht; Cookie-Flags und genaue Redirect-URIs hängen davon ab.
 
 ## Was nicht garantiert wird
 
-OAuth ist keine lokale Datenverschlüsselung. CSRF-Schutz verhindert nicht XSS. Tokenverschlüsselung schützt nicht gegen einen vollständig kompromittierten Server samt Schlüssel. `drive.file` begrenzt die sichtbaren Dateien, ersetzt aber nicht die serverseitige MIME- und Schemaprüfung.
+OAuth ist keine lokale Datenverschlüsselung. CSRF-Schutz verhindert nicht XSS. Ein Session-Secret schützt nicht gegen einen vollständig kompromittierten Server samt Schlüssel.
 
 ## Implementierung und Tests
 

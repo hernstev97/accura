@@ -2,7 +2,7 @@
 
 Accura schafft finanzielle Klarheit für Menschen, die unter engem Budget, Schulden oder mentaler Überforderung leiden. Statt Vermögen zu optimieren, zeigt die App, was wirklich verfügbar ist, was als Nächstes fällig wird und wie sich finanzielle Belastungen entwickeln. Der [Produktüberblick](docs/produkt/ueberblick.md) beschreibt dieses Versprechen und seine bewussten Grenzen.
 
-Heute ist `accura` eine private, deutschsprachige Finanzübersicht als installierbare Web-App (PWA). Genau eine freigegebene Person verbindet eine selbst kontrollierte Google-Tabelle. Die App liest und validiert die Daten, verändert die Tabelle aber nicht. Ein zuletzt erfolgreich geladener Datenstand bleibt lokal offline verfügbar.
+Heute ist `accura` eine private, deutschsprachige Finanzübersicht als installierbare Web-App (PWA). Genau eine freigegebene Person meldet sich mit Google an. Der Finanzstand liegt in PostgreSQL. Ein zuletzt erfolgreich geladener Datenstand bleibt lokal offline verfügbar.
 
 Die vier Ansichten zeigen verfügbare Mittel, anstehende Zahlungen bis zum nächsten Gehalt, Monatsbudget und Schuldenverlauf. Ein lokaler Privacy-Modus maskiert sichtbare Geldbeträge; er ist ausdrücklich keine Verschlüsselung.
 
@@ -26,7 +26,7 @@ npm install
 npm run dev:mock
 ```
 
-Der Mock-Modus verwendet ausschließlich anonyme Repository-Daten. Für Google OAuth, Picker, Sheets, PostgreSQL und Vercel Functions gilt die [Produktions-Setup-Anleitung](docs/anleitungen/produktions-setup.md).
+Der Mock-Modus verwendet ausschließlich anonyme Repository-Daten. Für Google OAuth, PostgreSQL und Vercel Functions gilt die [Produktions-Setup-Anleitung](docs/anleitungen/produktions-setup.md).
 
 Der Integrationsstand auf `develop` ist unter [accura-preview.kiumu.app](https://accura-preview.kiumu.app/) mit derselben anonymen, bereits angemeldeten Mock-Sitzung verfügbar. Pull Requests zielen standardmäßig auf `develop`; `master` bleibt der bewusst freizugebende Produktionsstand.
 

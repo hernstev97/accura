@@ -39,7 +39,7 @@ Unter `tests/visual/__screenshots__/chromium` liegen 38 Referenzbilder für 412,
 
 ## Fehlerfälle und Grenzen
 
-Golden Screens hängen an Browser-/Fontdeterminismus; Updates dürfen nur nach bewusster visueller Prüfung committed werden. Axe findet nicht jede Barriere. Mock-Smokes beweisen keine echte Google- oder Vercel-Konfiguration. Die PostgreSQL-Suite beweist Standard-SQL, Constraints und Reader gegen eine echte temporäre Instanz, aber weder Neon-Region/Rollen/Restore noch produktive Daten. Reale OAuth-, Picker-, Sheets- und Disconnect-Abläufe bleiben Betreiber-Abnahme. Desktop-Chromium beweist außerdem nicht die tatsächlich von Android gerenderten Installations-, Launcher-, Task-Switcher- und Splash-Flächen; ACC-7 deckt stattdessen deren Web-Verträge automatisiert ab.
+Golden Screens hängen an Browser-/Fontdeterminismus; Updates dürfen nur nach bewusster visueller Prüfung committed werden. Axe findet nicht jede Barriere. Mock-Smokes beweisen keine echte Google- oder Vercel-Konfiguration. Die PostgreSQL-Suite beweist Standard-SQL, Constraints und Reader gegen eine echte temporäre Instanz, aber weder Neon-Region/Rollen/Restore noch produktive Daten. Reale OAuth- und Import-Abläufe bleiben Betreiber-Abnahme. Desktop-Chromium beweist außerdem nicht die tatsächlich von Android gerenderten Installations-, Launcher-, Task-Switcher- und Splash-Flächen; ACC-7 deckt stattdessen deren Web-Verträge automatisiert ab.
 
 ## Implementierung und Tests
 

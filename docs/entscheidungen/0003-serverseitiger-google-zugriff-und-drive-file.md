@@ -36,5 +36,5 @@ Backend, PostgreSQL, OAuth-Consent und Reconnect-Behandlung sind erforderlich.
 
 ## Implementierung und Tests
 
-- Implementierung: [api/_lib/google.ts](../../api/_lib/google.ts), [api/_lib/financeService.ts](../../api/_lib/financeService.ts)
-- Tests: [src/server/google.test.ts](../../src/server/google.test.ts), [src/server/financeService.test.ts](../../src/server/financeService.test.ts)
+- Historische Begründung; ersetzt durch [ADR 0014](0014-google-oauth-nur-als-identitaet.md)
+- Aktuelle Identität: [api/_lib/google.ts](../../api/_lib/google.ts), [src/server/google.test.ts](../../src/server/google.test.ts)

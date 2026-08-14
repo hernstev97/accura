@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServerConfig } from './_lib/config.js';
 import { handle, json, method } from './_lib/http.js';
-import { getConnectionRepository } from './_lib/repository.js';
 import { clearCookie, parseCookies, SESSION_COOKIE, verifySession } from './_lib/security.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
@@ -26,15 +25,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
       json(response, 200, { authenticated: false });
       return;
     }
-    const connection = await getConnectionRepository(config.databaseUrl).get(session.sub);
     json(response, 200, {
       authenticated: true,
       user: { email: session.email },
       csrfToken: session.csrf,
-      connection: connection ? {
-        connected: true,
-        spreadsheet: connection.spreadsheetId ? { id: connection.spreadsheetId, name: connection.spreadsheetName } : null,
-      } : { connected: false, spreadsheet: null },
     });
   });
 }

@@ -6,7 +6,7 @@ import process from 'node:process';
 
 const root = process.cwd();
 const externalMode = process.argv.includes('--external');
-const excludedDirectories = new Set(['.git', 'node_modules', 'dist', 'test-results', 'playwright-report']);
+const excludedDirectories = new Set(['.git', 'node_modules', 'dist', 'test-results', 'playwright-report', '.local']);
 const errors = [];
 const warnings = [];
 const externalLinks = new Set();

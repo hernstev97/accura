@@ -3,10 +3,10 @@
 > **Zielgruppe:** Betreiber und Backend-Entwickler.
 > **Zweck und Lernziel:** PostgreSQL-Schema, Owner-Isolation, Constraints und Betriebsgrenzen verstehen.
 > **Voraussetzungen:** PostgreSQL-Grundkenntnisse und [Backend und Sicherheit](../architektur/backend-und-sicherheit.md)
-> **Kanonisch für:** Migrationen 001/002, `google_connections` und das ownergebundene Finance-v1-Schema.
+> **Kanonisch für:** Migrationen 001–003 und das ownergebundene Finance-v1-Schema.
 > **Verwandte Dokumente:** [Produktions-Setup](../anleitungen/produktions-setup.md), [Finance Data Schema v1](finance-data-schema-v1.md)
 
-`accura` besitzt zwei transaktionale Migrationen. [001_google_connections.sql](../../migrations/001_google_connections.sql) speichert die Google-Verbindung. [002_finance_data_v1.sql](../../migrations/002_finance_data_v1.sql) bildet sämtliche Quellenfelder aus `FinanceDataV1` relational ab. Das Finance-Repository ist implementiert und getestet, `/api/finance` liest bis zum späteren Cutover aber weiterhin Google Sheets.
+`accura` besitzt drei transaktionale Migrationen. [001_google_connections.sql](../../migrations/001_google_connections.sql) legte historisch die Google-Verbindung an. [002_finance_data_v1.sql](../../migrations/002_finance_data_v1.sql) bildet sämtliche Quellenfelder aus `FinanceDataV1` relational ab. [003_drop_google_connections.sql](../../migrations/003_drop_google_connections.sql) entfernt die Verbindungs- und Tokentabelle nach dem Cutover. `/api/finance` liest ausschließlich das ownergebundene Finance-Schema.
 
 ## Owner-Modell
 
@@ -18,7 +18,7 @@
 | `google_sub` | `TEXT` | nein | eindeutig, nach Trimmung nicht leer |
 | `created_at` | `TIMESTAMPTZ` | nein | Default `NOW()` |
 
-Es besteht absichtlich kein Foreign Key zu `google_connections`. Disconnect darf Finanzdaten nicht löschen. In ACC-71 erzeugt OAuth keinen Owner; erst der kontrollierte Import aus ACC-66 legt den produktiven Datensatz an. Der Reader nimmt ausschließlich Google `sub` aus der verifizierten Sitzung entgegen, löst intern `owners.id` auf und verwendet danach nur diese UUID.
+Es besteht absichtlich kein Foreign Key von Finance-Tabellen zur historischen Verbindungstabelle. Logout darf Finanzdaten nicht löschen. OAuth erzeugt keinen Owner; erst der kontrollierte Operator-Import legt den produktiven Datensatz an. Der Reader nimmt ausschließlich Google `sub` aus der verifizierten Sitzung entgegen, löst intern `owners.id` auf und verwendet danach nur diese UUID.
 
 Jede Finance-Tabelle besitzt ein nicht-nullbares `owner_id`. Fachliche Primär- und Fremdschlüssel enthalten den Owner, beispielsweise `(owner_id, id)` und `(owner_id, account_id)`. Gleiche fachliche IDs bei zwei Ownern sind damit erlaubt, eine Referenz über Ownergrenzen wird von PostgreSQL abgewiesen. Foreign Keys verwenden das Standardverhalten `NO ACTION`; es gibt keine stillen Lösch-Cascades.
 
@@ -53,34 +53,24 @@ Die fünf gültigen `necessity_id`-Werte sind `essential`, `necessary`, `worthwh
 
 Debt- und Relief-Meilensteine speichern neben `milestone_date` eine `date_precision` mit `month` oder `day`. Bei `month` erzwingt ein Check den Monatsersten. Der Reader rekonstruiert daraus ohne Zeitzonenkonvertierung exakt `YYYY-MM` beziehungsweise `YYYY-MM-DD`. Die interne UUID eines Relief-Meilensteins verlässt die Persistenz nicht und erlaubt doppelte fachliche Ereignisse.
 
-## Tabelle `google_connections`
+## Historische Tabelle `google_connections`
 
-| Spalte | Typ | Null? | Bedeutung |
-| --- | --- | --- | --- |
-| `google_sub` | `TEXT` | nein | Primärschlüssel, stabile Google-Subjekt-ID |
-| `verified_email` | `TEXT` | nein | beim ID-Token verifizierte, normalisierte E-Mail |
-| `encrypted_refresh_token` | `TEXT` | nein | versioniertes AES-256-GCM-Chiffrat, kein Klartext |
-| `granted_scopes` | `TEXT[]` | nein | beim OAuth-Tausch gemeldete Scopes |
-| `spreadsheet_id`, `spreadsheet_name` | `TEXT` | ja | gemeinsam gesetzte oder gemeinsam leere Auswahl |
-| `created_at`, `updated_at`, `token_updated_at` | `TIMESTAMPTZ` | nein | Lebenszykluszeitpunkte |
-| `spreadsheet_updated_at` | `TIMESTAMPTZ` | ja | letzte Auswahländerung |
+Migration 001 erzeugt diese Tabelle noch, damit bestehende Datenbanken denselben Pfad durchlaufen. Migration 003 entfernt sie einschließlich gespeicherter Refresh-Tokens. Die Laufzeit schreibt nicht mehr darauf.
 
-Ein Check hält Sheet-ID und -Name vollständig; ein eindeutiger Index auf `LOWER(verified_email)` verhindert mehrere Verbindungen derselben Adresse. OAuth schreibt Authorization-Daten, die Picker-Prüfung aktualisiert die Auswahl, Disconnect löscht ausschließlich diese Zeile.
-
-## Reader und Integritätsgrenze
+## Reader, Import und Integritätsgrenze
 
 Der Reader läuft in einer `READ ONLY, REPEATABLE READ`-Transaktion und liest sämtliche Snapshots. `BIGINT`-Strings werden explizit geparst und erneut als sichere JavaScript-Integer geprüft; `DATE` wird in SQL als Text formatiert. Das rekonstruierte Objekt muss das Laufzeitschema erfüllen. Zusätzlich braucht jede aktive Account-, Pocket- und Debt-Zeile mindestens einen Snapshot am oder vor `finance_meta.as_of`.
 
-Fehlender Owner oder fehlendes `finance_meta` ergibt `null`, keinen erfundenen Leerstand. Interne Integritätsfehler enthalten weder Datenbankzeilen noch IDs oder Finanzwerte. Snapshot-Auswahl und Berechnungen bleiben in den TypeScript-Selektoren.
+Fehlender Owner oder fehlendes `finance_meta` ergibt `null`, keinen erfundenen Leerstand. Der Operator-Import ersetzt den vollständigen Stand eines Owners transaktional und liest ihn vor der Bestätigung erneut. Interne Integritätsfehler enthalten weder Datenbankzeilen noch IDs oder Finanzwerte. Snapshot-Auswahl und Berechnungen bleiben in den TypeScript-Selektoren.
 
 ## Migration, Rollen und Backup
 
 Migrationen werden über einen direkten administrativen PostgreSQL-Endpunkt bewusst zuerst in Development, später in Production ausgeführt. Die Vercel Runtime verwendet dagegen die gepoolte `DATABASE_URL` und einen eingeschränkten Runtime-Benutzer. Neon ist der aktuelle Betreiber, aber keine Neon-Funktion ist Teil des Schemas; ein anderer PostgreSQL-Anbieter kann denselben Vertrag ausführen.
 
-Backups enthalten verschlüsselte Google-Tokens und künftig hochsensible Finanzzeilen. Vor ACC-66 müssen Restore-Fenster, Rollen, Region und ein praktischer Restore-Test mit synthetischen Daten geklärt sein. Details stehen im [Produktions-Setup](../anleitungen/produktions-setup.md#2-postgresql-und-neon-betrieb).
+Backups enthalten hochsensible Finanzzeilen. Restore-Fenster, Rollen, Region und ein praktischer Restore-Test mit synthetischen Daten gehören zum Betriebsprotokoll vor einem produktiven Import. Details stehen im [Produktions-Setup](../anleitungen/produktions-setup.md#2-postgresql-und-neon-betrieb).
 
 ## Implementierung und Tests
 
-- Pool und Repositories: [database.ts](../../api/_lib/database.ts), [repository.ts](../../api/_lib/repository.ts), [financeRepository.ts](../../api/_lib/financeRepository.ts)
-- Migrationen: [001](../../migrations/001_google_connections.sql), [002](../../migrations/002_finance_data_v1.sql)
+- Pool und Repository: [database.ts](../../api/_lib/database.ts), [financeRepository.ts](../../api/_lib/financeRepository.ts)
+- Migrationen: [001](../../migrations/001_google_connections.sql), [002](../../migrations/002_finance_data_v1.sql), [003](../../migrations/003_drop_google_connections.sql)
 - Echte PostgreSQL-Suite: [financeRepository.postgres.test.ts](../../tests/postgres/financeRepository.postgres.test.ts)
