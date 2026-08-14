@@ -280,14 +280,13 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
     await insertFinanceData(ownerId, fixture);
 
     const fromParser = fixture;
-    const fromPostgres = await repository.readForGoogleSub('parity-cents-owner');
-    expect(fromPostgres).not.toBeNull();
+    const fromPostgres = requireStoredFinanceData(await repository.readForGoogleSub('parity-cents-owner'));
 
     const parserCents = moneyCentsByStableKey(fromParser);
-    const postgresCents = moneyCentsByStableKey(fromPostgres!);
+    const postgresCents = moneyCentsByStableKey(fromPostgres);
 
-    expect(Object.keys(parserCents)).toHaveLength(ANONYMOUS_FIXTURE_MONEY_FIELD_COUNT);
-    expect(parserCents['meta.monthlyIncomeCents']).toBe(259_132);
+    expect(parserCents).toHaveLength(ANONYMOUS_FIXTURE_MONEY_FIELD_COUNT);
+    expect(parserCents).toContainEqual(['meta.monthlyIncomeCents', 259_132]);
     expect(postgresCents).toEqual(parserCents);
   });
 
@@ -315,24 +314,22 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
         (${ownerId}, 'primary-loan', '2027-01-01', 999999, 1, 1)
     `;
 
-    const fromPostgres = await repository.readForGoogleSub('parity-snapshot-owner');
-    expect(fromPostgres).not.toBeNull();
-    expect(fromPostgres!.accountSnapshots.length).toBeGreaterThan(fixture.accountSnapshots.length);
-    expect(fromPostgres!.pocketSnapshots.length).toBeGreaterThan(fixture.pocketSnapshots.length);
-    expect(fromPostgres!.debtSnapshots.length).toBeGreaterThan(fixture.debtSnapshots.length);
+    const fromPostgres = requireStoredFinanceData(await repository.readForGoogleSub('parity-snapshot-owner'));
+    expect(fromPostgres.accountSnapshots.length).toBeGreaterThan(fixture.accountSnapshots.length);
+    expect(fromPostgres.pocketSnapshots.length).toBeGreaterThan(fixture.pocketSnapshots.length);
+    expect(fromPostgres.debtSnapshots.length).toBeGreaterThan(fixture.debtSnapshots.length);
 
-    expect(selectedSnapshotsById(fromPostgres!)).toEqual(selectedSnapshotsById(fixture));
+    expect(selectedSnapshotsById(fromPostgres)).toEqual(selectedSnapshotsById(fixture));
   });
 
   it('delivers identical salary and due days from the parser and the postgres reader', async () => {
     const ownerId = await createOwner('parity-due-day-owner');
     await insertFinanceData(ownerId, fixture);
 
-    const fromPostgres = await repository.readForGoogleSub('parity-due-day-owner');
-    expect(fromPostgres).not.toBeNull();
+    const fromPostgres = requireStoredFinanceData(await repository.readForGoogleSub('parity-due-day-owner'));
 
     const parserDays = dueDaysByStableKey(fixture);
-    const postgresDays = dueDaysByStableKey(fromPostgres!);
+    const postgresDays = dueDaysByStableKey(fromPostgres);
 
     expect(parserDays['meta.salaryDay']).toBe(25);
     expect(Object.values(parserDays).some((day) => day === null)).toBe(true);
@@ -452,7 +449,12 @@ async function insertFinanceData(ownerId: string, data: FinanceDataV1): Promise<
 
 const ANONYMOUS_FIXTURE_MONEY_FIELD_COUNT = 53;
 
-function moneyCentsByStableKey(data: FinanceDataV1): Record<string, number> {
+function requireStoredFinanceData(data: FinanceDataV1 | null): FinanceDataV1 {
+  if (!data) throw new Error('Expected stored FinanceDataV1 from the postgres reader.');
+  return data;
+}
+
+function moneyCentsByStableKey(data: FinanceDataV1): Array<[string, number]> {
   const entries: Array<[string, number]> = [
     ['meta.monthlyIncomeCents', data.monthlyIncomeCents],
     ...data.accountSnapshots.map((row) => [
@@ -484,7 +486,8 @@ function moneyCentsByStableKey(data: FinanceDataV1): Record<string, number> {
       row.monthlyReliefCents,
     ] as [string, number]),
   ];
-  return Object.fromEntries(entries.sort(([left], [right]) => compareText(left, right)));
+  return entries.sort(([leftKey, leftValue], [rightKey, rightValue]) =>
+    compareText(leftKey, rightKey) || leftValue - rightValue);
 }
 
 function dueDaysByStableKey(data: FinanceDataV1): Record<string, number | null> {
