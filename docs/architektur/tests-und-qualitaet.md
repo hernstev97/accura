@@ -15,7 +15,7 @@ Keine einzelne Prüfung beweist das Produkt. Reine Unit-Tests decken fachliche R
 | Befehl | Inhalt | Netzwerk/Secrets |
 | --- | --- | --- |
 | `npm test` | Node-Tests für ESM und den Lizenzgenerator sowie Vitest-Dateien unter `src/` und `build/` | keine externen Dienste |
-| `npm run test:postgres` | Migrationen 001/002, Finance-Constraints, Owner-Isolation, Reader und Selektorgrenze gegen echtes PostgreSQL | dedizierte `POSTGRES_TEST_URL`, nur synthetische Daten |
+| `npm run test:postgres` | Migrationen 001/002, Finance-Constraints, Owner-Isolation, Reader, Selektorgrenze und ACC-29-Parität (Cents, Fälligkeiten, Snapshot-Auswahl) gegen echtes PostgreSQL | dedizierte `POSTGRES_TEST_URL`, nur synthetische Daten |
 | `npm run lint` | ESLint über das Repository | nein |
 | `npm run licenses:check` | installierten Produktionsgraph fail-closed gegen Policy und eingecheckte Drittanbieterhinweise prüfen | nein |
 | `npm run build` | TypeScript-Projektbuild und Vite/PWA-Produktionsbuild | nein |

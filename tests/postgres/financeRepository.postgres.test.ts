@@ -8,7 +8,11 @@ import {
 } from '../../api/_lib/financeRepository';
 import { financeDataV1Schema } from '../../src/finance/runtime';
 import { parseSheetsBatchResponse } from '../../src/finance/parser';
-import { selectLatestAccountSnapshot } from '../../src/finance/selectors';
+import {
+  selectLatestAccountSnapshot,
+  selectLatestDebtSnapshot,
+  selectLatestPocketSnapshot,
+} from '../../src/finance/selectors';
 import { anonymousSheetsResponse } from '../../src/mocks/anonymousWorkbook';
 import type { FinanceDataV1 } from '../../src/finance/types';
 
@@ -270,6 +274,67 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
     expect(serialized).not.toContain('Geheimer Kontoname');
     expect(serialized).not.toContain(String(fixture.monthlyIncomeCents));
   });
+
+  it('delivers identical cents from the parser and the postgres reader for the anonymous fixture', async () => {
+    const ownerId = await createOwner('parity-cents-owner');
+    await insertFinanceData(ownerId, fixture);
+
+    const fromParser = fixture;
+    const fromPostgres = requireStoredFinanceData(await repository.readForGoogleSub('parity-cents-owner'));
+
+    const parserCents = moneyCentsByStableKey(fromParser);
+    const postgresCents = moneyCentsByStableKey(fromPostgres);
+
+    expect(parserCents).toHaveLength(ANONYMOUS_FIXTURE_MONEY_FIELD_COUNT);
+    expect(parserCents).toContainEqual(['meta.monthlyIncomeCents', 259_132]);
+    expect(postgresCents).toEqual(parserCents);
+  });
+
+  it('selects the same current snapshots from parser and postgres data for the anonymous fixture', async () => {
+    const ownerId = await createOwner('parity-snapshot-owner');
+    await insertFinanceData(ownerId, fixture);
+    await sql`
+      INSERT INTO account_snapshots (owner_id, account_id, as_of, balance_cents)
+      VALUES
+        (${ownerId}, 'daily-account', '2025-01-01', 1),
+        (${ownerId}, 'daily-account', '2027-01-01', 999999)
+    `;
+    await sql`
+      INSERT INTO pocket_snapshots (owner_id, pocket_id, as_of, balance_cents)
+      VALUES
+        (${ownerId}, 'home-reserve', '2025-01-01', 1),
+        (${ownerId}, 'home-reserve', '2027-01-01', 999999)
+    `;
+    await sql`
+      INSERT INTO debt_snapshots (
+        owner_id, debt_id, as_of, payoff_balance_cents,
+        remaining_payment_count, remaining_scheduled_total_cents
+      ) VALUES
+        (${ownerId}, 'primary-loan', '2025-01-01', 1, 1, 1),
+        (${ownerId}, 'primary-loan', '2027-01-01', 999999, 1, 1)
+    `;
+
+    const fromPostgres = requireStoredFinanceData(await repository.readForGoogleSub('parity-snapshot-owner'));
+    expect(fromPostgres.accountSnapshots.length).toBeGreaterThan(fixture.accountSnapshots.length);
+    expect(fromPostgres.pocketSnapshots.length).toBeGreaterThan(fixture.pocketSnapshots.length);
+    expect(fromPostgres.debtSnapshots.length).toBeGreaterThan(fixture.debtSnapshots.length);
+
+    expect(selectedSnapshotsById(fromPostgres)).toEqual(selectedSnapshotsById(fixture));
+  });
+
+  it('delivers identical salary and due days from the parser and the postgres reader', async () => {
+    const ownerId = await createOwner('parity-due-day-owner');
+    await insertFinanceData(ownerId, fixture);
+
+    const fromPostgres = requireStoredFinanceData(await repository.readForGoogleSub('parity-due-day-owner'));
+
+    const parserDays = dueDaysByStableKey(fixture);
+    const postgresDays = dueDaysByStableKey(fromPostgres);
+
+    expect(parserDays['meta.salaryDay']).toBe(25);
+    expect(Object.values(parserDays).some((day) => day === null)).toBe(true);
+    expect(postgresDays).toEqual(parserDays);
+  });
 });
 
 async function createOwner(googleSub: string): Promise<string> {
@@ -382,9 +447,78 @@ async function insertFinanceData(ownerId: string, data: FinanceDataV1): Promise<
   }
 }
 
+const ANONYMOUS_FIXTURE_MONEY_FIELD_COUNT = 53;
+
+function requireStoredFinanceData(data: FinanceDataV1 | null): FinanceDataV1 {
+  if (!data) throw new Error('Expected stored FinanceDataV1 from the postgres reader.');
+  return data;
+}
+
+function moneyCentsByStableKey(data: FinanceDataV1): Array<[string, number]> {
+  const entries: Array<[string, number]> = [
+    ['meta.monthlyIncomeCents', data.monthlyIncomeCents],
+    ...data.accountSnapshots.map((row) => [
+      `accountSnapshots.${row.accountId}.${row.asOf}`,
+      row.balanceCents,
+    ] as [string, number]),
+    ...data.pocketSnapshots.map((row) => [
+      `pocketSnapshots.${row.pocketId}.${row.asOf}`,
+      row.balanceCents,
+    ] as [string, number]),
+    ...data.budgetItems.map((row) => [
+      `budgetItems.${row.id}.monthlyAmountCents`,
+      row.monthlyAmountCents,
+    ] as [string, number]),
+    ...data.debts.map((row) => [
+      `debts.${row.id}.monthlyPaymentCents`,
+      row.monthlyPaymentCents,
+    ] as [string, number]),
+    ...data.debtSnapshots.flatMap((row) => [
+      [`debtSnapshots.${row.debtId}.${row.asOf}.payoffBalanceCents`, row.payoffBalanceCents],
+      [`debtSnapshots.${row.debtId}.${row.asOf}.remainingScheduledTotalCents`, row.remainingScheduledTotalCents],
+    ] as Array<[string, number]>),
+    ...data.debtMilestones.map((row) => [
+      `debtMilestones.${row.debtId}.${row.date}`,
+      row.balanceCents,
+    ] as [string, number]),
+    ...data.reliefMilestones.map((row) => [
+      `reliefMilestones.${row.date}.${row.event}.${row.eventDetail ?? ''}`,
+      row.monthlyReliefCents,
+    ] as [string, number]),
+  ];
+  return entries.sort(([leftKey, leftValue], [rightKey, rightValue]) =>
+    compareText(leftKey, rightKey) || leftValue - rightValue);
+}
+
+function dueDaysByStableKey(data: FinanceDataV1): Record<string, number | null> {
+  const entries: Array<[string, number | null]> = [
+    ['meta.salaryDay', data.salaryDay],
+    ...data.budgetItems.map((row) => [`budgetItems.${row.id}.dueDay`, row.dueDay] as [string, number | null]),
+    ...data.debts.map((row) => [`debts.${row.id}.dueDay`, row.dueDay] as [string, number | null]),
+  ];
+  return Object.fromEntries(entries.sort(([left], [right]) => compareText(left, right)));
+}
+
+function selectedSnapshotsById(data: FinanceDataV1) {
+  return {
+    accounts: Object.fromEntries(
+      data.accounts.map((account) => [account.id, selectLatestAccountSnapshot(data, account.id) ?? null]),
+    ),
+    pockets: Object.fromEntries(
+      data.pockets.map((pocket) => [pocket.id, selectLatestPocketSnapshot(data, pocket.id) ?? null]),
+    ),
+    debts: Object.fromEntries(
+      data.debts.map((debt) => [debt.id, selectLatestDebtSnapshot(data, debt.id) ?? null]),
+    ),
+  };
+}
+
+function compareText(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function inRepositoryOrder(data: FinanceDataV1): FinanceDataV1 {
   const result = structuredClone(data);
-  const compareText = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
   const compareEntities = (left: { displayOrder: number; id: string }, right: { displayOrder: number; id: string }) =>
     left.displayOrder - right.displayOrder || compareText(left.id, right.id);
   result.accounts.sort(compareEntities);
