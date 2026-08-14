@@ -85,6 +85,7 @@ async function handleRequest(request, response) {
       authenticated: true,
       user: { email: 'smoke@example.com' },
       csrfToken: 'smoke-csrf-token',
+      ownerKey: 'auth-smoke-owner-cache-key-000000001',
     } : { authenticated: false }, 'session');
     return;
   }

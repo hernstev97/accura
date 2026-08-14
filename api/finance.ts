@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { AppError } from './_lib/errors.js';
 import { FinanceDataIntegrityError, getFinanceRepository } from './_lib/financeRepository.js';
 import { authenticated, handle, json, method } from './_lib/http.js';
+import { financeCacheOwnerKey } from './_lib/security.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['GET'])) return;
@@ -13,6 +14,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       json(response, 200, {
         data,
         refreshedAt: new Date().toISOString(),
+        ownerKey: financeCacheOwnerKey(session.sub, config.sessionSecret),
       });
     } catch (error) {
       if (error instanceof FinanceDataIntegrityError) {

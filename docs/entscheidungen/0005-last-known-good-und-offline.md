@@ -14,7 +14,7 @@ Die private Finanzübersicht soll nach erfolgreichem Sync auch ohne Netz nützli
 
 ## Entscheidung
 
-Der Browser speichert genau den letzten vollständig validierten `FinanceDataV1`-Snapshot in IndexedDB. Refreshfehler behalten ihn sichtbar veraltet; der Service Worker cached keine API-Antwort.
+Der Browser speichert pro pseudonymem Owner genau den letzten vollständig validierten `FinanceDataV1`-Snapshot in IndexedDB. Der Owner-Schlüssel wird serverseitig per HMAC aus der verifizierten Google-Identität abgeleitet; der Browser lädt online erst nach Sitzungsauflösung ausschließlich diese Partition. Refreshfehler behalten den passenden Snapshot sichtbar veraltet; der Service Worker cached keine API-Antwort.
 
 ## Begründung
 
@@ -32,7 +32,7 @@ Offline-Start, robuste Fehlerzustände, erneut validierter lokaler Vertrag.
 
 ### Negativ
 
-Unverschlüsselte sensitive Gerätedaten, mögliche Veraltung und Browserlöschung; Disconnect löscht nur dieses Gerät.
+Unverschlüsselte sensitive Gerätedaten, mögliche Veraltung und Browserlöschung. Die Partition verhindert versehentliches Anzeigen zwischen Identitäten, aber keinen Zugriff durch Code oder Personen mit Zugriff auf dasselbe Browserprofil.
 
 ## Implementierung und Tests
 

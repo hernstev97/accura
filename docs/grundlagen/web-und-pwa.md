@@ -8,7 +8,7 @@
 
 ## Mentales Modell
 
-Der Browser lädt HTML, CSS und JavaScript vom Server. JavaScript baut daraus die Oberfläche und sendet HTTP-Anfragen an `/api/*`. Diese Endpunkte laufen nicht im Browser, sondern als Vercel Functions. Dadurch können Server-Secrets und Google-Refresh-Token außerhalb des Geräts bleiben.
+Der Browser lädt HTML, CSS und JavaScript vom Server. JavaScript baut daraus die Oberfläche und sendet HTTP-Anfragen an `/api/*`. Diese Endpunkte laufen nicht im Browser, sondern als Vercel Functions. Dadurch bleiben Client-Secret, Session-Secret und Datenbankzugang außerhalb des Geräts; Google-Tokens werden nicht dauerhaft gespeichert.
 
 HTTP ist ein Anfrage-Antwort-Protokoll. Eine Methode wie `GET` liest, `PUT` ersetzt oder setzt eine Ressource und `POST` löst eine Aktion aus. Statuscodes wie 200, 401, 409, 422 und 500 beschreiben das Ergebnis. HTTPS verschlüsselt den Transport, aber nicht automatisch lokale Browserdaten.
 

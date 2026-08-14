@@ -4,6 +4,7 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   FinanceDataIntegrityError,
+  FinanceOwnerMappingError,
   PostgresFinanceRepository,
 } from '../../api/_lib/financeRepository';
 import { financeDataV1Schema } from '../../src/finance/runtime';
@@ -118,6 +119,7 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
 
   it('replaces an existing owner stand without leaving previous rows', async () => {
     await repository.replaceForGoogleSub('replace-owner', fixture);
+    await repository.replaceForGoogleSub('other-owner', fixture);
     const reduced = {
       ...fixture,
       monthlyIncomeCents: 1,
@@ -138,7 +140,25 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
     expect(written.accounts).toHaveLength(1);
     expect(written.pockets).toHaveLength(0);
     expect(written.debts).toHaveLength(0);
-    expect(await sql<{ count: string }[]>`SELECT COUNT(*)::text AS count FROM budget_items`).toEqual([{ count: '0' }]);
+    const [replaced] = await sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM budget_items AS items
+      JOIN owners ON owners.id = items.owner_id
+      WHERE owners.google_sub = 'replace-owner'
+    `;
+    expect(replaced).toEqual({ count: '0' });
+    const untouched = await repository.readForGoogleSub('other-owner');
+    expect(untouched?.budgetItems).toHaveLength(fixture.budgetItems.length);
+  });
+
+  it('imports only for the sole owner established by verified sign-in', async () => {
+    await expect(repository.replaceForSoleOwner(fixture)).rejects.toMatchObject<FinanceOwnerMappingError>({ reason: 'missing' });
+
+    await repository.ensureOwnerForGoogleSub('verified-owner');
+    await expect(repository.replaceForSoleOwner(fixture)).resolves.toEqual(inRepositoryOrder(fixture));
+
+    await repository.ensureOwnerForGoogleSub('second-verified-owner');
+    await expect(repository.replaceForSoleOwner(fixture)).rejects.toMatchObject<FinanceOwnerMappingError>({ reason: 'ambiguous' });
   });
 
   it('preserves negative amounts and distinguishes month from day milestone precision', async () => {

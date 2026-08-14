@@ -1,6 +1,24 @@
-import { parseSheetsBatchResponse } from '../../src/finance/parser.js';
-import { financeDataV1Schema } from '../../src/finance/runtime.js';
-import type { FinanceDataV1, FinanceValidationResult, RawSheetsBatchResponse } from '../../src/finance/types.js';
+import { parseSheetsBatchResponse } from '../../src/finance/parser.ts';
+import { financeDataV1Schema } from '../../src/finance/runtime.ts';
+import { z } from 'zod';
+import type { FinanceDataV1, FinanceValidationResult } from '../../src/finance/types.ts';
+
+const sheetsBatchResponseSchema = z.object({
+  spreadsheetId: z.string().min(1).optional(),
+  valueRanges: z.array(z.object({
+    range: z.string().min(1).optional(),
+    values: z.array(z.array(z.unknown())).optional(),
+  }).passthrough()),
+}).passthrough();
+
+/** Parses operator JSON without allowing V8 to echo source fragments in an error message. */
+export function parseFinanceImportJson(contents: string): unknown {
+  try {
+    return JSON.parse(contents) as unknown;
+  } catch {
+    throw new Error('Die Importdatei ist kein gültiges JSON.');
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -20,8 +38,21 @@ export function parseFinanceImportSource(raw: unknown): FinanceValidationResult 
       }],
     };
   }
-  if (Array.isArray(raw.valueRanges) || typeof raw.spreadsheetId === 'string') {
-    return parseSheetsBatchResponse(raw as RawSheetsBatchResponse);
+  if ('valueRanges' in raw || 'spreadsheetId' in raw) {
+    const sheetsResponse = sheetsBatchResponseSchema.safeParse(raw);
+    if (!sheetsResponse.success) {
+      return {
+        success: false,
+        issues: [{
+          tab: '_Meta',
+          row: 1,
+          column: '(file)',
+          expected: 'vollständige Sheets-batchGet-Antwort',
+          message: 'Die Importdatei enthält keine gültige Sheets-batchGet-Antwort.',
+        }],
+      };
+    }
+    return parseSheetsBatchResponse(sheetsResponse.data);
   }
   const parsed = financeDataV1Schema.safeParse(raw);
   if (parsed.success) return { success: true, data: parsed.data };

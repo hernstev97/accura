@@ -77,6 +77,14 @@ export function verifySession(token: string, secret: string, now = Date.now()): 
   return parsed.data;
 }
 
+/** Returns a stable pseudonymous browser-cache partition without exposing the Google subject. */
+export function financeCacheOwnerKey(sub: string, secret: string): string {
+  return createHmac('sha256', secret)
+    .update('accura-finance-cache-owner-v1\0')
+    .update(sub)
+    .digest('base64url');
+}
+
 export function createOAuthTransaction(
   secret: string,
   returnPath: AppPath = '/',
@@ -144,5 +152,4 @@ export function assertCsrf(session: AppSession, csrfHeader: string | undefined, 
     throw new AppError('csrf_failed', 403, 'CSRF-Prüfung fehlgeschlagen.');
   }
 }
-
 

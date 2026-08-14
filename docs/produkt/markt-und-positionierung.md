@@ -95,7 +95,7 @@ Daneben gibt es plausibel eine größere, aber mit den hier verwendeten Quellen 
 
 | Ebene | Verbindliche Einordnung |
 | --- | --- |
-| Aktueller Repository-Stand | Private Single-User-PWA mit Google-Sheets-Quelle, vier Ansichten, Offline-Cache, Appearance und lokalem Privacy-Modus; keine öffentliche Dienstleistung |
+| Aktueller Repository-Stand | Private Single-User-PWA mit PostgreSQL-Quelle und Google nur als Identität, vier Ansichten, ownergebundenem Offline-Cache, Appearance und lokalem Privacy-Modus; keine öffentliche Dienstleistung |
 | Langfristige Positionierung | Ruhiges Finanz-Cockpit für Menschen unter finanziellem oder mentalem Druck; kognitive Entlastung durch finanzielle Gewissheit |
 | Mögliche Zukunft | Nur in der [Roadmap](roadmap.md) gekennzeichnete Ideen und die oben ausdrücklich als Optionen bezeichneten Finanzierungsmodelle |
 | Externe Beobachtung | Datierte, veränderliche Recherche dieser Seite; keine Produktfunktion und keine Garantie über Wettbewerber |

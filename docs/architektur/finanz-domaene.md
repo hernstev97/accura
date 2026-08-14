@@ -16,7 +16,7 @@ Die Tabelle enthält Quellen und zeitbezogene Snapshots, keine UI-Gesamtsummen. 
 
 ```mermaid
 flowchart LR
-  I[Operator-Import: Sheets-batchGet oder FinanceDataV1] --> P[Parser + Validierung]
+  I["Operator-Import: Sheets-batchGet oder FinanceDataV1"] --> P[Parser + Validierung]
   P --> R[PostgreSQL-Repository]
   R --> C[FinanceDataV1 / Integer-Cents]
   C --> SEL[reine Selektoren]

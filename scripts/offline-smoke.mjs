@@ -102,12 +102,17 @@ try {
   assert.equal(await page.locator('[data-destination="debt"]').isVisible(), true, 'Online-Rückkehr verlor die aktive Ansicht');
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Online-Rückkehr verlor die Service-Worker-Kontrolle');
   const recoveredCache = await page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('finance-overview', 1);
+    const ownerKey = localStorage.getItem('active-finance-cache-owner-v1');
+    if (!ownerKey) {
+      reject(new Error('Aktiver Cache-Owner fehlt.'));
+      return;
+    }
+    const request = indexedDB.open('finance-overview', 2);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const database = request.result;
       const transaction = database.transaction('last-good', 'readonly');
-      const getRequest = transaction.objectStore('last-good').get('finance-data-v1');
+      const getRequest = transaction.objectStore('last-good').get(`finance-data-v1:${ownerKey}`);
       getRequest.onerror = () => reject(getRequest.error);
       getRequest.onsuccess = () => {
         resolve(getRequest.result ?? null);

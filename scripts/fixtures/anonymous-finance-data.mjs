@@ -77,11 +77,13 @@ export const anonymousSession = {
   authenticated: true,
   user: { email: 'owner@example.test' },
   csrfToken: 'browser-test-csrf-token',
+  ownerKey: 'browser-test-owner-cache-key-000000001',
 };
 
 export const anonymousFinanceResponse = {
   data: anonymousFinanceData,
   refreshedAt: '2026-08-08T10:00:00.000Z',
+  ownerKey: anonymousSession.ownerKey,
 };
 
 export async function installFinanceApiMocks(page, state = 'connected', financeData = anonymousFinanceData) {

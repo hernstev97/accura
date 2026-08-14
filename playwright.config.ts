@@ -35,7 +35,7 @@ export default defineConfig({
   webServer: {
     command: `env -u VITE_USE_MOCK_API npm run dev -- --host 127.0.0.1 --port ${testPort} --strictPort`,
     url: testBaseUrl,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

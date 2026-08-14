@@ -102,15 +102,15 @@ async function seedPinProtection(page: Page) {
 async function hasCachedFinanceData(page: Page) {
   return page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('finance-overview', 1);
+      const request = indexedDB.open('finance-overview', 2);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     try {
       const transaction = database.transaction('last-good', 'readonly');
-      const request = transaction.objectStore('last-good').get('finance-data-v1');
+      const request = transaction.objectStore('last-good').getAllKeys();
       return await new Promise<boolean>((resolve, reject) => {
-        request.onsuccess = () => resolve(Boolean(request.result));
+        request.onsuccess = () => resolve(request.result.length > 0);
         request.onerror = () => reject(request.error);
       });
     } finally {

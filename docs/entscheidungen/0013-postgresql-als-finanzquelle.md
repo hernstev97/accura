@@ -69,6 +69,6 @@ Schema, Migration, Repository und Schreibgrenzen müssen sorgfältig umgesetzt u
 ## Implementierung und Tests
 
 - Domänenvertrag: [FinanceDataV1](../../src/finance/types.ts), [Sheets-Parser als Import](../../src/finance/parser.ts)
-- Persistenz und produktiver Read/Write: [Migration 002](../../migrations/002_finance_data_v1.sql), [PostgreSQL-Repository](../../api/_lib/financeRepository.ts), [Operator-Import](../../scripts/import-finance.ts)
+- Persistenz und produktiver Read/Write: [Migration 002](../../migrations/002_finance_data_v1.sql), [Migration 003](../../migrations/003_drop_google_connections.sql), [PostgreSQL-Repository](../../api/_lib/financeRepository.ts), [Operator-Import](../../scripts/import-finance.ts)
 - Paritätsnachweis: [Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts)
 - Nächster Produktschritt: ACC-72 in Linear

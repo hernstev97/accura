@@ -16,3 +16,11 @@ export function getDatabase(databaseUrl: string): postgres.Sql {
   databases.set(databaseUrl, sql);
   return sql;
 }
+
+/** Closes and forgets a pool used by a one-off process such as the operator import. */
+export async function closeDatabase(databaseUrl: string): Promise<void> {
+  const sql = databases.get(databaseUrl);
+  if (!sql) return;
+  databases.delete(databaseUrl);
+  await sql.end({ timeout: 5 });
+}

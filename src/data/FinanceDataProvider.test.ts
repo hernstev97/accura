@@ -14,7 +14,12 @@ describe('finance provider state transitions', () => {
 
     const missing = financeProviderReducer(initialFinanceState, {
       type: 'authenticated',
-      session: { authenticated: true, user: { email: 'owner@example.test' }, csrfToken: 'csrf' },
+      session: {
+        authenticated: true,
+        user: { email: 'owner@example.test' },
+        csrfToken: 'csrf',
+        ownerKey: 'test-owner-cache-key-0000000000000001',
+      },
     });
     expect(missing).toMatchObject({ authState: 'authenticated', connectionState: 'unknown', syncState: 'initial' });
     expect(financeProviderReducer(missing, {

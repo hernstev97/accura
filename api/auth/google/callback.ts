@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServerConfig } from '../../_lib/config.js';
 import { AppError } from '../../_lib/errors.js';
 import { exchangeAuthorizationCode, verifyGoogleIdentity } from '../../_lib/google.js';
+import { getFinanceRepository } from '../../_lib/financeRepository.js';
 import { method } from '../../_lib/http.js';
 import {
   clearCookie,
@@ -48,6 +49,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       throw new AppError('user_not_allowed', 403, 'Dieses Google-Konto ist für die App nicht freigeschaltet.');
     }
 
+    await getFinanceRepository(config.databaseUrl).ensureOwnerForGoogleSub(identity.sub);
     const { token } = createSession(identity.sub, identity.email, config.sessionSecret);
     response.setHeader('Set-Cookie', [clearCookie(OAUTH_COOKIE, config.production), sessionCookie(token, config.production)]);
     response.redirect(302, new URL(returnPath, `${config.appOrigin}/`).href);

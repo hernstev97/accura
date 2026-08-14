@@ -30,11 +30,12 @@ Zwei getrennte Verbindungen verwenden:
 - Vercel Functions erhalten die gepoolte Neon-URL als `DATABASE_URL`.
 - Migrationen, Rollenverwaltung und Restore-Prüfungen verwenden einen direkten Neon-Endpoint mit administrativen Credentials. Diese URL ist kein Runtime-Secret der App.
 
-Vor jedem Lauf Zielhost, Datenbank, Benutzer und Environment sichtbar prüfen. Migrationen zuerst in Development anwenden, dort die Integrationstests und einen vollständigen Reader-Durchlauf ausführen und erst danach Production getrennt beauftragen:
+Vor jedem Lauf Zielhost, Datenbank, Benutzer und Environment sichtbar prüfen. Migrationen zuerst in Development anwenden, dort die Integrationstests und einen vollständigen Reader-Durchlauf ausführen und erst danach Production getrennt beauftragen. Bei einem bestehenden Deployment ist die Cutover-Reihenfolge verbindlich: zunächst 001/002 anwenden, dann den identity-only Runtime-Code deployen und dessen PostgreSQL-Pfad prüfen, erst danach 003 ausführen. Migration 003 entfernt gespeicherte Refresh-Tokens irreversibel; ein Rückfall auf den alten Sheets-Runtime-Pfad benötigt ein zuvor geprüftes Restore oder eine neue Google-Autorisierung.
 
 ```bash
 psql "$DATABASE_DIRECT_URL" -f migrations/001_google_connections.sql
 psql "$DATABASE_DIRECT_URL" -f migrations/002_finance_data_v1.sql
+# identity-only Runtime deployen und prüfen
 psql "$DATABASE_DIRECT_URL" -f migrations/003_drop_google_connections.sql
 ```
 
@@ -46,13 +47,13 @@ Für eine lokale dedizierte Testdatenbank oder den CI-Service gilt:
 POSTGRES_TEST_URL=postgresql://... npm run test:postgres
 ```
 
-Die Suite bricht ohne URL ab, legt unter der Ziel-Datenbank ein isoliertes synthetisches Testschema an, führt 001 und 002 aus und entfernt dieses Schema anschließend wieder. Niemals eine Produktions-URL als `POSTGRES_TEST_URL` verwenden.
+Die Suite bricht ohne URL ab, legt unter der Ziel-Datenbank ein isoliertes synthetisches Testschema an, führt 001, 002 und 003 aus und entfernt dieses Schema anschließend wieder. Niemals eine Produktions-URL als `POSTGRES_TEST_URL` verwenden.
 
 ### Runtime-Rolle
 
 Direkte Owner-/Migrations-Credentials dürfen nicht als `DATABASE_URL` verwendet werden. Die Runtime-Rolle benötigt:
 
-- `SELECT` auf `owners` und allen Finance-Tabellen;
+- `SELECT` auf `owners` und allen Finance-Tabellen sowie `INSERT` ausschließlich auf `owners`, damit der verifizierte OAuth-Callback den eigenen Owner idempotent anlegen kann;
 - keine DDL-, Rollenverwaltungs- oder Schema-Owner-Rechte;
 - keine pauschalen Finance-Schreibrechte. Der Operator-Import und der spätere Editor verwenden einen administrativen beziehungsweise bewusst erweiterten Zugang.
 
@@ -98,13 +99,15 @@ Wichtig:
 
 ## 5. Finance-Import
 
-Den ersten Datenstand außerhalb der App importieren. Für lokale oder synthetische Tests:
+Nach Migration 002 und dem Deployment einmal mit der allowgelisteten Google-Identität anmelden. Erst der vollständig verifizierte OAuth-Callback legt den Owner an. Der Import akzeptiert bewusst keine manuell übergebene Google-Subjekt-ID, verwendet ausschließlich den genau einen vorhandenen Owner und bricht bei keinem oder mehreren Ownern ab. Dadurch kann ein kopierter oder vertippter externer Bezeichner keine Finanzdaten falsch zuordnen.
+
+Für lokale oder synthetische Tests anschließend:
 
 ```bash
-GOOGLE_SUB=replace-with-google-sub DATABASE_URL="$DATABASE_DIRECT_URL" npm run import:finance -- --from-fixture
+DATABASE_URL="$DATABASE_DIRECT_URL" npm run import:finance -- --from-fixture
 ```
 
-Für den privaten Bestand eine lokale, nicht versionierte JSON-Datei im Sheets-batchGet-Format oder als `FinanceDataV1` verwenden und `--from-file=` setzen. Die Datei darf nicht ins Repository. `salary_day` und `due_day` sind optionale v1-Felder; ohne sie bleibt der Stand gültig, Demnächst kann die entsprechende Projektion jedoch nicht vollständig bilden.
+Für den privaten Bestand eine lokale, nicht versionierte JSON-Datei im Sheets-batchGet-Format oder als `FinanceDataV1` verwenden und `--from-file=` setzen. Die Datei darf nicht ins Repository, in CI-Artefakte oder in geteilte Shell-Ausgaben gelangen. Syntax- und Validierungsfehler geben weder Quellfragmente noch Finanzwerte aus. `salary_day` und `due_day` sind optionale v1-Felder; ohne sie bleibt der Stand gültig, Demnächst kann die entsprechende Projektion jedoch nicht vollständig bilden.
 
 ## 6. Lokale Realabnahme
 

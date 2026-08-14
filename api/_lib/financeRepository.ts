@@ -1,22 +1,42 @@
 import type postgres from 'postgres';
-import { financeDataV1Schema } from '../../src/finance/runtime.js';
-import type { FinanceDataV1 } from '../../src/finance/types.js';
-import { getDatabase } from './database.js';
+import { financeDataV1Schema } from '../../src/finance/runtime.ts';
+import type { FinanceDataV1 } from '../../src/finance/types.ts';
+import { getDatabase } from './database.ts';
 
 export interface FinanceRepository {
+  ensureOwnerForGoogleSub(googleSub: string): Promise<void>;
   readForGoogleSub(googleSub: string): Promise<FinanceDataV1 | null>;
   replaceForGoogleSub(googleSub: string, data: FinanceDataV1): Promise<FinanceDataV1>;
+  replaceForSoleOwner(data: FinanceDataV1): Promise<FinanceDataV1>;
 }
 
 export type FinanceDataIntegrityReason = 'invalid_integer' | 'invalid_shape' | 'missing_current_snapshot';
 
+export type FinanceOwnerMappingReason = 'missing' | 'ambiguous';
+
+/** Sanitized operator error: no external subject or financial value is included. */
+export class FinanceOwnerMappingError extends Error {
+  readonly code = 'finance_owner_mapping_error';
+  readonly reason: FinanceOwnerMappingReason;
+
+  constructor(reason: FinanceOwnerMappingReason) {
+    super(reason === 'missing'
+      ? 'No verified owner exists. Sign in to accura before importing.'
+      : 'More than one verified owner exists. The single-owner import is ambiguous.');
+    this.name = 'FinanceOwnerMappingError';
+    this.reason = reason;
+  }
+}
+
 /** Sanitized internal error: it deliberately carries no row, entity ID, or financial value. */
 export class FinanceDataIntegrityError extends Error {
   readonly code = 'finance_data_integrity_error';
+  readonly reason: FinanceDataIntegrityReason;
 
-  constructor(readonly reason: FinanceDataIntegrityReason) {
+  constructor(reason: FinanceDataIntegrityReason) {
     super('Stored finance data failed integrity validation.');
     this.name = 'FinanceDataIntegrityError';
+    this.reason = reason;
   }
 }
 
@@ -173,88 +193,148 @@ async function writeOwnerFinance(
       ${data.monthlyIncomeCents}, ${data.salaryDay}
     )
   `;
-  for (const account of data.accounts) {
+  if (data.accounts.length > 0) {
+    const rows = data.accounts.map((account) => ({
+      owner_id: ownerId,
+      id: account.id,
+      name: account.name,
+      kind: account.kind,
+      display_order: account.displayOrder,
+      active: account.active,
+    }));
     await transaction`
-      INSERT INTO accounts (owner_id, id, name, kind, display_order, active)
-      VALUES (
-        ${ownerId}, ${account.id}, ${account.name}, ${account.kind},
-        ${account.displayOrder}, ${account.active}
-      )
+      INSERT INTO accounts ${transaction(rows, 'owner_id', 'id', 'name', 'kind', 'display_order', 'active')}
     `;
   }
-  for (const snapshot of data.accountSnapshots) {
+  if (data.accountSnapshots.length > 0) {
+    const rows = data.accountSnapshots.map((snapshot) => ({
+      owner_id: ownerId,
+      account_id: snapshot.accountId,
+      as_of: snapshot.asOf,
+      balance_cents: snapshot.balanceCents,
+    }));
     await transaction`
-      INSERT INTO account_snapshots (owner_id, account_id, as_of, balance_cents)
-      VALUES (${ownerId}, ${snapshot.accountId}, ${snapshot.asOf}, ${snapshot.balanceCents})
+      INSERT INTO account_snapshots ${transaction(rows, 'owner_id', 'account_id', 'as_of', 'balance_cents')}
     `;
   }
-  for (const pocket of data.pockets) {
+  if (data.pockets.length > 0) {
+    const rows = data.pockets.map((pocket) => ({
+      owner_id: ownerId,
+      id: pocket.id,
+      account_id: pocket.accountId,
+      name: pocket.name,
+      display_order: pocket.displayOrder,
+      active: pocket.active,
+    }));
     await transaction`
-      INSERT INTO pockets (owner_id, id, account_id, name, display_order, active)
-      VALUES (
-        ${ownerId}, ${pocket.id}, ${pocket.accountId}, ${pocket.name},
-        ${pocket.displayOrder}, ${pocket.active}
-      )
+      INSERT INTO pockets ${transaction(rows, 'owner_id', 'id', 'account_id', 'name', 'display_order', 'active')}
     `;
   }
-  for (const snapshot of data.pocketSnapshots) {
+  if (data.pocketSnapshots.length > 0) {
+    const rows = data.pocketSnapshots.map((snapshot) => ({
+      owner_id: ownerId,
+      pocket_id: snapshot.pocketId,
+      as_of: snapshot.asOf,
+      balance_cents: snapshot.balanceCents,
+    }));
     await transaction`
-      INSERT INTO pocket_snapshots (owner_id, pocket_id, as_of, balance_cents)
-      VALUES (${ownerId}, ${snapshot.pocketId}, ${snapshot.asOf}, ${snapshot.balanceCents})
+      INSERT INTO pocket_snapshots ${transaction(rows, 'owner_id', 'pocket_id', 'as_of', 'balance_cents')}
     `;
   }
-  for (const item of data.budgetItems) {
+  if (data.budgetItems.length > 0) {
+    const rows = data.budgetItems.map((item) => ({
+      owner_id: ownerId,
+      id: item.id,
+      label: item.label,
+      monthly_amount_cents: item.monthlyAmountCents,
+      necessity_id: item.necessityId,
+      kind: item.kind,
+      display_order: item.displayOrder,
+      active: item.active,
+      note: item.note,
+      due_day: item.dueDay,
+    }));
     await transaction`
-      INSERT INTO budget_items (
-        owner_id, id, label, monthly_amount_cents, necessity_id, kind,
-        display_order, active, note, due_day
-      ) VALUES (
-        ${ownerId}, ${item.id}, ${item.label}, ${item.monthlyAmountCents},
-        ${item.necessityId}, ${item.kind}, ${item.displayOrder}, ${item.active},
-        ${item.note}, ${item.dueDay}
-      )
+      INSERT INTO budget_items ${transaction(
+        rows,
+        'owner_id', 'id', 'label', 'monthly_amount_cents', 'necessity_id',
+        'kind', 'display_order', 'active', 'note', 'due_day',
+      )}
     `;
   }
-  for (const debt of data.debts) {
+  if (data.debts.length > 0) {
+    const rows = data.debts.map((debt) => ({
+      owner_id: ownerId,
+      id: debt.id,
+      name: debt.name,
+      kind: debt.kind,
+      monthly_payment_cents: debt.monthlyPaymentCents,
+      display_order: debt.displayOrder,
+      active: debt.active,
+      note: debt.note,
+      due_day: debt.dueDay,
+    }));
     await transaction`
-      INSERT INTO debts (
-        owner_id, id, name, kind, monthly_payment_cents, display_order,
-        active, note, due_day
-      ) VALUES (
-        ${ownerId}, ${debt.id}, ${debt.name}, ${debt.kind},
-        ${debt.monthlyPaymentCents}, ${debt.displayOrder}, ${debt.active},
-        ${debt.note}, ${debt.dueDay}
-      )
+      INSERT INTO debts ${transaction(
+        rows,
+        'owner_id', 'id', 'name', 'kind', 'monthly_payment_cents',
+        'display_order', 'active', 'note', 'due_day',
+      )}
     `;
   }
-  for (const snapshot of data.debtSnapshots) {
+  if (data.debtSnapshots.length > 0) {
+    const rows = data.debtSnapshots.map((snapshot) => ({
+      owner_id: ownerId,
+      debt_id: snapshot.debtId,
+      as_of: snapshot.asOf,
+      payoff_balance_cents: snapshot.payoffBalanceCents,
+      remaining_payment_count: snapshot.remainingPaymentCount,
+      remaining_scheduled_total_cents: snapshot.remainingScheduledTotalCents,
+    }));
     await transaction`
-      INSERT INTO debt_snapshots (
-        owner_id, debt_id, as_of, payoff_balance_cents,
-        remaining_payment_count, remaining_scheduled_total_cents
-      ) VALUES (
-        ${ownerId}, ${snapshot.debtId}, ${snapshot.asOf}, ${snapshot.payoffBalanceCents},
-        ${snapshot.remainingPaymentCount}, ${snapshot.remainingScheduledTotalCents}
-      )
+      INSERT INTO debt_snapshots ${transaction(
+        rows,
+        'owner_id', 'debt_id', 'as_of', 'payoff_balance_cents',
+        'remaining_payment_count', 'remaining_scheduled_total_cents',
+      )}
     `;
   }
-  for (const milestone of data.debtMilestones) {
-    const { date, precision } = milestonePrecision(milestone.date);
+  if (data.debtMilestones.length > 0) {
+    const rows = data.debtMilestones.map((milestone) => {
+      const { date, precision } = milestonePrecision(milestone.date);
+      return {
+        owner_id: ownerId,
+        debt_id: milestone.debtId,
+        milestone_date: date,
+        date_precision: precision,
+        balance_cents: milestone.balanceCents,
+      };
+    });
     await transaction`
-      INSERT INTO debt_milestones (
-        owner_id, debt_id, milestone_date, date_precision, balance_cents
-      ) VALUES (${ownerId}, ${milestone.debtId}, ${date}, ${precision}, ${milestone.balanceCents})
+      INSERT INTO debt_milestones ${transaction(
+        rows,
+        'owner_id', 'debt_id', 'milestone_date', 'date_precision', 'balance_cents',
+      )}
     `;
   }
-  for (const milestone of data.reliefMilestones) {
-    const { date, precision } = milestonePrecision(milestone.date);
+  if (data.reliefMilestones.length > 0) {
+    const rows = data.reliefMilestones.map((milestone) => {
+      const { date, precision } = milestonePrecision(milestone.date);
+      return {
+        owner_id: ownerId,
+        milestone_date: date,
+        date_precision: precision,
+        monthly_relief_cents: milestone.monthlyReliefCents,
+        event: milestone.event,
+        event_detail: milestone.eventDetail,
+      };
+    });
     await transaction`
-      INSERT INTO relief_milestones (
-        owner_id, milestone_date, date_precision, monthly_relief_cents, event, event_detail
-      ) VALUES (
-        ${ownerId}, ${date}, ${precision}, ${milestone.monthlyReliefCents},
-        ${milestone.event}, ${milestone.eventDetail}
-      )
+      INSERT INTO relief_milestones ${transaction(
+        rows,
+        'owner_id', 'milestone_date', 'date_precision',
+        'monthly_relief_cents', 'event', 'event_detail',
+      )}
     `;
   }
 }
@@ -453,7 +533,19 @@ function assertCurrentSnapshots(data: FinanceDataV1): void {
 }
 
 export class PostgresFinanceRepository implements FinanceRepository {
-  constructor(private readonly sql: postgres.Sql) {}
+  private readonly sql: postgres.Sql;
+
+  constructor(sql: postgres.Sql) {
+    this.sql = sql;
+  }
+
+  async ensureOwnerForGoogleSub(googleSub: string): Promise<void> {
+    await this.sql`
+      INSERT INTO owners (google_sub)
+      VALUES (${googleSub})
+      ON CONFLICT (google_sub) DO NOTHING
+    `;
+  }
 
   async readForGoogleSub(googleSub: string): Promise<FinanceDataV1 | null> {
     return this.sql.begin('read only isolation level repeatable read', async (transaction) => {
@@ -468,6 +560,26 @@ export class PostgresFinanceRepository implements FinanceRepository {
     return this.sql.begin(async (transaction) => {
       const ownerId = await resolveOwnerId(transaction, googleSub, true);
       if (!ownerId) throw new FinanceDataIntegrityError('invalid_shape');
+      await writeOwnerFinance(transaction, ownerId, importable);
+      const stored = await readOwnerFinance(transaction, ownerId);
+      if (!stored) throw new FinanceDataIntegrityError('invalid_shape');
+      return stored;
+    });
+  }
+
+  async replaceForSoleOwner(data: FinanceDataV1): Promise<FinanceDataV1> {
+    const importable = assertImportable(data);
+    return this.sql.begin(async (transaction) => {
+      const owners = await transaction<OwnerRow[]>`
+        SELECT id
+        FROM owners
+        ORDER BY id
+        LIMIT 2
+        FOR UPDATE
+      `;
+      if (owners.length === 0) throw new FinanceOwnerMappingError('missing');
+      if (owners.length !== 1) throw new FinanceOwnerMappingError('ambiguous');
+      const ownerId = owners[0]!.id;
       await writeOwnerFinance(transaction, ownerId, importable);
       const stored = await readOwnerFinance(transaction, ownerId);
       if (!stored) throw new FinanceDataIntegrityError('invalid_shape');

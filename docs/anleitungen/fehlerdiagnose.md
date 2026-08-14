@@ -17,7 +17,7 @@ Zuerst sichtbaren Zustand, Browser-Online-Status, betroffene Aktion und Zeitpunk
 | `server_configuration_error` | Variable fehlt oder Origin/Callback inkonsistent | Vercel-Scope und [Konfiguration](../referenz/konfiguration.md) prüfen |
 | `user_not_allowed` | falsche oder unverifizierte Google-E-Mail | `ALLOWED_GOOGLE_EMAIL` und Google-Testnutzer prüfen |
 | `invalid_oauth_state` | abgelaufene/zweite Transaktion oder Cookie blockiert | Anmeldung in einem Tab neu starten; Cookie-Einstellungen prüfen |
-| `finance_missing` | Sitzung vorhanden, kein `finance_meta` | Operator-Import prüfen; DB/Environment nicht verwechseln |
+| `finance_missing` | verifizierte Identität hat keinen Owner oder der Owner kein `finance_meta` | verifizierte Erstanmeldung und Operator-Import prüfen; DB/Environment nicht verwechseln |
 | `finance_data_integrity` | gespeicherter Stand verletzt den v1-Vertrag | Importquelle und Constraints prüfen; keine Werte aus Logs erwarten |
 | `csrf_failed` | Origin/CSRF passt nicht | `APP_ORIGIN`, Proxy-Origin und Session prüfen; nicht Token umgehen |
 | Offline ohne Daten | noch nie erfolgreich synchronisiert oder Browsercache gelöscht | online ersten gültigen Sync durchführen |

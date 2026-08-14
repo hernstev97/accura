@@ -4,6 +4,7 @@ import {
   assertCsrf,
   createOAuthTransaction,
   createSession,
+  financeCacheOwnerKey,
   isAllowedGoogleUser,
   verifyOAuthTransaction,
   verifySession,
@@ -26,6 +27,14 @@ describe('server security primitives', () => {
     expect(() => verifySession(`${token}x`, sessionSecret, now)).toThrow();
     expect(() => verifySession(token, sessionSecret, now + 15 * 24 * 60 * 60 * 1000)).toThrow();
     expect(session.csrf.length).toBeGreaterThan(20);
+  });
+
+  it('partitions browser finance caches with a pseudonymous owner key', () => {
+    const first = financeCacheOwnerKey('immutable-sub', sessionSecret);
+    expect(first).toHaveLength(43);
+    expect(first).not.toContain('immutable-sub');
+    expect(financeCacheOwnerKey('immutable-sub', sessionSecret)).toBe(first);
+    expect(financeCacheOwnerKey('other-sub', sessionSecret)).not.toBe(first);
   });
 
   it('validates OAuth state, signed transaction age, and PKCE material', () => {

@@ -60,11 +60,11 @@ Implementierung und Tests: [FinanceDataProvider](../../src/data/FinanceDataProvi
 
 Explizite Pfade, Reload sowie Zurück/Vorwärts werden immer aus der aktuellen URL bestimmt. Nur der Manifest-Start `/?app-launch=pwa` darf die lokal gespeicherte letzte Destination lesen; der Marker wird dabei per Replace durch den kanonischen Pfad ersetzt. Dadurch bleibt `/` bei normalen Aufrufen eindeutig die Übersicht und die History erhält keinen künstlichen Zwischeneintrag. Lokale Unterzustände innerhalb eines Screens sind nicht Teil dieses Vertrags.
 
-Bei Anmeldung oder erneuter Google-Verbindung sendet der Client nur einen der vier kanonischen Pfade als Rückweg. Der Server validiert ihn, bindet ihn an die signierte OAuth-Transaktion und verwendet ihn nach Erfolg oder einem verifizierten Callbackfehler erneut. Nicht erlaubte Werte fallen auf `/` zurück.
+Bei der Google-Anmeldung sendet der Client nur einen der vier kanonischen Pfade als Rückweg. Der Server validiert ihn, bindet ihn an die signierte OAuth-Transaktion und verwendet ihn nach Erfolg oder einem verifizierten Callbackfehler erneut. Nicht erlaubte Werte fallen auf `/` zurück.
 
-## Abmelden und Trennen
+## Abmelden
 
-Abmelden löscht nur das signierte Session-Cookie im Browser. PostgreSQL-Finanzzeilen bleiben erhalten. Appearance, Privacy und App-Schutz sind unabhängige Geräteeinstellungen. Nur die ausdrücklich bestätigte Recovery einer vergessenen PIN entfernt den lokalen App-Schutz und den lokalen Finance-Cache nach erfolgreichem Logout; der serverseitige Finanzstand bleibt bestehen.
+Abmelden löscht das signierte Session-Cookie und deaktiviert die aktive Finance-Cache-Partition. PostgreSQL-Finanzzeilen und der ownergebundene lokale Snapshot bleiben erhalten, werden abgemeldet aber nicht angezeigt. Erst eine erneute verifizierte Anmeldung derselben Identität ordnet diesen Cache wieder zu. Appearance, Privacy und App-Schutz sind unabhängige Geräteeinstellungen. Nur die ausdrücklich bestätigte Recovery einer vergessenen PIN entfernt den lokalen App-Schutz und sämtliche lokalen Finance-Cache-Partitionen nach erfolgreichem Logout; der serverseitige Finanzstand bleibt bestehen.
 
 ## Appearance-Transaktion
 

@@ -8,11 +8,13 @@ const sessionSchema = z.discriminatedUnion('authenticated', [
     authenticated: z.literal(true),
     user: z.object({ email: z.string().email() }),
     csrfToken: z.string().min(1),
+    ownerKey: z.string().min(32).max(128).regex(/^[A-Za-z0-9_-]+$/),
   }),
 ]);
 const financeResponseSchema = z.object({
   data: financeDataV1Schema,
   refreshedAt: z.string().datetime(),
+  ownerKey: z.string().min(32).max(128).regex(/^[A-Za-z0-9_-]+$/),
 });
 
 export type FinanceSession = z.infer<typeof sessionSchema>;

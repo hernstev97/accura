@@ -1,4 +1,4 @@
-import type { RawSheetsBatchResponse, TabularWorkbook } from '../finance/types';
+import type { RawSheetsBatchResponse, TabularWorkbook } from '../finance/types.ts';
 
 /** Fully synthetic data for deterministic tests and explicitly enabled local mocks only. */
 export const anonymousWorkbook: TabularWorkbook = {

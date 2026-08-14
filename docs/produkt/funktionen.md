@@ -28,10 +28,10 @@ Schulden stellt Ablösesumme, planmäßige Gesamtkosten, daraus abgeleitete Mehr
 
 ## Globale Aktionen
 
-- **Aktualisieren:** liest den gespeicherten PostgreSQL-Stand erneut. Automatisch wird außerdem beim Start, bei Rückkehr der Verbindung und nach mehr als zehn Minuten im Hintergrund aktualisiert.
-- **Abmelden:** beendet die App-Sitzung. Der gespeicherte Finanzstand in PostgreSQL und der lokale Finance-Cache bleiben bestehen.
+- **Aktualisieren:** liest den gespeicherten PostgreSQL-Stand erneut. Automatisch wird außerdem beim Start, bei Rückkehr der Verbindung und beim Sichtbarwerden des Tabs aktualisiert, wenn der letzte erfolgreiche Sync mehr als zehn Minuten zurückliegt. In ausgeblendeten Tabs gibt es kein Polling.
+- **Abmelden:** beendet die App-Sitzung und blendet lokale Finanzdaten aus. Der gespeicherte Finanzstand in PostgreSQL und der ownergebundene lokale Finance-Cache bleiben bestehen; erst die erneute verifizierte Anmeldung derselben Identität aktiviert ihn wieder.
 - **Darstellung:** System-, Hell- und Dunkelmodus; Browser-/Systemfarbe, kuratierte Presets oder lokal analysiertes Bild. Entwürfe werden erst durch Anwenden dauerhaft.
-- **Privacy:** maskiert oder zeigt Geldbeträge; die Einstellung bleibt lokal über Logout und Disconnect hinweg erhalten und wird zwischen Tabs synchronisiert.
+- **Privacy:** maskiert oder zeigt Geldbeträge; die Einstellung bleibt lokal über Logout hinweg erhalten und wird zwischen Tabs synchronisiert.
 - **App-Schutz:** verdeckt Accura optional nach einem Hintergrundwechsel. Eine zusätzliche sechsstellige lokale PIN sperrt außerdem Start und Reload; beide Schalter liegen in den Einstellungen.
 - **Begrüßung:** Die Übersicht wählt abhängig von der lokalen Uhr „Guten Morgen“, „Guten Tag“ oder „Guten Abend“ und kombiniert dies mit dem `accura`-Branding.
 

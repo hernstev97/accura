@@ -14,15 +14,15 @@ Der implementierte OAuth-Fluss fordert `drive.file`, erzwingt ein Refresh-Token 
 
 ## Entscheidung
 
-Google OAuth dient nach dem Cutover ausschließlich der Authentifizierung. Der Authorization-Code-Fluss mit State, Nonce und PKCE bleibt; der Ziel-Scope ist `openid email profile`. ID-Token-Signatur, Issuer, Audience, Nonce, verifizierte E-Mail und Allowlist werden weiterhin serverseitig geprüft.
+Google OAuth dient ausschließlich der Authentifizierung. Der Authorization-Code-Fluss mit State, Nonce und PKCE verwendet `openid email profile`. ID-Token-Signatur, Issuer, Audience, Nonce, verifizierte E-Mail und Allowlist werden serverseitig geprüft.
 
 Google `sub` identifiziert die externe Anmeldung und wird eindeutig einem internen `owners.id` zugeordnet. Die signierte Sitzung trägt weiterhin die verifizierte Identität; Finanzzugriffe lösen daraus serverseitig den Owner auf. ADR 0004 bleibt für diesen Schnitt unverändert: Genau eine konfigurierte Identität darf eine Sitzung erhalten.
 
-Picker, `drive.file`, Drive-/Sheets-Laufzeitzugriff und die Pflicht zu einem dauerhaft gespeicherten Refresh-Token entfallen. Ein beim OAuth-Tausch erhaltenes kurzlebiges Access-Token wird nicht für Finance persistiert. Die bestehenden Picker-Endpunkte, Spreadsheet-Zustände und Tokenfelder sind Übergangscode und werden beim eindeutigen Cutover entfernt.
+Picker, `drive.file`, Drive-/Sheets-Laufzeitzugriff, Spreadsheet-Zustände und dauerhaft gespeicherte Refresh-Tokens sind entfernt. Ein beim OAuth-Tausch erhaltenes kurzlebiges Access-Token wird nicht für Finance persistiert.
 
 Der einmalige Import aus ACC-66 ist ein kontrollierter Operator-Pfad außerhalb der normalen Produktnutzung. Er kann eine lokale oder einmalig gelesene Tabellenrepräsentation an den bestehenden `validateFinanceWorkbook()`-Parser übergeben, speichert aber keinen dauerhaften Google-Grant und führt keinen Hintergrundsync ein.
 
-Logout beendet weiterhin nur die Sitzung. Disconnect- und PIN-Recovery-Verhalten müssen beim Cutover neu benannt und so angepasst werden, dass das Entfernen einer Google-Anmeldung nicht beiläufig PostgreSQL-Finanzdaten löscht. Löschung oder Export der Finanzdaten benötigen später eine eigene ausdrückliche Aktion.
+Logout beendet die Sitzung und deaktiviert den lokalen Cache-Owner, löscht aber weder den ownergebundenen Browser-Cache noch PostgreSQL-Finanzdaten. Eine erneute verifizierte Anmeldung derselben Identität kann den Cache wieder zuordnen. Die PIN-Recovery beendet die Sitzung und löscht den lokalen Finance-Cache; Löschung oder Export der serverseitigen Finanzdaten benötigen eine eigene ausdrückliche Aktion.
 
 ## Übergang
 

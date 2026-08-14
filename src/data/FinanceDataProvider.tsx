@@ -5,12 +5,16 @@ import { createFinanceViewModel, type FinanceViewModel } from '../finance/viewMo
 import { getCurrentUserDateISO, millisecondsUntilNextLocalDay } from '../lib/calendarDate';
 import { safeAppReturnPath } from '../navigation/appNavigation';
 import {
+  ACTIVE_FINANCE_CACHE_OWNER_STORAGE_KEY,
   clearCachedFinanceData,
+  clearActiveFinanceCacheOwner,
   loadCachedFinanceData,
+  readActiveFinanceCacheOwner,
   readFinanceCacheGeneration,
   restoreFinanceCacheGeneration,
   rotateFinanceCacheGeneration,
   saveCachedFinanceData,
+  setActiveFinanceCacheOwner,
 } from './financeCache';
 import { FinanceApiError, productionFinanceApi, type FinanceApi, type FinanceSession } from './financeApi';
 import { runWithAbortTimeout } from './requestTimeout';
@@ -144,35 +148,49 @@ export function FinanceDataProvider({
   const abortController = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const cacheGeneration = useRef(readFinanceCacheGeneration());
+  const cacheOwnerKey = useRef<string | null>(null);
   stateRef.current = state;
 
   const acceptFinanceResponse = useCallback(async (
     response: Awaited<ReturnType<FinanceApi['getFinance']>>,
     requestGeneration: number,
     requestCacheGeneration: string,
+    requestOwnerKey: string,
   ) => {
     if (generation.current !== requestGeneration) return;
+    if (response.ownerKey !== requestOwnerKey) {
+      generation.current += 1;
+      clearActiveFinanceCacheOwner();
+      cacheOwnerKey.current = null;
+      const action = { type: 'reset' as const };
+      stateRef.current = financeProviderReducer(stateRef.current, action);
+      dispatch(action);
+      window.location.reload();
+      return;
+    }
     const persisted = await saveCachedFinanceData({
       refreshedAt: response.refreshedAt,
       data: response.data,
-    }, requestCacheGeneration);
+    }, requestOwnerKey, requestCacheGeneration);
     if (!persisted || generation.current !== requestGeneration) return;
-    dispatch({ type: 'sync-succeeded', ...response });
+    dispatch({ type: 'sync-succeeded', data: response.data, refreshedAt: response.refreshedAt });
   }, []);
 
   const refresh = useCallback(async () => {
     if (refreshPromise.current) return refreshPromise.current;
     const current = stateRef.current;
-    if (current.authState !== 'authenticated' && current.authState !== 'offline') return;
+    if (current.authState !== 'authenticated') return;
     const requestGeneration = generation.current;
     const requestCacheGeneration = cacheGeneration.current;
+    const requestOwnerKey = cacheOwnerKey.current;
+    if (!requestOwnerKey) return;
     const controller = new AbortController();
     abortController.current = controller;
     const task = (async () => {
       dispatch({ type: 'sync-started' });
       try {
         const response = await api.getFinance(controller.signal);
-        await acceptFinanceResponse(response, requestGeneration, requestCacheGeneration);
+        await acceptFinanceResponse(response, requestGeneration, requestCacheGeneration, requestOwnerKey);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         if (generation.current !== requestGeneration) return;
@@ -213,17 +231,11 @@ export function FinanceDataProvider({
   useEffect(() => {
     let active = true;
     void (async () => {
-      const cached = await loadCachedFinanceData().catch(() => null);
-      if (!active) return;
-      if (cached) dispatch({
-        type: 'cache-loaded',
-        data: cached.data,
-        refreshedAt: cached.refreshedAt,
-      });
       try {
         const session = await api.getSession();
         if (!active) return;
         if (!session.authenticated) {
+          clearActiveFinanceCacheOwner();
           const authError = new URLSearchParams(window.location.search).get('auth_error');
           if (authError) {
             const currentUrl = new URL(window.location.href);
@@ -240,11 +252,29 @@ export function FinanceDataProvider({
           dispatch({ type: 'signed-out', error: message ? { code: authError!, message } : undefined });
           return;
         }
+        cacheOwnerKey.current = session.ownerKey;
+        setActiveFinanceCacheOwner(session.ownerKey);
+        const cached = await loadCachedFinanceData(session.ownerKey).catch(() => null);
+        if (!active) return;
+        if (cached) {
+          const action = { type: 'cache-loaded' as const, data: cached.data, refreshedAt: cached.refreshedAt };
+          dispatch(action);
+          stateRef.current = financeProviderReducer(stateRef.current, action);
+        }
         dispatch({ type: 'authenticated', session });
         stateRef.current = financeProviderReducer(stateRef.current, { type: 'authenticated', session });
         await refresh();
       } catch {
-        if (active) dispatch({ type: 'offline-startup', hasData: Boolean(cached) });
+        const ownerKey = readActiveFinanceCacheOwner();
+        cacheOwnerKey.current = ownerKey;
+        const cached = ownerKey ? await loadCachedFinanceData(ownerKey).catch(() => null) : null;
+        if (!active) return;
+        if (cached) {
+          const action = { type: 'cache-loaded' as const, data: cached.data, refreshedAt: cached.refreshedAt };
+          dispatch(action);
+          stateRef.current = financeProviderReducer(stateRef.current, action);
+        }
+        dispatch({ type: 'offline-startup', hasData: Boolean(cached) });
       }
     })();
     return () => {
@@ -254,10 +284,50 @@ export function FinanceDataProvider({
     };
   }, [api, refresh]);
 
+  const restoreSessionAfterOffline = useCallback(async () => {
+    try {
+      const session = await api.getSession();
+      if (!session.authenticated) {
+        generation.current += 1;
+        abortController.current?.abort();
+        clearActiveFinanceCacheOwner();
+        cacheOwnerKey.current = null;
+        const action = { type: 'signed-out' as const };
+        stateRef.current = financeProviderReducer(stateRef.current, action);
+        dispatch(action);
+        return;
+      }
+
+      if (cacheOwnerKey.current !== session.ownerKey) {
+        generation.current += 1;
+        abortController.current?.abort();
+        const resetAction = { type: 'reset' as const };
+        stateRef.current = financeProviderReducer(stateRef.current, resetAction);
+        dispatch(resetAction);
+        cacheOwnerKey.current = session.ownerKey;
+        setActiveFinanceCacheOwner(session.ownerKey);
+        const cached = await loadCachedFinanceData(session.ownerKey).catch(() => null);
+        if (cached) {
+          const cacheAction = { type: 'cache-loaded' as const, data: cached.data, refreshedAt: cached.refreshedAt };
+          stateRef.current = financeProviderReducer(stateRef.current, cacheAction);
+          dispatch(cacheAction);
+        }
+      }
+
+      const authenticatedAction = { type: 'authenticated' as const, session };
+      stateRef.current = financeProviderReducer(stateRef.current, authenticatedAction);
+      dispatch(authenticatedAction);
+      await refresh();
+    } catch {
+      // Keep the validated local snapshot in its offline state until session resolution succeeds.
+    }
+  }, [api, refresh]);
+
   useEffect(() => {
     const onOnline = () => {
       setOnline(true);
       if (stateRef.current.authState === 'authenticated') void refresh();
+      else if (stateRef.current.authState === 'offline') void restoreSessionAfterOffline();
     };
     const onOffline = () => {
       setOnline(false);
@@ -268,15 +338,27 @@ export function FinanceDataProvider({
       const last = stateRef.current.lastSuccessfulRefresh;
       if (!last || Date.now() - new Date(last).valueOf() > STALE_AFTER_MS) void refresh();
     };
+    const onCacheOwnerChange = (event: StorageEvent) => {
+      if (event.key !== ACTIVE_FINANCE_CACHE_OWNER_STORAGE_KEY || event.newValue === cacheOwnerKey.current) return;
+      generation.current += 1;
+      abortController.current?.abort();
+      cacheOwnerKey.current = null;
+      const action = { type: 'reset' as const };
+      stateRef.current = financeProviderReducer(stateRef.current, action);
+      dispatch(action);
+      if (event.newValue && navigator.onLine) void restoreSessionAfterOffline();
+    };
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('storage', onCacheOwnerChange);
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('storage', onCacheOwnerChange);
     };
-  }, [refresh, setOnline]);
+  }, [refresh, restoreSessionAfterOffline, setOnline]);
 
   const logout = useCallback(async () => {
     const csrfToken = stateRef.current.csrfToken;
@@ -285,6 +367,8 @@ export function FinanceDataProvider({
       await api.logout(csrfToken);
       generation.current += 1;
       abortController.current?.abort();
+      clearActiveFinanceCacheOwner();
+      cacheOwnerKey.current = null;
       dispatch({ type: 'reset' });
     } catch (error) {
       const uiError = toUiError(error);
@@ -321,6 +405,8 @@ export function FinanceDataProvider({
       stateRef.current = financeProviderReducer(stateRef.current, { type: 'reset' });
       dispatch({ type: 'reset' });
       await clearCachedFinanceData();
+      clearActiveFinanceCacheOwner();
+      cacheOwnerKey.current = null;
       return 'success';
     } catch {
       if (!sessionEnded && restoreFinanceCacheGeneration(previousCacheGeneration)) {

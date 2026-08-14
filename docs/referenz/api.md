@@ -36,7 +36,8 @@ Mit Sitzung:
 {
   "authenticated": true,
   "user": { "email": "owner@example.invalid" },
-  "csrfToken": "…"
+  "csrfToken": "…",
+  "ownerKey": "pseudonymer-HMAC-Schlüssel"
 }
 ```
 
@@ -47,11 +48,12 @@ Ein ungültiges/abgelaufenes Cookie wird gelöscht und als abgemeldet beantworte
 ```json
 {
   "data": { "schemaVersion": 1, "asOf": "2026-08-01", "currency": "EUR" },
-  "refreshedAt": "2026-08-11T12:00:00.000Z"
+  "refreshedAt": "2026-08-11T12:00:00.000Z",
+  "ownerKey": "pseudonymer-HMAC-Schlüssel"
 }
 ```
 
-`data` ist vollständig gemäß dem normalisierten `FinanceDataV1`-Vertrag; die Kürzung oben ist nur Darstellung. Fehlender Owner oder fehlendes `finance_meta` ergibt 409 `finance_missing`. Ein intern ungültiger gespeicherter Stand ergibt 422 `finance_data_integrity` ohne Issues, IDs oder Beträge.
+`data` ist vollständig gemäß dem normalisierten `FinanceDataV1`-Vertrag; die Kürzung oben ist nur Darstellung. `ownerKey` ist ein serverseitig mit `SESSION_SECRET` aus der verifizierten Google-Subjekt-ID abgeleiteter HMAC-Wert. Er partitioniert und bindet Browser-Caches, enthält weder die Google-ID noch `owners.id` und ist kein Autorisierungstoken. Client und Server liefern ihn in Sitzungs- und Finance-Antworten, damit ein Identitätswechsel zwischen Tabs keine Antwort in die falsche Cache-Partition schreibt. Fehlender Owner oder fehlendes `finance_meta` ergibt 409 `finance_missing`. Ein intern ungültiger gespeicherter Stand ergibt 422 `finance_data_integrity` ohne Issues, IDs oder Beträge.
 
 ## Logout
 

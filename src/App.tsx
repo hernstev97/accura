@@ -77,7 +77,7 @@ export function ConnectionStateScreen() {
   if (finance.syncState === 'validation-error') {
     return (
       <ConnectionStateLayout
-        action={<AppButton onClick={() => void finance.refresh()} size="large">Erneut laden</AppButton>}
+        action={<AppButton disabled={!finance.online} onClick={() => void finance.refresh()} size="large">Erneut laden</AppButton>}
         eyebrow="Datenstand ungültig"
         mark={<Icon name="info" size={30} />}
         state="validation-error"

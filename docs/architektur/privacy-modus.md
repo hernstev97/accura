@@ -26,7 +26,7 @@ Der bestehende Privacy-Modus liegt als String unter `finance-privacy-v1`. Der ve
 
 ## Vergessene PIN
 
-Der Reset bleibt ohne Netzwerk bewusst gesperrt. Online wird eine vorhandene Google-Verbindung über eine auf 15 Sekunden begrenzte, abbrechbare Anfrage serverseitig getrennt, die Sitzung zurückgesetzt und der lokale Finance-Cache gelöscht; erst danach entfernt Accura PIN und App-Schutz. Vor der Cache-Löschung rotiert Accura eine profilweite Cache-Generation. Noch laufende Antworten aus anderen Tabs dürfen deshalb keinen vor dem Reset gestarteten Finance-Snapshot erneut speichern. Die Google-Sheets-Datei selbst bleibt unverändert. Schlägt ein Schritt fehl, bleibt die Sperre aktiv. Als äußerste lokale Alternative kann der Nutzer sämtliche Accura-Sitedaten über Browser- oder Android-Einstellungen löschen.
+Der Reset bleibt ohne Netzwerk bewusst gesperrt. Online wird die Sitzung über eine auf 15 Sekunden begrenzte, abbrechbare Anfrage beendet und sämtliche lokalen Finance-Cache-Partitionen werden gelöscht; erst danach entfernt Accura PIN und App-Schutz. Vor der Cache-Löschung rotiert Accura eine profilweite Cache-Generation. Noch laufende Antworten aus anderen Tabs dürfen deshalb keinen vor dem Reset gestarteten Finance-Snapshot erneut speichern. Der PostgreSQL-Finanzstand bleibt unverändert. Schlägt ein Schritt fehl, bleibt die Sperre aktiv. Als äußerste lokale Alternative kann der Nutzer sämtliche Accura-Sitedaten über Browser- oder Android-Einstellungen löschen.
 
 ## Sicherheitsgrenze
 

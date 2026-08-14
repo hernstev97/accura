@@ -44,7 +44,7 @@ Nur bewusst gewählte JPG-, PNG- oder WebP-Dateien werden verarbeitet. Dekodieru
 
 ## Speichervertrag
 
-`finance-appearance-v1` in `localStorage` enthält Version 1, Modus, Quelle, Palettenmetadaten, normalisierte Hex-Seeds, komplettes Theme-Paar und Wallpaper-Metadaten. Ungültige Daten fallen auf Standard zurück. Ein gleichnamiger, aber technisch separater IndexedDB-Speicher hält die Bildvorschau. Ein `storage`-Listener synchronisiert Präferenzen zwischen Tabs. Logout und Disconnect ändern Appearance nicht.
+`finance-appearance-v1` in `localStorage` enthält Version 1, Modus, Quelle, Palettenmetadaten, normalisierte Hex-Seeds, komplettes Theme-Paar und Wallpaper-Metadaten. Ungültige Daten fallen auf Standard zurück. Ein gleichnamiger, aber technisch separater IndexedDB-Speicher hält die Bildvorschau. Ein `storage`-Listener synchronisiert Präferenzen zwischen Tabs. Logout ändert Appearance nicht.
 
 ## Farben und Tokens
 

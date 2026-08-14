@@ -54,7 +54,7 @@ Jedes geänderte Bild einzeln auf Layout, Texte, Theme, Fokuszustand und unerwar
 - alte Dokumentationspfade und alle fünf Lesepfade;
 - Login, Sync, fehlender Finanzstand und Integritätsprobleme;
 - Offline-Start mit und ohne vorherigen Cache;
-- Logout versus Disconnect und anschließendes Wiederverbinden;
+- Logout blendet lokale Finanzdaten aus; erneute Anmeldung mit derselben Identität stellt den ownergebundenen Cache und den PostgreSQL-Stand wieder her;
 - Appearance-Entwurf, Anwenden, Abbrechen, Bildentfernung und OS-Moduswechsel;
 - Privacy sichtbar und mit Screenreader-Ausgabe, einschließlich Tabsynchronisierung;
 - Tastatur, Fokus, Reduced Motion, 320-Pixel-Reflow und Forced Colors.

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getServerConfig } from './_lib/config.js';
 import { handle, json, method } from './_lib/http.js';
-import { clearCookie, parseCookies, SESSION_COOKIE, verifySession } from './_lib/security.js';
+import { clearCookie, financeCacheOwnerKey, parseCookies, SESSION_COOKIE, verifySession } from './_lib/security.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!method(request, response, ['GET'])) return;
@@ -29,6 +29,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       authenticated: true,
       user: { email: session.email },
       csrfToken: session.csrf,
+      ownerKey: financeCacheOwnerKey(session.sub, config.sessionSecret),
     });
   });
 }

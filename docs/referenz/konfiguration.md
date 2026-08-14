@@ -20,7 +20,7 @@
 
 Alle Variablen sind serverseitig erforderlich. `VERCEL_ENV=production` oder `NODE_ENV=production` aktiviert Produktion und damit HTTPS-Prüfung sowie `Secure`-Cookies.
 
-`GOOGLE_SUB` ist keine Runtime-Variable der App. Sie wird nur vom Operator-Import `npm run import:finance` gelesen.
+Der Operator-Import akzeptiert keine Google-Subjekt-ID als Umgebungsvariable. Die verifizierte Anmeldung legt den Owner serverseitig an; der Single-Owner-Import verweigert eine fehlende oder mehrdeutige Zuordnung.
 
 ## Öffentliche Build- und Entwicklungsvariablen
 
