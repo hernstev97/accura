@@ -13,27 +13,32 @@ import {
 
 const parsed = parseSheetsBatchResponse(anonymousSheetsResponse);
 if (!parsed.success) throw new Error('Anonymous workbook is invalid.');
+const ownerA = 'owner-cache-key-a';
+const ownerB = 'owner-cache-key-b';
 
 describe('last-known-good IndexedDB cache', () => {
   beforeEach(async () => clearCachedFinanceData());
 
   it('stores and loads only normalized FinanceDataV1 snapshots', async () => {
     await saveCachedFinanceData({
-      spreadsheetId: 'spreadsheet-id',
-      spreadsheetName: 'Anonyme Finanzen',
       refreshedAt: '2026-08-08T10:00:00.000Z',
       data: parsed.data,
-    });
-    await expect(loadCachedFinanceData()).resolves.toEqual(expect.objectContaining({
-      spreadsheetId: 'spreadsheet-id',
+    }, ownerA);
+    await expect(loadCachedFinanceData(ownerA)).resolves.toEqual(expect.objectContaining({
+      ownerKey: ownerA,
       data: expect.objectContaining({ schemaVersion: 1, monthlyIncomeCents: 259_132 }),
     }));
   });
 
-  it('removes cached personal finance data on disconnect cleanup', async () => {
-    await saveCachedFinanceData({ spreadsheetId: 'id', spreadsheetName: 'Name', refreshedAt: '2026-08-08T10:00:00.000Z', data: parsed.data });
+  it('never returns one owner\'s cached finance data for another owner', async () => {
+    await saveCachedFinanceData({ refreshedAt: '2026-08-08T10:00:00.000Z', data: parsed.data }, ownerA);
+    await expect(loadCachedFinanceData(ownerB)).resolves.toBeNull();
+  });
+
+  it('removes cached personal finance data on local cleanup', async () => {
+    await saveCachedFinanceData({ refreshedAt: '2026-08-08T10:00:00.000Z', data: parsed.data }, ownerA);
     await clearCachedFinanceData();
-    await expect(loadCachedFinanceData()).resolves.toBeNull();
+    await expect(loadCachedFinanceData(ownerA)).resolves.toBeNull();
   });
 
   it('rejects a cache write started before a protected-access recovery generation change', async () => {
@@ -48,11 +53,9 @@ describe('last-known-good IndexedDB cache', () => {
     expect(values.get(FINANCE_CACHE_GENERATION_STORAGE_KEY)).not.toBe(requestGeneration);
 
     await expect(saveCachedFinanceData({
-      spreadsheetId: 'stale-id',
-      spreadsheetName: 'Veralteter Stand',
       refreshedAt: '2026-08-08T10:00:00.000Z',
       data: parsed.data,
-    }, requestGeneration, storage)).resolves.toBe(false);
-    await expect(loadCachedFinanceData()).resolves.toBeNull();
+    }, ownerA, requestGeneration, storage)).resolves.toBe(false);
+    await expect(loadCachedFinanceData(ownerA)).resolves.toBeNull();
   });
 });

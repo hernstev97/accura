@@ -78,7 +78,7 @@ try {
   await page.getByLabel('Einstellungen öffnen').click();
   const offlineInfo = await page.getByRole('dialog', { name: 'Informationen' }).innerText();
   assert.match(offlineInfo, /Andere Farben · Systemmodus/);
-  assert.match(offlineInfo, /Offline verfügbar[\s\S]*Anonyme Finanzen/);
+  assert.match(offlineInfo, /Offline verfügbar[\s\S]*Gespeicherter Finanzstand/);
   assert.match(offlineInfo, /lokal auf diesem Gerät verfügbar/);
   assert.doesNotMatch(offlineInfo, /Jetzt aktualisieren|Andere Tabelle auswählen|Abmelden blendet Finanzdaten aus/);
   await page.keyboard.press('Escape');
@@ -102,12 +102,17 @@ try {
   assert.equal(await page.locator('[data-destination="debt"]').isVisible(), true, 'Online-Rückkehr verlor die aktive Ansicht');
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Online-Rückkehr verlor die Service-Worker-Kontrolle');
   const recoveredCache = await page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('finance-overview', 1);
+    const ownerKey = localStorage.getItem('active-finance-cache-owner-v1');
+    if (!ownerKey) {
+      reject(new Error('Aktiver Cache-Owner fehlt.'));
+      return;
+    }
+    const request = indexedDB.open('finance-overview', 2);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const database = request.result;
       const transaction = database.transaction('last-good', 'readonly');
-      const getRequest = transaction.objectStore('last-good').get('finance-data-v1');
+      const getRequest = transaction.objectStore('last-good').get(`finance-data-v1:${ownerKey}`);
       getRequest.onerror = () => reject(getRequest.error);
       getRequest.onsuccess = () => {
         resolve(getRequest.result ?? null);
@@ -134,7 +139,7 @@ try {
   try {
     await installFinanceApiMocks(coldPage, 'signed-out');
     await coldPage.goto(baseUrl, { waitUntil: 'networkidle' });
-    await coldPage.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+    await coldPage.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
     await coldPage.evaluate(() => navigator.serviceWorker.ready);
     await coldPage.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await coldPage.unrouteAll({ behavior: 'wait' });

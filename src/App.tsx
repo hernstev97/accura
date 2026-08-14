@@ -43,22 +43,8 @@ function ScreenLoading({ label = 'Ansicht wird geladen …' }: { label?: string 
 
 export function ConnectionStateScreen() {
   const finance = useFinanceData();
-  const isLoading = finance.authState === 'checking' || finance.pickerOpen || (finance.syncState === 'syncing' && !finance.data);
-  if (isLoading) return <ScreenLoading label={finance.pickerOpen ? 'Google-Tabelle wird geprüft …' : 'Verbindung wird geprüft …'} />;
-
-  if (finance.connectionState === 'reconnect') {
-    return (
-      <ConnectionStateLayout
-        action={<AppButton onClick={finance.signIn} size="large">Mit Google neu verbinden</AppButton>}
-        eyebrow="Autorisierung abgelaufen"
-        mark={<Icon name="account" size={30} />}
-        state="reconnect"
-        supporting="Der Zugriff wurde widerrufen oder ist abgelaufen. Verbinde das freigegebene Konto erneut; deine Tabelle wird danach wieder geladen."
-        title="Google erneut verbinden"
-        tone="warning"
-      />
-    );
-  }
+  const isLoading = finance.authState === 'checking' || (finance.syncState === 'syncing' && !finance.data);
+  if (isLoading) return <ScreenLoading label="Verbindung wird geprüft …" />;
 
   if (finance.syncState === 'offline' && !finance.data) {
     return (
@@ -66,7 +52,7 @@ export function ConnectionStateScreen() {
         eyebrow="Offline"
         mark={<Icon name="info" size={30} />}
         state="offline-empty"
-        supporting="Stelle eine Internetverbindung her, um dich anzumelden und deine Tabelle erstmals zu synchronisieren."
+        supporting="Stelle eine Internetverbindung her, um dich anzumelden und deinen Finanzstand erstmals zu laden."
         title="Noch kein lokaler Datenstand"
         tone="warning"
       />
@@ -78,10 +64,10 @@ export function ConnectionStateScreen() {
       <ConnectionStateLayout
         action={<AppButton onClick={finance.signIn} size="large">Mit Google anmelden</AppButton>}
         eyebrow="Private Finanzübersicht"
-        mark={<Icon name="sheet" size={30} />}
+        mark={<Icon name="account" size={30} />}
         state="signed-out"
-        supporting="Melde dich mit dem freigegebenen Google-Konto an und wähle anschließend genau eine Tabelle im Finance Data Schema v1 aus."
-        title="Mit deiner Tabelle verbinden"
+        supporting="Melde dich mit dem freigegebenen Google-Konto an. Google dient nur der Anmeldung; der Finanzstand liegt in accura."
+        title="Bei accura anmelden"
       >
         {finance.error ? <p className="connection-state__hint">{finance.error.message}</p> : null}
       </ConnectionStateLayout>
@@ -91,12 +77,12 @@ export function ConnectionStateScreen() {
   if (finance.syncState === 'validation-error') {
     return (
       <ConnectionStateLayout
-        action={<AppButton onClick={() => void finance.selectSpreadsheet()} size="large">Andere Tabelle auswählen</AppButton>}
-        eyebrow="Schema nicht gültig"
+        action={<AppButton disabled={!finance.online} onClick={() => void finance.refresh()} size="large">Erneut laden</AppButton>}
+        eyebrow="Datenstand ungültig"
         mark={<Icon name="info" size={30} />}
         state="validation-error"
-        supporting={finance.error?.message ?? 'Die ausgewählte Tabelle entspricht nicht dem Finance Data Schema v1.'}
-        title="Tabelle konnte nicht übernommen werden"
+        supporting={finance.error?.message ?? 'Der gespeicherte Finanzstand ist ungültig.'}
+        title="Finanzstand konnte nicht geladen werden"
         tone="danger"
       >
         <ValidationIssues error={finance.error} />
@@ -104,21 +90,14 @@ export function ConnectionStateScreen() {
     );
   }
 
-  const needsConnection = finance.connectionState === 'disconnected';
   return (
     <ConnectionStateLayout
-      action={(
-        <AppButton onClick={needsConnection ? finance.signIn : () => void finance.selectSpreadsheet()} size="large">
-          {needsConnection ? 'Google verbinden' : 'Google-Tabelle auswählen'}
-        </AppButton>
-      )}
-      eyebrow={needsConnection ? 'Google-Verbindung fehlt' : 'Fast fertig'}
-      mark={<Icon name="sheet" size={30} />}
-      state={needsConnection ? 'disconnected' : 'no-spreadsheet'}
-      supporting={needsConnection
-        ? 'Die Anmeldung ist gültig, aber es wurde keine gespeicherte Google-Verbindung gefunden.'
-        : 'Der Picker zeigt ausschließlich Google-Sheets-Dateien. Die Auswahl wird erst nach erfolgreicher Schema-Prüfung gespeichert.'}
-      title={needsConnection ? 'Google erneut verbinden' : 'Google-Tabelle auswählen'}
+      action={<AppButton disabled={!finance.online} onClick={() => void finance.refresh()} size="large">Erneut prüfen</AppButton>}
+      eyebrow="Noch kein Finanzstand"
+      mark={<Icon name="info" size={30} />}
+      state="no-finance"
+      supporting="Die Anmeldung ist gültig, aber es wurde noch kein Finanzstand importiert. Der einmalige Import liegt außerhalb der App."
+      title="Finanzstand fehlt"
     />
   );
 }
@@ -181,7 +160,7 @@ function App({ initialDestination }: AppProps) {
           <header className="top-app-bar">
             <div className="screen-identity">
               <AccuraLogo className="brand-mark" />
-              <div><span>accura</span><strong>{hasData ? screenName : 'Verbindung'}</strong></div>
+              <div><span>accura</span><strong>{hasData ? screenName : 'Anmeldung'}</strong></div>
             </div>
             <div className="top-app-bar__actions">
               <PrivacyToggle />
@@ -190,7 +169,7 @@ function App({ initialDestination }: AppProps) {
           </header>
           <PwaUpdateNotice />
           {hasData ? <SyncStatusBanner /> : null}
-          <main aria-label={hasData ? screenName : 'Datenquelle einrichten'} ref={mainRef} tabIndex={-1}>
+          <main aria-label={hasData ? screenName : 'Anmeldung'} ref={mainRef} tabIndex={-1}>
             {hasData ? <Screen destination={destination} /> : <ConnectionStateScreen />}
           </main>
           {hasData ? <AdaptiveNavigation onNavigate={navigate} selectedId={destination} /> : null}

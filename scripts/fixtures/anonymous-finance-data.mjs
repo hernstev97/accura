@@ -77,13 +77,13 @@ export const anonymousSession = {
   authenticated: true,
   user: { email: 'owner@example.test' },
   csrfToken: 'browser-test-csrf-token',
-  connection: { connected: true, spreadsheet: { id: 'anonymous-sheet-id', name: 'Anonyme Finanzen' } },
+  ownerKey: 'browser-test-owner-cache-key-000000001',
 };
 
 export const anonymousFinanceResponse = {
-  spreadsheet: anonymousSession.connection.spreadsheet,
   data: anonymousFinanceData,
   refreshedAt: '2026-08-08T10:00:00.000Z',
+  ownerKey: anonymousSession.ownerKey,
 };
 
 export async function installFinanceApiMocks(page, state = 'connected', financeData = anonymousFinanceData) {
@@ -91,30 +91,13 @@ export async function installFinanceApiMocks(page, state = 'connected', financeD
   await page.route('**/api/session', async (route) => {
     if (state === 'loading') await new Promise((resolve) => setTimeout(resolve, 350));
     if (state === 'signed-out') return route.fulfill({ json: { authenticated: false } });
-    if (state === 'no-spreadsheet') return route.fulfill({ json: { ...anonymousSession, connection: { connected: true, spreadsheet: null } } });
     return route.fulfill({ json: anonymousSession });
   });
   await page.route('**/api/finance', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 80));
-    if (state === 'validation-error') return route.fulfill({ status: 422, json: { error: { code: 'invalid_finance_schema', message: 'Die Tabelle entspricht nicht Finance Data Schema v1.', details: { issues: [{ tab: '_Meta', row: 2, column: 'schema_version', message: 'Schema-Version wird nicht unterstützt.', expected: '1' }] } } } });
-    if (state === 'reconnect') return route.fulfill({ status: 401, json: { error: { code: 'reconnect_required', message: 'Die Google-Verbindung muss erneut autorisiert werden.' } } });
+    if (state === 'no-finance') return route.fulfill({ status: 409, json: { error: { code: 'finance_missing', message: 'Es ist noch kein Finanzstand vorhanden.' } } });
+    if (state === 'validation-error') return route.fulfill({ status: 422, json: { error: { code: 'finance_data_integrity', message: 'Der gespeicherte Finanzstand ist ungültig.' } } });
     return route.fulfill({ json: financeResponse });
   });
-  await page.route('**/api/google/picker', (route) => route.fulfill({ json: { accessToken: 'short-lived-browser-token', expiresIn: 3600, apiKey: 'public-picker-key', appId: '123456', clientId: 'client-id' } }));
-  await page.route('**/api/google/spreadsheet', (route) => route.fulfill({ json: financeResponse }));
   await page.route('**/api/auth/logout', (route) => route.fulfill({ json: { ok: true } }));
-  await page.route('**/api/connection/disconnect', (route) => route.fulfill({ json: { ok: true } }));
-}
-
-export async function installPickerMock(page) {
-  await page.addInitScript(() => {
-    class DocsView { setMimeTypes() { return this; } setSelectFolderEnabled() { return this; } }
-    class PickerBuilder {
-      addView() { return this; } setAppId() { return this; } setDeveloperKey() { return this; }
-      setOAuthToken() { return this; } setOrigin() { return this; }
-      setCallback(callback) { this.callback = callback; return this; }
-      build() { return { setVisible: () => this.callback({ action: 'picked', docs: [{ id: 'anonymous-sheet-id', name: 'Anonyme Finanzen' }] }) }; }
-    }
-    window.google = { picker: { Action: { PICKED: 'picked', CANCEL: 'cancel' }, ViewId: { SPREADSHEETS: 'spreadsheets' }, DocsView, PickerBuilder } };
-  });
 }

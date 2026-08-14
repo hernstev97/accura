@@ -17,14 +17,8 @@ Zuerst sichtbaren Zustand, Browser-Online-Status, betroffene Aktion und Zeitpunk
 | `server_configuration_error` | Variable fehlt oder Origin/Callback inkonsistent | Vercel-Scope und [Konfiguration](../referenz/konfiguration.md) prüfen |
 | `user_not_allowed` | falsche oder unverifizierte Google-E-Mail | `ALLOWED_GOOGLE_EMAIL` und Google-Testnutzer prüfen |
 | `invalid_oauth_state` | abgelaufene/zweite Transaktion oder Cookie blockiert | Anmeldung in einem Tab neu starten; Cookie-Einstellungen prüfen |
-| `refresh_token_missing` | Google gab keinen Offline-Grant aus | App-Grant widerrufen und bewusst neu verbinden |
-| `missing_required_scope` | `drive.file` nicht erteilt | Consent/Scope-Konfiguration korrigieren |
-| `connection_missing` | Sitzung vorhanden, Postgres-Zeile fehlt | neu verbinden; DB/Environment nicht verwechseln |
-| `spreadsheet_missing` | noch keine Auswahl | Picker öffnen und gültige Kopie wählen |
-| `spreadsheet_inaccessible` | Datei nicht vom Grant erfasst/gelöscht | Zugriff prüfen und erneut über Picker wählen |
-| `invalid_spreadsheet_type` | keine aktive native Google-Tabelle | Google Sheets statt XLSX/PDF wählen |
-| `invalid_finance_schema` | Tab, Header, Wert, Referenz oder Snapshot ungültig | strukturierte Issues und [Schema](../referenz/finance-data-schema-v1.md) abarbeiten |
-| `reconnect_required` | Grant abgelaufen oder widerrufen | Google neu verbinden |
+| `finance_missing` | verifizierte Identität hat keinen Owner oder der Owner kein `finance_meta` | verifizierte Erstanmeldung und Operator-Import prüfen; DB/Environment nicht verwechseln |
+| `finance_data_integrity` | gespeicherter Stand verletzt den v1-Vertrag | Importquelle und Constraints prüfen; keine Werte aus Logs erwarten |
 | `csrf_failed` | Origin/CSRF passt nicht | `APP_ORIGIN`, Proxy-Origin und Session prüfen; nicht Token umgehen |
 | Offline ohne Daten | noch nie erfolgreich synchronisiert oder Browsercache gelöscht | online ersten gültigen Sync durchführen |
 | alter Stand trotz Netz | Refresh fehlgeschlagen oder Vordergrundschwelle nicht erreicht | manuell aktualisieren und `/api/finance` prüfen |
@@ -33,7 +27,7 @@ Zuerst sichtbaren Zustand, Browser-Online-Status, betroffene Aktion und Zeitpunk
 
 ## Schemafehler lesen
 
-Ein Issue nennt `tab`, Tabellenzeile (Header ist Zeile 1), `column`, erwartete Form und eine deutsche Meldung. Erst fehlende Tabs/Header beheben, dann Datentypen, IDs/Fremdschlüssel und zuletzt fehlende Snapshots. Tabellen-ID wird bei einer neuen Auswahl erst nach vollständig erfolgreicher Prüfung gespeichert.
+Operator-Importfehler nennen `tab`, Tabellenzeile (Header ist Zeile 1), `column`, erwartete Form und eine deutsche Meldung. Erst fehlende Tabs/Header beheben, dann Datentypen, IDs/Fremdschlüssel und zuletzt fehlende Snapshots. Die Produkt-API gibt für einen ungültigen gespeicherten Stand keine Issues aus.
 
 ## Offline und Service Worker
 

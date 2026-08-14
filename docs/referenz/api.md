@@ -15,11 +15,8 @@ Alle Endpunkte sind same-origin Vercel Functions, antworten mit `Cache-Control: 
 | `GET` | `/api/auth/google/start?return_to=/budget` | nein | 302 zu Google, setzt OAuth-Transaktionscookie |
 | `GET` | `/api/auth/google/callback` | OAuth-Cookie, Query `code`/`state` | 302 zur App, setzt Session-Cookie |
 | `GET` | `/api/session` | optionales Session-Cookie | Sitzungsstatus |
-| `GET` | `/api/finance` | Session | validierter Finance-Snapshot |
-| `GET` | `/api/google/picker` | Session | kurzlebige Picker-Konfiguration |
-| `PUT` | `/api/google/spreadsheet` | Session + CSRF + Origin | geprüfte Auswahl und Finance-Snapshot |
+| `GET` | `/api/finance` | Session | validierter Finance-Snapshot aus PostgreSQL |
 | `POST` | `/api/auth/logout` | Session + CSRF + Origin | Sitzung beendet |
-| `POST` | `/api/connection/disconnect` | Session + CSRF + Origin | Grant best-effort widerrufen, Verbindung gelöscht |
 
 Nicht erlaubte Methoden ergeben 405 und einen `Allow`-Header.
 
@@ -40,74 +37,46 @@ Mit Sitzung:
   "authenticated": true,
   "user": { "email": "owner@example.invalid" },
   "csrfToken": "…",
-  "connection": {
-    "connected": true,
-    "spreadsheet": { "id": "…", "name": "Anonyme Finanzen" }
-  }
+  "ownerKey": "pseudonymer-HMAC-Schlüssel"
 }
 ```
 
-`connection.connected` kann `false` sein; `spreadsheet` kann `null` sein. Ein ungültiges/abgelaufenes Cookie wird gelöscht und als abgemeldet beantwortet.
+Ein ungültiges/abgelaufenes Cookie wird gelöscht und als abgemeldet beantwortet. Die Sitzung sagt nichts über das Vorhandensein eines Finanzstands.
 
 ## `GET /api/finance`
 
 ```json
 {
-  "spreadsheet": { "id": "…", "name": "Anonyme Finanzen" },
   "data": { "schemaVersion": 1, "asOf": "2026-08-01", "currency": "EUR" },
-  "refreshedAt": "2026-08-11T12:00:00.000Z"
+  "refreshedAt": "2026-08-11T12:00:00.000Z",
+  "ownerKey": "pseudonymer-HMAC-Schlüssel"
 }
 ```
 
-`data` ist vollständig gemäß dem normalisierten `FinanceDataV1`-Vertrag; die Kürzung oben ist nur Darstellung. Fehlende Verbindung/Auswahl ergibt 409, ungültiges Workbook 422, abgelaufener Grant 401 `reconnect_required`.
+`data` ist vollständig gemäß dem normalisierten `FinanceDataV1`-Vertrag; die Kürzung oben ist nur Darstellung. `ownerKey` ist ein serverseitig mit `SESSION_SECRET` aus der verifizierten Google-Subjekt-ID abgeleiteter HMAC-Wert. Er partitioniert und bindet Browser-Caches, enthält weder die Google-ID noch `owners.id` und ist kein Autorisierungstoken. Client und Server liefern ihn in Sitzungs- und Finance-Antworten, damit ein Identitätswechsel zwischen Tabs keine Antwort in die falsche Cache-Partition schreibt. Fehlender Owner oder fehlendes `finance_meta` ergibt 409 `finance_missing`. Ein intern ungültiger gespeicherter Stand ergibt 422 `finance_data_integrity` ohne Issues, IDs oder Beträge.
 
-## `GET /api/google/picker`
+## Logout
 
-```json
-{
-  "accessToken": "…",
-  "expiresIn": 3600,
-  "apiKey": "…",
-  "appId": "1234567890",
-  "clientId": "….apps.googleusercontent.com"
-}
-```
-
-Das Access-Token ist kurzlebig und darf nicht persistiert werden. `apiKey`, `appId` und `clientId` sind browserverwendete Identifikatoren.
-
-## `PUT /api/google/spreadsheet`
-
-Header: `content-type: application/json`, `x-csrf-token: …`. Exakter Body:
-
-```json
-{ "fileId": "google-drive-file-id" }
-```
-
-`fileId` ist ein nicht leerer String von 10 bis 256 Zeichen; zusätzliche Felder sind unzulässig. Der Server prüft Drive-Datei und vollständiges Schema vor Speicherung. Die Erfolgsantwort entspricht `/api/finance`.
-
-## Logout und Disconnect
-
-Beide sind `POST` ohne Body und antworten:
+`POST /api/auth/logout` ohne Body antwortet:
 
 ```json
 { "ok": true }
 ```
 
-Logout löscht nur das Session-Cookie. Disconnect versucht Google-Widerruf, löscht die Postgres-Verbindung auch bei Revocation-Netzfehler und löscht das Session-Cookie. Der Client entfernt nach Erfolg zusätzlich seinen Finance-IndexedDB-Cache.
+Logout löscht nur das Session-Cookie. PostgreSQL-Finanzzeilen bleiben unverändert. Der lokale Finance-Cache bleibt erhalten, bis eine PIN-Recovery ihn bewusst entfernt.
 
 ## Fehlerformat
 
 ```json
 {
   "error": {
-    "code": "invalid_finance_schema",
-    "message": "Die Tabelle entspricht nicht Finance Data Schema v1.",
-    "details": { "issues": [] }
+    "code": "finance_missing",
+    "message": "Es ist noch kein Finanzstand vorhanden."
   }
 }
 ```
 
-`details` ist optional. Relevante Codes sind `method_not_allowed`, `unauthenticated`, `forbidden`, `csrf_failed`, `connection_missing`, `spreadsheet_missing`, `invalid_request`, `spreadsheet_inaccessible`, `invalid_spreadsheet_type`, `invalid_finance_schema`, `reconnect_required`, `google_token_error`, `sheets_read_failed` und `internal_error`. OAuth-Callbackfehler werden als sicher allowgelisteter `auth_error`-Queryparameter zum verifizierten internen Rückweg oder ersatzweise zu `/` umgeleitet.
+`details` ist optional und wird für Integritätsfehler des gespeicherten Stands nicht gesetzt. Relevante Codes sind `method_not_allowed`, `unauthenticated`, `forbidden`, `csrf_failed`, `finance_missing`, `finance_data_integrity` und `internal_error`. OAuth-Callbackfehler werden als sicher allowgelisteter `auth_error`-Queryparameter zum verifizierten internen Rückweg oder ersatzweise zu `/` umgeleitet.
 
 ## Implementierung und Tests
 

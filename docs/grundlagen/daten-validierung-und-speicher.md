@@ -16,17 +16,17 @@ Jede Systemgrenze liefert zunächst unbekannte Daten: Google Sheets, HTTP-Antwor
 
 | Speicher | Geeignet für | Lebensdauer/Grenze in accura |
 | --- | --- | --- |
-| signiertes `HttpOnly`-Cookie | Sitzung | Browser sendet es same-origin; JavaScript kann es nicht lesen; Logout/Disconnect löschen es |
+| signiertes `HttpOnly`-Cookie | Sitzung | Browser sendet es same-origin; JavaScript kann es nicht lesen; Logout oder Ablauf löschen es |
 | kurzlebiges OAuth-Cookie | State, Nonce, PKCE-Verifier | etwa zehn Minuten, nur während Anmeldung |
-| `localStorage` | kleine Geräteeinstellungen | Appearance, Privacy, versionierter App-Schutz/PIN-Verifier und eine fachinhaltsfreie Cache-Generation für tabübergreifende Recovery-Invalidierung; bleibt bei Logout/Disconnect |
+| `localStorage` | kleine Geräteeinstellungen | Appearance, Privacy, versionierter App-Schutz/PIN-Verifier, fachinhaltsfreie Cache-Generation und pseudonyme aktive Owner-Partition; der Owner-Marker wird bei Logout entfernt |
 | `sessionStorage` | Tab-Sitzung | besuchte Screens für einmalige Entrance-Motion |
-| IndexedDB | strukturierte größere lokale Daten | ein Finance-Snapshot und optional eine reduzierte Wallpaper-Vorschau in getrennten Datenbanken |
+| IndexedDB | strukturierte größere lokale Daten | pro pseudonymem Owner höchstens ein Finance-Snapshot und optional eine reduzierte Wallpaper-Vorschau in getrennten Datenbanken |
 | Service-Worker-Cache | statische App-Shell | keine `/api/*`-Antworten |
-| PostgreSQL | serverseitige Google-Verbindung | verschlüsseltes Refresh-Token und gewählte Datei, keine Finanzzeilen |
+| PostgreSQL | serverseitige Finanzquelle | Owner-Zuordnung und ownergebundene normalisierte Finanzzeilen; keine Google-Tokens |
 
 ## Grenzen
 
-Browserdaten sind nicht automatisch verschlüsselt und können durch Gerätezugriff, Browserprofile, DevTools oder Schadsoftware zugänglich sein. Browser dürfen lokalen Speicher löschen. Cookies verhindern nicht allein CSRF; dafür braucht es Origin- und Token-Prüfung. Verschlüsselung eines Refresh-Tokens in PostgreSQL schützt nicht den bereits laufenden Serverprozess mit Schlüsselzugriff.
+Browserdaten sind nicht automatisch verschlüsselt und können durch Gerätezugriff, Browserprofile, DevTools oder Schadsoftware zugänglich sein. Die Owner-Partition verhindert versehentliches Anzeigen zwischen Anmeldungen, ist aber keine Verschlüsselung oder Zugriffskontrolle gegen Code im selben Origin. Browser dürfen lokalen Speicher löschen. Cookies verhindern nicht allein CSRF; dafür braucht es Origin- und Token-Prüfung.
 
 ## Implementierung und Tests
 

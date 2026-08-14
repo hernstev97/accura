@@ -8,9 +8,9 @@
 
 ## Mentales Modell
 
-OAuth delegiert begrenzten Zugriff: Der Nutzer bestätigt bei Google, dass `accura` ausgewählte Drive-Dateien verwenden darf. Das Google-Passwort wird nie an `accura` übermittelt. Ein Authorization Code gelangt zum Server und wird dort gegen Token getauscht.
+OAuth bestätigt hier ausschließlich die Identität: Der Nutzer meldet sich bei Google mit `openid email profile` an. Das Google-Passwort wird nie an `accura` übermittelt. Ein Authorization Code gelangt zum Server und wird dort gegen ein ID-Token und gegebenenfalls ein kurzlebiges Access-Token getauscht; accura speichert keinen Google-Token dauerhaft.
 
-**State** bindet Callback und gestartete Anmeldung zusammen und erschwert Login-CSRF. **Nonce** bindet das ID-Token an die Transaktion. **PKCE** bindet den Authorization Code an einen zuvor erzeugten geheimen Verifier. Das Refresh-Token erlaubt spätere Access-Token und ist deshalb ein langlebiges Server-Secret.
+**State** bindet Callback und gestartete Anmeldung zusammen und erschwert Login-CSRF. **Nonce** bindet das ID-Token an die Transaktion. **PKCE** bindet den Authorization Code an einen zuvor erzeugten geheimen Verifier. Ein dauerhaftes Google-Refresh-Token wird für den identity-only Ablauf weder angefordert noch gespeichert.
 
 CSRF ist das Auslösen einer authentifizierten Aktion aus einer fremden Website. `SameSite=Lax`-Cookies helfen, reichen aber für schreibende Endpunkte nicht als einziger Vertrag. `accura` verlangt zusätzlich einen zur signierten Sitzung gehörenden CSRF-Header und die exakte konfigurierte Origin.
 
@@ -18,14 +18,13 @@ CSRF ist das Auslösen einer authentifizierten Aktion aus einer fremden Website.
 
 - Geheimnisse bleiben serverseitig und erhalten nie ein `VITE_`-Präfix.
 - Eingaben werden an jeder Grenze validiert; Fehlermeldungen geben keine internen Geheimnisse preis.
-- Least Privilege: `drive.file` statt vollständigem Drive-Zugriff.
+- Least Privilege: nur die tatsächlich benötigten Scopes; in accura nach dem Cutover `openid email profile`.
 - Single-User-Allowlist wird serverseitig anhand verifizierter E-Mail geprüft.
-- Token werden bei Speicherung mit AES-256-GCM verschlüsselt und an die Google-Subjekt-ID gebunden.
 - HTTPS ist in Produktion Pflicht; Cookie-Flags und genaue Redirect-URIs hängen davon ab.
 
 ## Was nicht garantiert wird
 
-OAuth ist keine lokale Datenverschlüsselung. CSRF-Schutz verhindert nicht XSS. Tokenverschlüsselung schützt nicht gegen einen vollständig kompromittierten Server samt Schlüssel. `drive.file` begrenzt die sichtbaren Dateien, ersetzt aber nicht die serverseitige MIME- und Schemaprüfung.
+OAuth ist keine lokale Datenverschlüsselung. CSRF-Schutz verhindert nicht XSS. Ein Session-Secret schützt nicht gegen einen vollständig kompromittierten Server samt Schlüssel.
 
 ## Implementierung und Tests
 

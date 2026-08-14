@@ -28,18 +28,16 @@ Schulden stellt Ablösesumme, planmäßige Gesamtkosten, daraus abgeleitete Mehr
 
 ## Globale Aktionen
 
-- **Aktualisieren:** liest die gewählte Tabelle erneut. Automatisch wird außerdem beim Start, nach einer Auswahl, bei Rückkehr der Verbindung und nach mehr als zehn Minuten im Hintergrund aktualisiert.
-- **Tabelle wechseln:** öffnet Google Picker für genau eine Google-Sheets-Datei; gespeichert wird sie erst nach Drive- und Schemaprüfung.
-- **Abmelden:** beendet die App-Sitzung. Google-Verbindung, ausgewählte Tabelle und lokaler Finance-Cache bleiben bestehen.
-- **Google-Verbindung trennen:** versucht den Google-Grant zu widerrufen, löscht die Postgres-Verbindung, beendet die Sitzung und entfernt den Finance-Cache auf diesem Gerät.
+- **Aktualisieren:** liest den gespeicherten PostgreSQL-Stand erneut. Automatisch wird außerdem beim Start, bei Rückkehr der Verbindung und beim Sichtbarwerden des Tabs aktualisiert, wenn der letzte erfolgreiche Sync mehr als zehn Minuten zurückliegt. In ausgeblendeten Tabs gibt es kein Polling.
+- **Abmelden:** beendet die App-Sitzung und blendet lokale Finanzdaten aus. Der gespeicherte Finanzstand in PostgreSQL und der ownergebundene lokale Finance-Cache bleiben bestehen; erst die erneute verifizierte Anmeldung derselben Identität aktiviert ihn wieder.
 - **Darstellung:** System-, Hell- und Dunkelmodus; Browser-/Systemfarbe, kuratierte Presets oder lokal analysiertes Bild. Entwürfe werden erst durch Anwenden dauerhaft.
-- **Privacy:** maskiert oder zeigt Geldbeträge; die Einstellung bleibt lokal über Logout und Disconnect hinweg erhalten und wird zwischen Tabs synchronisiert.
+- **Privacy:** maskiert oder zeigt Geldbeträge; die Einstellung bleibt lokal über Logout hinweg erhalten und wird zwischen Tabs synchronisiert.
 - **App-Schutz:** verdeckt Accura optional nach einem Hintergrundwechsel. Eine zusätzliche sechsstellige lokale PIN sperrt außerdem Start und Reload; beide Schalter liegen in den Einstellungen.
 - **Begrüßung:** Die Übersicht wählt abhängig von der lokalen Uhr „Guten Morgen“, „Guten Tag“ oder „Guten Abend“ und kombiniert dies mit dem `accura`-Branding.
 
 ## Offline-Nutzung
 
-Beim ersten Start ohne vorherigen erfolgreichen Sync gibt es keinen Finanzstand. Nach einem erfolgreichen Sync zeigt ein Offline-Start den Last-known-good-Stand mit sichtbarer Offline-/Veraltet-Markierung. Anmeldung, Picker und Aktualisierung benötigen das Netzwerk.
+Beim ersten Start ohne vorherigen erfolgreichen Sync gibt es keinen Finanzstand. Nach einem erfolgreichen Sync zeigt ein Offline-Start den Last-known-good-Stand mit sichtbarer Offline-/Veraltet-Markierung. Anmeldung und Aktualisierung benötigen das Netzwerk.
 
 ## Implementierung und Tests
 

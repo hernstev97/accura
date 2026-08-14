@@ -12,16 +12,13 @@
 | --- | --- | --- |
 | Sitzungsprüfung | Ladeansicht „Verbindung wird geprüft“ | abwarten |
 | Abgemeldet | Google-Anmeldung wird angeboten | anmelden |
-| Google-Verbindung fehlt | gültige Sitzung, aber kein Postgres-Datensatz | neu verbinden |
-| Keine Tabelle gewählt | Picker-Aktion, keine Finanzansichten | Tabelle auswählen |
-| Picker geöffnet | Auswahl/Prüfung läuft; konkurrierender Sync wird abgebrochen | auswählen oder abbrechen |
+| Finanzstand fehlt | gültige Sitzung, aber kein `finance_meta` | Operator-Import ausführen |
 | Synchronisierung ohne Daten | Ladeansicht | abwarten |
 | Aktuell | Finanzansichten, `stale=false` | normal verwenden |
 | Last-known-good/veraltet | alter Stand bleibt sichtbar, Statusbanner warnt | aktualisieren |
 | Offline mit Cache | alter Stand bleibt sichtbar | Verbindung wiederherstellen |
 | Offline ohne Cache | „Noch kein lokaler Datenstand“ | online erstmals synchronisieren |
-| Ungültiges Schema | konkrete Tab-/Zeilen-/Spaltenprobleme | Tabelle korrigieren oder wechseln |
-| Autorisierung abgelaufen/widerrufen | „Google erneut verbinden“ | OAuth erneut ausführen |
+| Ungültiger Finanzstand | generische Integritätsmeldung ohne Werte | Operator-Datenstand prüfen |
 | Netzwerk-/Serverfehler mit Daten | Daten bleiben sichtbar und als veraltet markiert | später erneut laden |
 | Netzwerk-/Serverfehler ohne Daten | zentrale Fehler-/Einrichtungsansicht | Ursache beheben |
 | Privacy aus/ein | Geldbeträge sichtbar/maskiert | Umschalter betätigen |
@@ -44,19 +41,17 @@ stateDiagram-v2
   Pruefen --> Abgemeldet: keine Sitzung
   Pruefen --> OfflineLeer: Netzwerkfehler, kein Cache
   Pruefen --> Veraltet: Cache vorhanden
-  Pruefen --> KeineVerbindung: Sitzung ohne Google-Verbindung
-  Pruefen --> KeineTabelle: Verbindung ohne Auswahl
-  Pruefen --> Synchronisieren: Auswahl vorhanden
+  Pruefen --> KeinFinanzstand: Sitzung ohne finance_meta
+  Pruefen --> Synchronisieren: Sitzung vorhanden
   Veraltet --> Synchronisieren: Sitzung/Netz verfügbar
   Synchronisieren --> Aktuell: validierte Antwort
   Synchronisieren --> Veraltet: Fehler, alter Stand vorhanden
-  Synchronisieren --> Schemafehler: ungültige Tabelle
-  Synchronisieren --> NeuVerbinden: Grant abgelaufen
+  Synchronisieren --> Schemafehler: ungültiger gespeicherter Stand
   Aktuell --> Synchronisieren: manuell, online, Vordergrund
   Aktuell --> OfflineMitDaten: offline
   OfflineMitDaten --> Synchronisieren: wieder online
   Abgemeldet --> Pruefen: OAuth abgeschlossen
-  NeuVerbinden --> Pruefen: OAuth abgeschlossen
+  KeinFinanzstand --> Synchronisieren: Import vorhanden
 ```
 
 Implementierung und Tests: [FinanceDataProvider](../../src/data/FinanceDataProvider.tsx), [Provider-Tests](../../src/data/FinanceDataProvider.test.ts), [Verbindungsansichten](../../src/App.tsx), [Offline-Smoke-Test](../../scripts/offline-smoke.mjs).
@@ -65,11 +60,11 @@ Implementierung und Tests: [FinanceDataProvider](../../src/data/FinanceDataProvi
 
 Explizite Pfade, Reload sowie Zurück/Vorwärts werden immer aus der aktuellen URL bestimmt. Nur der Manifest-Start `/?app-launch=pwa` darf die lokal gespeicherte letzte Destination lesen; der Marker wird dabei per Replace durch den kanonischen Pfad ersetzt. Dadurch bleibt `/` bei normalen Aufrufen eindeutig die Übersicht und die History erhält keinen künstlichen Zwischeneintrag. Lokale Unterzustände innerhalb eines Screens sind nicht Teil dieses Vertrags.
 
-Bei Anmeldung oder erneuter Google-Verbindung sendet der Client nur einen der vier kanonischen Pfade als Rückweg. Der Server validiert ihn, bindet ihn an die signierte OAuth-Transaktion und verwendet ihn nach Erfolg oder einem verifizierten Callbackfehler erneut. Nicht erlaubte Werte fallen auf `/` zurück.
+Bei der Google-Anmeldung sendet der Client nur einen der vier kanonischen Pfade als Rückweg. Der Server validiert ihn, bindet ihn an die signierte OAuth-Transaktion und verwendet ihn nach Erfolg oder einem verifizierten Callbackfehler erneut. Nicht erlaubte Werte fallen auf `/` zurück.
 
-## Abmelden und Trennen
+## Abmelden
 
-Abmelden löscht nur das signierte Session-Cookie im Browser. Trennen widerruft nach Möglichkeit das Google-Token und löscht selbst bei fehlgeschlagener Widerruf-Anfrage den Verbindungsdatensatz; im Client wird danach der Finance-Cache gelöscht. Appearance, Privacy und App-Schutz sind unabhängige Geräteeinstellungen und bleiben in beiden Fällen erhalten. Nur die ausdrücklich bestätigte Recovery einer vergessenen PIN entfernt den App-Schutz nach erfolgreicher Online-Bereinigung.
+Abmelden löscht das signierte Session-Cookie und deaktiviert die aktive Finance-Cache-Partition. PostgreSQL-Finanzzeilen und der ownergebundene lokale Snapshot bleiben erhalten, werden abgemeldet aber nicht angezeigt. Erst eine erneute verifizierte Anmeldung derselben Identität ordnet diesen Cache wieder zu. Appearance, Privacy und App-Schutz sind unabhängige Geräteeinstellungen. Nur die ausdrücklich bestätigte Recovery einer vergessenen PIN entfernt den lokalen App-Schutz und sämtliche lokalen Finance-Cache-Partitionen nach erfolgreichem Logout; der serverseitige Finanzstand bleibt bestehen.
 
 ## Appearance-Transaktion
 

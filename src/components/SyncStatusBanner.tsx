@@ -13,10 +13,9 @@ export function SyncStatusBanner() {
   const status = finance.syncState === 'syncing' ? 'Wird aktualisiert …'
     : finance.syncState === 'offline' ? 'Offline · gespeicherter Stand'
       : finance.syncState === 'validation-error' ? 'Neue Daten ungültig · letzter gültiger Stand'
-        : finance.connectionState === 'reconnect' ? 'Google muss erneut verbunden werden'
-          : finance.stale ? 'Gespeicherter Stand' : 'Aktuell';
+        : finance.stale ? 'Gespeicherter Stand' : 'Aktuell';
   const tone = finance.syncState === 'validation-error' ? 'danger'
-    : finance.syncState === 'offline' || finance.connectionState === 'reconnect' || finance.stale ? 'warning'
+    : finance.syncState === 'offline' || finance.stale ? 'warning'
       : 'neutral';
   const important = tone !== 'neutral';
 
@@ -49,7 +48,6 @@ export function SyncStatusBanner() {
       {important ? (
         <div className="sync-status__details">
           <p>{finance.error?.message ?? status}</p>
-          {finance.connectionState === 'reconnect' ? <AppButton onClick={finance.signIn} size="small" variant="text">Neu verbinden</AppButton> : null}
           <ValidationIssues error={finance.error} />
         </div>
       ) : null}

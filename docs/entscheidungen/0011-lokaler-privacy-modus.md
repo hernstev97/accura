@@ -14,7 +14,7 @@ Geldbeträge sollen in gemeinsam genutzten oder einsehbaren Umgebungen schnell g
 
 ## Entscheidung
 
-Ein lokaler Umschalter maskiert Geldwerte in sichtbarer UI und Accessibility-Text. Die boolesche Einstellung liegt als String unter `finance-privacy-v1` in `localStorage`, synchronisiert Tabs und bleibt bei Logout/Disconnect.
+Ein lokaler Umschalter maskiert Geldwerte in sichtbarer UI und Accessibility-Text. Die boolesche Einstellung liegt als String unter `finance-privacy-v1` in `localStorage`, synchronisiert Tabs und bleibt bei Logout.
 
 ## Begründung
 

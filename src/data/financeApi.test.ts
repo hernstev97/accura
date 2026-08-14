@@ -6,7 +6,7 @@ describe('production finance API', () => {
     vi.unstubAllGlobals();
   });
 
-  it('forwards the disconnect abort signal to fetch', async () => {
+  it('forwards the logout abort signal to fetch', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), {
       headers: { 'content-type': 'application/json' },
       status: 200,
@@ -14,9 +14,9 @@ describe('production finance API', () => {
     vi.stubGlobal('fetch', fetchMock);
     const controller = new AbortController();
 
-    await productionFinanceApi.disconnect('csrf-token', controller.signal);
+    await productionFinanceApi.logout('csrf-token', controller.signal);
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/connection/disconnect', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout', expect.objectContaining({
       headers: { 'x-csrf-token': 'csrf-token' },
       method: 'POST',
       signal: controller.signal,

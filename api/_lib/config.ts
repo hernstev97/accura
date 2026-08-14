@@ -6,12 +6,9 @@ export type ServerConfig = {
   appOrigin: string;
   googleClientId: string;
   googleClientSecret: string;
-  googleApiKey: string;
-  googleCloudProjectNumber: string;
   googleOAuthRedirectUri: string;
   allowedGoogleEmail: string;
   databaseUrl: string;
-  tokenEncryptionKey: string;
   sessionSecret: string;
   production: boolean;
 };
@@ -38,20 +35,15 @@ export function getServerConfig(env: NodeJS.ProcessEnv = process.env): ServerCon
   }
   const allowedGoogleEmail = required('ALLOWED_GOOGLE_EMAIL', env).toLowerCase();
   if (!z.string().email().safeParse(allowedGoogleEmail).success) throw new Error('ALLOWED_GOOGLE_EMAIL must be an email address.');
-  const projectNumber = required('GOOGLE_CLOUD_PROJECT_NUMBER', env);
-  if (!/^\d+$/.test(projectNumber)) throw new Error('GOOGLE_CLOUD_PROJECT_NUMBER must be numeric.');
   const sessionSecret = required('SESSION_SECRET', env);
   if (Buffer.byteLength(sessionSecret, 'utf8') < 32) throw new Error('SESSION_SECRET must contain at least 32 bytes.');
   return {
     appOrigin,
     googleClientId: required('GOOGLE_CLIENT_ID', env),
     googleClientSecret: required('GOOGLE_CLIENT_SECRET', env),
-    googleApiKey: required('GOOGLE_API_KEY', env),
-    googleCloudProjectNumber: projectNumber,
     googleOAuthRedirectUri: redirectUri,
     allowedGoogleEmail,
     databaseUrl: required('DATABASE_URL', env),
-    tokenEncryptionKey: required('TOKEN_ENCRYPTION_KEY', env),
     sessionSecret,
     production: env.VERCEL_ENV === 'production' || env.NODE_ENV === 'production',
   };

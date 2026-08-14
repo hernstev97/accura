@@ -85,7 +85,7 @@ async function handleRequest(request, response) {
       authenticated: true,
       user: { email: 'smoke@example.com' },
       csrfToken: 'smoke-csrf-token',
-      connection: { connected: true, spreadsheet: null },
+      ownerKey: 'auth-smoke-owner-cache-key-000000001',
     } : { authenticated: false }, 'session');
     return;
   }
@@ -118,7 +118,7 @@ page.setDefaultTimeout(15_000);
 
 try {
   await page.goto(`${baseUrl}/budget`, { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.equal(new URL(page.url()).pathname, '/budget', 'Abgemeldeter Deep Link verlor seinen Pfad');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -140,7 +140,7 @@ try {
   assert.doesNotMatch(await rejectedCallback.text(), /<html|<!doctype/i, 'OAuth callback received the cached SPA shell');
 
   await page.goto(`${baseUrl}/budget`, { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.equal(new URL(page.url()).pathname, '/budget', 'Deep Link ging vor dem Login verloren');
   assert.equal(await page.evaluate(() => navigator.serviceWorker.controller !== null), true, 'Service Worker verlor vor dem Login die Kontrolle');
 
@@ -161,7 +161,7 @@ try {
   assert.equal(callbackResponse.fromServiceWorker(), true, 'Auth callback navigation did not pass through the controlling service worker');
   assert.equal(callbackResponse.headers()['x-smoke-function'], 'auth-callback');
   assert.equal(callbackResponse.headers()['cache-control'], 'no-store');
-  await page.getByRole('heading', { name: 'Google-Tabelle auswählen' }).waitFor();
+  await page.getByRole('heading', { name: 'Finanzstand fehlt' }).waitFor();
   assert.equal(new URL(page.url()).pathname, '/budget', 'OAuth-Rückkehr verlor den validierten Deep Link');
 
   assert.equal(apiHits.start, 1, 'Login navigation did not reach the auth start function');

@@ -24,25 +24,20 @@ const visibleText = (markup: string) => markup.replace(/<!-- -->|<[^>]+>/g, '');
 const mockApi: FinanceApi = {
   getSession: async () => ({ authenticated: false }),
   getFinance: async () => { throw new Error('not implemented'); },
-  getPickerConfig: async () => { throw new Error('not implemented'); },
-  saveSpreadsheet: async () => { throw new Error('not implemented'); },
   logout: async () => {},
-  disconnect: async () => {},
 };
 
 function TestWrapper({ children, privacyEnabled = true }: { children: React.ReactNode; privacyEnabled?: boolean }) {
   const initialState = {
     authState: 'authenticated' as const,
-    connectionState: 'connected' as const,
+    connectionState: 'ready' as const,
     syncState: 'idle' as const,
     email: 'user@example.test',
     csrfToken: 'token',
-    spreadsheet: { id: 'mock-id', name: 'Mock Sheet' },
     data: baseData,
     lastSuccessfulRefresh: '2026-08-08T10:00:00Z',
     stale: false,
     error: null,
-    pickerOpen: false,
   };
 
   return (

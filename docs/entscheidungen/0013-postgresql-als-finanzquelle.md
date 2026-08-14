@@ -42,14 +42,7 @@ SQL erzwingt strukturelle Integrität, Typen, Eindeutigkeit und Owner-gebundene 
 
 ## Übergang
 
-Diese ADR legt das verbindliche Zielbild fest, beschreibt aber nicht den bereits implementierten Zustand. Bis zum Cutover darf der vorhandene Sheets-Lesepfad unverändert weiterlaufen; neue Funktionen bauen ihn nicht weiter aus.
-
-Die Umsetzung erfolgt in klaren Schritten:
-
-1. ACC-71 erstellt Schema und Repository-Lesepfad, ohne die fachliche Grenze zu ändern.
-2. ACC-29 weist mit derselben anonymen Fixture identische Cents, Fälligkeiten und Snapshot-Auswahl für Parser- und PostgreSQL-Pfad nach. Dieser Nachweis ist umgesetzt.
-3. ACC-66 importiert den privaten Bestand vollständig, prüft die Parität und schaltet die einzige produktive Quelle auf PostgreSQL um.
-4. ACC-72 baut anschließend den eng begrenzten In-App-Editor.
+ACC-71, ACC-29 und ACC-66 sind umgesetzt: Schema, Reader, Paritätsnachweis, produktiver `/api/finance`-Read und Operator-Import existieren. Google Sheets ist nur noch Importformat. ACC-72 baut anschließend den In-App-Editor.
 
 Der Cutover ist eindeutig. Ein dauerhafter Feature-Flag-Dualbetrieb oder stiller Rückfall auf Sheets ist nicht vorgesehen.
 
@@ -75,7 +68,7 @@ Schema, Migration, Repository und Schreibgrenzen müssen sorgfältig umgesetzt u
 
 ## Implementierung und Tests
 
-- Domänenvertrag und bestehender Produktionspfad: [FinanceDataV1](../../src/finance/types.ts), [Sheets-Parser](../../src/finance/parser.ts), [Finance-Service](../../api/_lib/financeService.ts)
-- Umgesetzter ACC-71-Stand: [Migration 002](../../migrations/002_finance_data_v1.sql), [PostgreSQL-Reader](../../api/_lib/financeRepository.ts), [Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts)
-- Umgesetzter ACC-29-Nachweis: dieselbe Suite vergleicht Cents, `salaryDay`/`dueDay` und `selectLatest*Snapshot` von Parser- und PostgreSQL-Pfad an der anonymen Fixture
-- Weitere Nachweise und Cutover: ACC-66 und ACC-72 in Linear
+- Domänenvertrag: [FinanceDataV1](../../src/finance/types.ts), [Sheets-Parser als Import](../../src/finance/parser.ts)
+- Persistenz und produktiver Read/Write: [Migration 002](../../migrations/002_finance_data_v1.sql), [Migration 003](../../migrations/003_drop_google_connections.sql), [PostgreSQL-Repository](../../api/_lib/financeRepository.ts), [Operator-Import](../../scripts/import-finance.ts)
+- Paritätsnachweis: [Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts)
+- Nächster Produktschritt: ACC-72 in Linear

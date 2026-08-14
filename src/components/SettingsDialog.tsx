@@ -34,17 +34,16 @@ export function SettingsEntry() {
   const [colorsOpen, setColorsOpen] = useState(false);
   const [pinDialogMode, setPinDialogMode] = useState<PinManagementMode | null>(null);
   const [protectionMessage, setProtectionMessage] = useState<string | null>(null);
-  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+
   const triggerRef = useRef<HTMLButtonElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const colorsRef = useRef<HTMLButtonElement>(null);
   const privacyScreenRef = useRef<HTMLInputElement>(null);
   const pinProtectionRef = useRef<HTMLButtonElement>(null);
-  const cancelDisconnectRef = useRef<HTMLButtonElement>(null);
+
 
   const closeSettings = useCallback(() => {
-    setConfirmDisconnect(false);
     setColorsOpen(false);
     setPinDialogMode(null);
     setProtectionMessage(null);
@@ -62,12 +61,6 @@ export function SettingsEntry() {
       surface.removeAttribute('aria-hidden');
     }
   }, [colorsOpen, pinDialogMode]);
-
-  useEffect(() => {
-    if (!confirmDisconnect) return;
-    const frame = requestAnimationFrame(() => cancelDisconnectRef.current?.focus({ preventScroll: true }));
-    return () => cancelAnimationFrame(frame);
-  }, [confirmDisconnect]);
 
   useEffect(() => {
     if (!open || !privacy.appProtection.privacyScreenEnabled) return;
@@ -108,12 +101,18 @@ export function SettingsEntry() {
     : localDataOnly
       ? finance.syncState === 'offline' ? 'Offline verfügbar' : 'Lokaler Datenstand'
       : 'Nicht angemeldet';
-  const sourceName = finance.spreadsheet?.name ?? (localDataOnly ? 'Gespeicherte Finanzdaten' : 'Keine Tabelle ausgewählt');
+  const sourceName = finance.data
+    ? 'Gespeicherter Finanzstand'
+    : authenticated
+      ? 'Noch kein Finanzstand'
+      : localDataOnly
+        ? 'Gespeicherte Finanzdaten'
+        : 'Kein lokaler Datenstand';
   const sourceSupporting = authenticated
-    ? 'OAuth-Tokens und Google-Zugangsdaten bleiben ausschließlich auf dem Server.'
+    ? 'Google dient nur der Anmeldung. Der Finanzstand liegt in accura und wird nicht aus einer Tabelle gelesen.'
     : localDataOnly
       ? 'Dieser Datenstand ist lokal auf diesem Gerät verfügbar. Es werden keine Google-Zugangsdaten im Browser gespeichert.'
-      : 'Es sind weder eine Google-Verbindung noch lokale Finanzdaten auf diesem Gerät aktiv.';
+      : 'Es sind weder eine Anmeldung noch lokale Finanzdaten auf diesem Gerät aktiv.';
   const pinConfigured = Boolean(privacy.appProtection.pin);
   const pinSetupAvailable = privacy.pinSecurityAvailable && privacy.appProtectionStorageAvailable;
 
@@ -134,7 +133,7 @@ export function SettingsEntry() {
         ariaLabelledBy="settings-title"
         className="settings-layer"
         initialFocusRef={closeRef}
-        onClose={() => { if (confirmDisconnect) setConfirmDisconnect(false); else closeSettings(); }}
+        onClose={closeSettings}
         open={open}
         returnFocusRef={triggerRef}
         surfaceClassName="settings-surface"
@@ -145,18 +144,7 @@ export function SettingsEntry() {
           <AppButton aria-label="Informationen schließen" className="icon-button" iconOnly onClick={closeSettings} ref={closeRef} variant="text"><Icon name="close" /></AppButton>
         </header>
 
-        {confirmDisconnect ? (
-          <div className="disconnect-confirmation" role="alert" aria-live="assertive">
-            <h3>Google-Verbindung trennen?</h3>
-            <p>Google-Zugriff, gespeicherte Verbindung und der Offline-Datenstand auf diesem Gerät werden entfernt.</p>
-            <p>Farben, Design und App-Schutz bleiben als gerätebezogene Einstellungen erhalten.</p>
-            <div className="dialog-actions">
-              <AppButton className="secondary-action" onClick={() => setConfirmDisconnect(false)} ref={cancelDisconnectRef} variant="tonal">Abbrechen</AppButton>
-              <AppButton className="danger-action" onClick={() => void finance.disconnect().then(closeSettings)} variant="danger">Endgültig trennen</AppButton>
-            </div>
-          </div>
-        ) : (
-          <div className="settings-groups">
+        <div className="settings-groups">
             <section className="settings-group" aria-labelledby="settings-appearance-title">
               <h3 id="settings-appearance-title">Darstellung</h3>
               <button className="appearance-settings-action" onClick={() => setColorsOpen(true)} ref={colorsRef} type="button">
@@ -182,7 +170,6 @@ export function SettingsEntry() {
               {finance.data && authenticated ? (
                 <div className="settings-actions">
                   <AppButton className="settings-action" disabled={finance.syncState === 'syncing' || !finance.online} leadingIcon={<Icon name="refresh" size={20} />} onClick={() => void finance.refresh()} variant="tonal">Jetzt aktualisieren</AppButton>
-                  <AppButton className="settings-action" disabled={!finance.online} leadingIcon={<Icon name="sheet" size={20} />} onClick={() => void finance.selectSpreadsheet()} variant="tonal">Andere Tabelle auswählen</AppButton>
                 </div>
               ) : null}
             </section>
@@ -243,13 +230,12 @@ export function SettingsEntry() {
               <h3 id="settings-account-title">{authenticated ? 'Konto & Datenschutz' : 'Datenschutz'}</h3>
               <p className="settings-group__supporting">
                 {authenticated
-                  ? 'Abmelden blendet Finanzdaten aus. Nur das Trennen entfernt die Google-Verbindung und lokale Offline-Finanzdaten; Farben, Design und App-Schutz bleiben erhalten.'
+                  ? 'Abmelden beendet nur die Sitzung auf diesem Gerät. Der gespeicherte Finanzstand in accura bleibt erhalten; Farben, Design und App-Schutz ebenfalls.'
                   : 'Farben, Design und App-Schutz bleiben ausschließlich auf diesem Gerät. Lokale Finanzdaten werden nur als letzter gültiger Offline-Stand gespeichert.'}
               </p>
               {authenticated ? (
                 <div className="settings-actions settings-actions--secondary">
                   <AppButton className="settings-action" leadingIcon={<Icon name="logout" size={20} />} onClick={() => void finance.logout().then(closeSettings)} variant="tonal">Abmelden</AppButton>
-                  <AppButton className="settings-action settings-action--danger" leadingIcon={<Icon name="unlink" size={20} />} onClick={() => setConfirmDisconnect(true)} variant="danger">Google-Verbindung trennen</AppButton>
                 </div>
               ) : null}
             </section>
@@ -265,8 +251,7 @@ export function SettingsEntry() {
                 <a href="/THIRD_PARTY_NOTICES.txt" target="_blank">Drittanbieter-Lizenzen</a>
               </nav>
             </section>
-          </div>
-        )}
+        </div>
       </AdaptiveDialog>
 
       <ColorThemeDialog onClose={closeColors} open={colorsOpen} returnFocusRef={colorsRef} />

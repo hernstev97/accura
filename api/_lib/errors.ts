@@ -10,13 +10,6 @@ export class AppError extends Error {
   }
 }
 
-export class ReconnectRequiredError extends AppError {
-  constructor() {
-    super('reconnect_required', 401, 'Die Google-Verbindung muss erneut autorisiert werden.');
-    this.name = 'ReconnectRequiredError';
-  }
-}
-
 export const publicError = (error: unknown) => {
   if (error instanceof AppError) {
     return { status: error.status, body: { error: { code: error.code, message: error.message, details: error.details } } };

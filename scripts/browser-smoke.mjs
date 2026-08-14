@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { installFinanceApiMocks, installPickerMock } from './fixtures/anonymous-finance-data.mjs';
+import {
+  anonymousFinanceData,
+  anonymousFinanceResponse,
+  anonymousSession,
+  installFinanceApiMocks,
+} from './fixtures/anonymous-finance-data.mjs';
 import { createAppearanceImageFixture } from './fixtures/appearance-image.mjs';
 
 const baseUrl = process.env.SMOKE_URL ?? 'http://127.0.0.1:5173';
@@ -495,16 +500,14 @@ async function statePage(state, viewport = { width: 412, height: 915 }, contextO
   const page = await context.newPage();
   const errors = collectErrors(page);
   await installFinanceApiMocks(page, state);
-  await installPickerMock(page);
   return { context, page, errors };
 }
 
 try {
   for (const [state, expected] of [
-    ['signed-out', 'Mit deiner Tabelle verbinden'],
-    ['no-spreadsheet', 'Google-Tabelle auswählen'],
-    ['validation-error', 'Tabelle konnte nicht übernommen werden'],
-    ['reconnect', 'Google erneut verbinden'],
+    ['signed-out', 'Bei accura anmelden'],
+    ['no-finance', 'Finanzstand fehlt'],
+    ['validation-error', 'Finanzstand konnte nicht geladen werden'],
   ]) {
     const test = await statePage(state);
     await test.page.goto(baseUrl, { waitUntil: 'networkidle' });
@@ -522,7 +525,7 @@ try {
       assert.notEqual(after, before, 'Injizierter Akzent änderte die primäre Aktion nicht');
       await test.page.evaluate(() => document.documentElement.style.removeProperty('--color-system-accent-source'));
     }
-    const expectedStatus = state === 'validation-error' ? '422' : state === 'reconnect' ? '401' : null;
+    const expectedStatus = state === 'validation-error' ? '422' : state === 'no-finance' ? '409' : null;
     const unexpectedErrors = expectedStatus ? test.errors.filter((error) => !error.includes(`status of ${expectedStatus}`)) : test.errors;
     assert.deepEqual(unexpectedErrors, [], unexpectedErrors.join('\n'));
     await test.context.close();
@@ -597,21 +600,68 @@ try {
   assert.deepEqual(routing.errors, [], routing.errors.join('\n'));
   await routing.context.close();
 
-  const picker = await statePage('no-spreadsheet');
-  await picker.page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await picker.page.getByRole('button', { name: 'Google-Tabelle auswählen' }).click();
-  await picker.page.getByRole('heading', { name: overviewHeading }).waitFor();
-  assert.match(await picker.page.locator('#overview-hero').innerText(), /Ausgaben[\s\S]*Rücklagen[\s\S]*Frei/);
-  assert.deepEqual(picker.errors, [], picker.errors.join('\n'));
-  await picker.context.close();
+  const missing = await statePage('no-finance');
+  await missing.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await missing.page.getByRole('heading', { name: 'Finanzstand fehlt' }).waitFor();
+  assert.deepEqual(missing.errors.filter((error) => !error.includes('status of 409')), [], missing.errors.join('\n'));
+  await missing.context.close();
 
   const logout = await statePage('connected');
   await logout.page.goto(baseUrl, { waitUntil: 'networkidle' });
   await openSettings(logout.page);
   await logout.page.getByRole('button', { name: 'Abmelden' }).click();
-  await logout.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await logout.page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.deepEqual(logout.errors, [], logout.errors.join('\n'));
   await logout.context.close();
+
+  const ownerSwitch = await statePage('connected');
+  await ownerSwitch.page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await ownerSwitch.page.getByRole('heading', { name: overviewHeading }).waitFor();
+  const previousOwnerKey = await ownerSwitch.page.evaluate(() => localStorage.getItem('active-finance-cache-owner-v1'));
+  assert.equal(previousOwnerKey, anonymousSession.ownerKey);
+  const nextOwnerKey = 'browser-test-second-owner-key-0000000001';
+  await ownerSwitch.page.route('**/api/session', (route) => route.fulfill({
+    json: { ...anonymousSession, ownerKey: nextOwnerKey, user: { email: 'second-owner@example.test' } },
+  }));
+  await ownerSwitch.page.route('**/api/finance', (route) => route.fulfill({
+    json: {
+      ...anonymousFinanceResponse,
+      data: { ...anonymousFinanceData, monthlyIncomeCents: 100_000 },
+      ownerKey: nextOwnerKey,
+    },
+  }));
+  await ownerSwitch.page.evaluate(({ next, previous }) => {
+    localStorage.setItem('active-finance-cache-owner-v1', next);
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'active-finance-cache-owner-v1',
+      newValue: next,
+      oldValue: previous,
+      storageArea: localStorage,
+    }));
+  }, { next: nextOwnerKey, previous: previousOwnerKey });
+  await ownerSwitch.page.getByText(/von 1\.000,00\s*€/).waitFor();
+  const ownerCaches = await ownerSwitch.page.evaluate(async ({ next, previous }) => {
+    const database = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('finance-overview', 2);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const store = database.transaction('last-good', 'readonly').objectStore('last-good');
+      const read = (ownerKey) => new Promise((resolve, reject) => {
+        const request = store.get(`finance-data-v1:${ownerKey}`);
+        request.onsuccess = () => resolve(request.result ?? null);
+        request.onerror = () => reject(request.error);
+      });
+      return { next: await read(next), previous: await read(previous) };
+    } finally {
+      database.close();
+    }
+  }, { next: nextOwnerKey, previous: previousOwnerKey });
+  assert.equal(ownerCaches.previous?.data.monthlyIncomeCents, anonymousFinanceData.monthlyIncomeCents, 'Identitätswechsel überschrieb den Cache des vorherigen Owners');
+  assert.equal(ownerCaches.next?.data.monthlyIncomeCents, 100_000, 'Identitätswechsel persistierte die Antwort nicht in der neuen Owner-Partition');
+  assert.deepEqual(ownerSwitch.errors, [], ownerSwitch.errors.join('\n'));
+  await ownerSwitch.context.close();
 
   const appearance = await statePage('connected');
   await appearance.page.goto(baseUrl, { waitUntil: 'networkidle' });
@@ -783,7 +833,7 @@ try {
   const themeBeforeLogout = await themeSnapshot(appearance.page);
   await openSettings(appearance.page);
   await appearance.page.getByRole('button', { name: 'Abmelden' }).click();
-  await appearance.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
+  await appearance.page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
   assert.deepEqual(await themeSnapshot(appearance.page), themeBeforeLogout, 'Abmelden entfernt die gerätebezogene Appearance-Präferenz');
   assert.match(await appearance.page.evaluate(() => localStorage.getItem('finance-appearance-v1') ?? ''), /"version":1/);
   await assertNoOverflow(appearance.page, 'Appearance-Flow 412×915');
@@ -796,7 +846,6 @@ try {
   const peer = await tabSync.context.newPage();
   const peerErrors = collectErrors(peer);
   await installFinanceApiMocks(peer, 'connected');
-  await installPickerMock(peer);
   await peer.goto(baseUrl, { waitUntil: 'networkidle' });
   await openSettings(peer);
   const peerColors = await openColors(peer);
@@ -1084,34 +1133,34 @@ try {
   assert.equal(await mobile.page.getByLabel('Informationen schließen').evaluate((element) => element === document.activeElement), true);
   await mobile.page.keyboard.press('Shift+Tab');
   assert.equal(await dialog.evaluate((element) => element.contains(document.activeElement)), true, 'Fokus verlässt den Dialog');
-  await mobile.page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
-  await mobile.page.getByText('Google-Verbindung trennen?').waitFor();
-  await mobile.page.getByRole('button', { name: 'Abbrechen' }).click();
+  assert.equal(await mobile.page.getByRole('button', { name: /Google-Verbindung trennen/ }).count(), 0, 'Entfernter Disconnect wird weiterhin angeboten');
   await mobile.page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   await openSettings(mobile.page);
-  const disconnectColors = await openColors(mobile.page);
-  await disconnectColors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
-  await disconnectColors.getByRole('radio', { name: 'Blau', exact: true }).check();
-  await disconnectColors.getByRole('button', { name: 'Anwenden', exact: true }).click();
-  await disconnectColors.waitFor({ state: 'detached' });
-  const themeBeforeDisconnect = await themeSnapshot(mobile.page);
-  await mobile.page.getByRole('button', { name: /Google-Verbindung trennen/ }).click();
-  await mobile.page.getByRole('button', { name: 'Endgültig trennen' }).click();
-  await mobile.page.getByRole('heading', { name: 'Mit deiner Tabelle verbinden' }).waitFor();
-  const cachedAfterDisconnect = await mobile.page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('finance-overview', 1);
+  const logoutColors = await openColors(mobile.page);
+  await logoutColors.locator('.appearance-source-picker').getByRole('radio', { name: 'Farben', exact: true }).check();
+  await logoutColors.getByRole('radio', { name: 'Blau', exact: true }).check();
+  await logoutColors.getByRole('button', { name: 'Anwenden', exact: true }).click();
+  await logoutColors.waitFor({ state: 'detached' });
+  const mobileThemeBeforeLogout = await themeSnapshot(mobile.page);
+  const cacheOwnerBeforeLogout = await mobile.page.evaluate(() => localStorage.getItem('active-finance-cache-owner-v1'));
+  assert.ok(cacheOwnerBeforeLogout, 'Ownergebundener Cache hat vor Logout keine aktive Partition');
+  await mobile.page.getByRole('button', { name: 'Abmelden' }).click();
+  await mobile.page.getByRole('heading', { name: 'Bei accura anmelden' }).waitFor();
+  assert.equal(await mobile.page.evaluate(() => localStorage.getItem('active-finance-cache-owner-v1')), null, 'Logout ließ die aktive Cache-Partition zugänglich');
+  const cachedAfterLogout = await mobile.page.evaluate((ownerKey) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('finance-overview', 2);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const database = request.result;
       const transaction = database.transaction('last-good', 'readonly');
-      const getRequest = transaction.objectStore('last-good').get('finance-data-v1');
+      const getRequest = transaction.objectStore('last-good').get(`finance-data-v1:${ownerKey}`);
       getRequest.onsuccess = () => { resolve(getRequest.result ?? null); database.close(); };
       getRequest.onerror = () => reject(getRequest.error);
     };
-  }));
-  assert.equal(cachedAfterDisconnect, null, 'Disconnect hat den IndexedDB-Datenstand nicht entfernt');
-  assert.deepEqual(await themeSnapshot(mobile.page), themeBeforeDisconnect, 'Disconnect entfernt die gerätebezogene Appearance-Präferenz');
+  }), cacheOwnerBeforeLogout);
+  assert.equal(cachedAfterLogout?.ownerKey, cacheOwnerBeforeLogout, 'Logout beschädigte den ownergebundenen Cache für eine spätere verifizierte Anmeldung');
+  assert.deepEqual(await themeSnapshot(mobile.page), mobileThemeBeforeLogout, 'Logout entfernt die gerätebezogene Appearance-Präferenz');
   assert.match(await mobile.page.evaluate(() => localStorage.getItem('finance-appearance-v1') ?? ''), /"version":1/);
   assert.deepEqual(mobile.errors, [], mobile.errors.join('\n'));
   await mobile.context.close();
@@ -1232,7 +1281,6 @@ try {
   const forced = await forcedContext.newPage();
   const forcedErrors = collectErrors(forced);
   await installFinanceApiMocks(forced);
-  await installPickerMock(forced);
   await forced.goto(baseUrl, { waitUntil: 'networkidle' });
   await forced.getByRole('heading', { name: overviewHeading }).waitFor();
   assert.equal(await forced.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'Forced Colors wurde nicht emuliert');

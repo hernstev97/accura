@@ -4,6 +4,7 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   FinanceDataIntegrityError,
+  FinanceOwnerMappingError,
   PostgresFinanceRepository,
 } from '../../api/_lib/financeRepository';
 import { financeDataV1Schema } from '../../src/finance/runtime';
@@ -53,15 +54,16 @@ beforeAll(async () => {
   schemaCreated = true;
   const migration001 = await readFile(new URL('../../migrations/001_google_connections.sql', import.meta.url), 'utf8');
   const migration002 = await readFile(new URL('../../migrations/002_finance_data_v1.sql', import.meta.url), 'utf8');
+  const migration003 = await readFile(new URL('../../migrations/003_drop_google_connections.sql', import.meta.url), 'utf8');
   await sql.unsafe(migration001);
   await sql.unsafe(migration002);
+  await sql.unsafe(migration003);
 });
 
 beforeEach(async () => {
   await sql.unsafe(`TRUNCATE TABLE ${[
     ...financeTables,
     'owners',
-    'google_connections',
   ].join(', ')}`);
 });
 
@@ -72,7 +74,7 @@ afterAll(async () => {
 });
 
 describe.sequential('Finance PostgreSQL migration and repository', () => {
-  it('applies migrations 001 and 002 with non-null owner isolation on every finance table', async () => {
+  it('applies migrations 001 to 003 with non-null owner isolation on every finance table', async () => {
     const tables = await sql<{ table_name: string }[]>`
       SELECT table_name
       FROM information_schema.tables
@@ -80,10 +82,10 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
       ORDER BY table_name
     `;
     expect(tables.map(({ table_name }) => table_name)).toEqual(expect.arrayContaining([
-      'google_connections',
       'owners',
       ...financeTables,
     ]));
+    expect(tables.map(({ table_name }) => table_name)).not.toContain('google_connections');
 
     const ownerColumns = await sql<{ table_name: string; is_nullable: string }[]>`
       SELECT table_name, is_nullable
@@ -97,11 +99,11 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
     expect(ownerColumns.every(({ is_nullable }) => is_nullable === 'NO')).toBe(true);
   });
 
-  it('reconstructs the complete normalized anonymous fixture as runtime-valid FinanceDataV1', async () => {
-    const ownerId = await createOwner('fixture-owner');
-    await insertFinanceData(ownerId, fixture);
-
+  it('replaces and reconstructs the complete normalized anonymous fixture as runtime-valid FinanceDataV1', async () => {
+    const written = await repository.replaceForGoogleSub('fixture-owner', fixture);
     const result = await repository.readForGoogleSub('fixture-owner');
+
+    expect(written).toEqual(inRepositoryOrder(fixture));
 
     expect(financeDataV1Schema.safeParse(result).success).toBe(true);
     expect(result).toEqual(inRepositoryOrder(fixture));
@@ -113,6 +115,50 @@ describe.sequential('Finance PostgreSQL migration and repository', () => {
       asOf: '2026-07-31',
       balanceCents: 110_000,
     });
+  });
+
+  it('replaces an existing owner stand without leaving previous rows', async () => {
+    await repository.replaceForGoogleSub('replace-owner', fixture);
+    await repository.replaceForGoogleSub('other-owner', fixture);
+    const reduced = {
+      ...fixture,
+      monthlyIncomeCents: 1,
+      accounts: fixture.accounts.filter(({ id }) => id === 'daily-account'),
+      accountSnapshots: fixture.accountSnapshots.filter(({ accountId }) => accountId === 'daily-account'),
+      pockets: [],
+      pocketSnapshots: [],
+      budgetItems: [],
+      debts: [],
+      debtSnapshots: [],
+      debtMilestones: [],
+      reliefMilestones: [],
+    };
+
+    const written = await repository.replaceForGoogleSub('replace-owner', reduced);
+
+    expect(written.monthlyIncomeCents).toBe(1);
+    expect(written.accounts).toHaveLength(1);
+    expect(written.pockets).toHaveLength(0);
+    expect(written.debts).toHaveLength(0);
+    const [replaced] = await sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM budget_items AS items
+      JOIN owners ON owners.id = items.owner_id
+      WHERE owners.google_sub = 'replace-owner'
+    `;
+    expect(replaced).toEqual({ count: '0' });
+    const untouched = await repository.readForGoogleSub('other-owner');
+    expect(untouched?.budgetItems).toHaveLength(fixture.budgetItems.length);
+  });
+
+  it('imports only for the sole owner established by verified sign-in', async () => {
+    await expect(repository.replaceForSoleOwner(fixture)).rejects.toMatchObject<FinanceOwnerMappingError>({ reason: 'missing' });
+
+    await repository.ensureOwnerForGoogleSub('verified-owner');
+    await expect(repository.replaceForSoleOwner(fixture)).resolves.toEqual(inRepositoryOrder(fixture));
+
+    await repository.ensureOwnerForGoogleSub('second-verified-owner');
+    await expect(repository.replaceForSoleOwner(fixture)).rejects.toMatchObject<FinanceOwnerMappingError>({ reason: 'ambiguous' });
   });
 
   it('preserves negative amounts and distinguishes month from day milestone precision', async () => {
