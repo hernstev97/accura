@@ -13,13 +13,15 @@ Vom Repository-Root aus:
 ```bash
 npm run docs:check
 npm test
+npm run test:postgres
 npm run lint
+npm run licenses:check
 npm run build
 npm run test:visual
 npm run smoke
 ```
 
-`test:visual` und `smoke` starten beziehungsweise orchestrieren ihre benötigten lokalen Browserabläufe gemäß den Skripten. Sie benötigen installierte Playwright-Chromium-Binaries. Externe Links können zusätzlich diagnostiziert werden:
+`test:postgres` benötigt eine dedizierte `POSTGRES_TEST_URL`, darf nie gegen Production laufen und wird ohne URL absichtlich nicht übersprungen. Die CI stellt dafür einen temporären PostgreSQL-Service bereit. `test:visual` und `smoke` starten beziehungsweise orchestrieren ihre benötigten lokalen Browserabläufe gemäß den Skripten. Sie benötigen installierte Playwright-Chromium-Binaries. Externe Links können zusätzlich diagnostiziert werden:
 
 ```bash
 npm run docs:check:external
@@ -63,7 +65,7 @@ Chromes nativer Installationsdialog, Android-Launcher, Task-Switcher und OS-Spla
 
 Arbeitsbranches entstehen von `develop` und werden per Pull Request dorthin integriert. Vercel stellt sie und den dauerhaften `develop`-Stand mit anonymer, bereits angemeldeter Mock-Sitzung bereit. Dieser Pfad darf keine realen Google-/Datenbankabläufe vortäuschen.
 
-Ein Produktionsrelease von `develop` nach `master` erfolgt nur als eigener bewusster Schritt, wenn automatische Prüfungen grün, Änderungen und Migrationen verstanden, Secrets/Finanzwerte ausgeschlossen und relevante reale Szenarien abgenommen sind. GitHub-CI prüft Pushes auf `develop` und `master` sowie Pull Requests mit Lint, Unit, Build und Smoke. Reale Google-/Datenbankabläufe bleiben außerhalb CI.
+Ein Produktionsrelease von `develop` nach `master` erfolgt nur als eigener bewusster Schritt, wenn automatische Prüfungen grün, Änderungen und Migrationen verstanden, Secrets/Finanzwerte ausgeschlossen und relevante reale Szenarien abgenommen sind. GitHub-CI prüft Pushes auf `develop` und `master` sowie Pull Requests mit Lint, Unit, PostgreSQL, Build und Smoke. Externe Neon-Betriebsabläufe bleiben außerhalb CI.
 
 ## Nachweis
 

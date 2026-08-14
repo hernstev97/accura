@@ -10,5 +10,5 @@
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.ts", "eslint.config.js", "build/**/*.ts"]
+  "include": ["vite.config.ts", "vitest.postgres.config.ts", "eslint.config.js", "build/**/*.ts"]
 }

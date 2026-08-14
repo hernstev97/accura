@@ -10,7 +10,7 @@
 
 Die Tabelle enthält Quellen und zeitbezogene Snapshots, keine UI-Gesamtsummen. Der Parser validiert Beziehungen und normalisiert Geld in Integer-Cents. Reine Selektoren wählen den fachlich gültigen Stand und berechnen Summen. Das View-Model ergänzt lokalisierte Texte und Screen-Strukturen. React rendert diese Ausgabe.
 
-Im beschlossenen Zielbild ist `FinanceDataV1` die quellenunabhängige Domänengrenze: Der einmalige Sheet-Import erzeugt denselben Vertrag wie das PostgreSQL-Repository. Die folgenden Sheets-Schritte beschreiben den aktuell implementierten Übergangsstand. Quelle, Owner-Zuordnung und SQL-Grenze legt [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) fest.
+`FinanceDataV1` ist die quellenunabhängige Domänengrenze: Der einmalige Sheet-Import wird später denselben Vertrag erzeugen wie das bereits implementierte PostgreSQL-Repository. Die produktive API verwendet im aktuellen Übergangsstand weiterhin Sheets; der PostgreSQL-Reader ist nur intern und in Integrationstests erreichbar. Quelle, Owner-Zuordnung und SQL-Grenze legt [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) fest.
 
 ## Aktuelle Sheets- und Finance-Datenpipeline
 
@@ -26,6 +26,24 @@ flowchart LR
 ```
 
 Implementierung und Tests: [api/_lib/google.ts](../../api/_lib/google.ts), [src/finance/parser.ts](../../src/finance/parser.ts), [src/finance/selectors.ts](../../src/finance/selectors.ts), [src/finance/viewModel.ts](../../src/finance/viewModel.ts), [src/finance/parser.test.ts](../../src/finance/parser.test.ts).
+
+## PostgreSQL-Abbildung im Übergangsstand
+
+```mermaid
+flowchart LR
+  S["verifizierte Session: Google sub"] --> O["owners.id intern auflösen"]
+  O --> T["READ ONLY / REPEATABLE READ"]
+  T --> R["Meta + alle Quellenzeilen und Snapshots"]
+  R --> V["Safe-Integer- und FinanceDataV1-Validierung"]
+  V --> C["FinanceDataV1"]
+  C --> SEL["dieselben reinen Selektoren"]
+```
+
+Die Tabellen `finance_meta`, `accounts`, `account_snapshots`, `pockets`, `pocket_snapshots`, `budget_items`, `debts`, `debt_snapshots`, `debt_milestones` und `relief_milestones` entsprechen den zehn v1-Quellbereichen. `owner_id` ist reine Persistenzinformation und wird nicht Teil des Domänenobjekts. Geld bleibt `BIGINT` in Cents; Meilensteine speichern Monats-/Tagespräzision separat und werden wieder als `YYYY-MM` beziehungsweise `YYYY-MM-DD` ausgegeben.
+
+Das Repository liest bewusst jeden gespeicherten Snapshot einschließlich alter und zukünftiger Werte. Es wählt keinen „aktuellen“ Stand und berechnet keine Summe. Erst die unveränderten Selektoren verwenden `snapshot.asOf <= data.asOf`. Damit bleibt die fachliche Auswahlgrenze identisch zum Sheets-Pfad. Die Datenbank erzwingt strukturelle Owner-/Fremdschlüsselintegrität; das Repository ergänzt Laufzeitvertrag und die Parserregel, dass aktive Accounts, Pockets und Debts einen passenden Snapshot benötigen.
+
+Vollständiger Tabellenvertrag: [Datenbankreferenz](../referenz/datenbank.md). Implementierung und echter Datenbanktest: [financeRepository.ts](../../api/_lib/financeRepository.ts), [financeRepository.postgres.test.ts](../../tests/postgres/financeRepository.postgres.test.ts).
 
 ## Integer-Cents und Snapshots
 

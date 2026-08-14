@@ -8,9 +8,19 @@
 
 ## Mentales Modell
 
-Die Vercel Functions sind Backend-for-Frontend und Sicherheitsgrenze. Sie verifizieren die einzige erlaubte Identität, verwalten Google-Token und Datenbankverbindung, lesen Sheets, validieren das Finance-Schema und liefern eine kleine same-origin JSON-API. Der Browser spricht Google nur beim bewusst geöffneten Picker direkt an.
+Die Vercel Functions sind Backend-for-Frontend und Sicherheitsgrenze. Sie verifizieren die einzige erlaubte Identität, verwalten Google-Token und Datenbankverbindung, lesen Sheets, validieren das Finance-Schema und liefern eine kleine same-origin JSON-API. Der Browser spricht Google nur beim bewusst geöffneten Picker direkt an. Ein zentraler Lazy-Pool mit höchstens einer Verbindung pro `DATABASE_URL` wird vom Google-Connection- und vom neuen Finance-Repository geteilt.
 
-Dies beschreibt den aktuell implementierten Übergangsstand. Im verbindlichen Zielbild aus [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) und [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md) liest der Server `FinanceDataV1` ownergebunden aus PostgreSQL. Google bleibt nur Identitätsanbieter; Picker, `drive.file`, Sheets-Laufzeitzugriff und persistierte Refresh-Tokens entfallen beim Cutover. Bis dahin bleibt der alte Pfad betriebsfähig, wird aber nicht weiter ausgebaut.
+Dies beschreibt den aktuell implementierten Übergangsstand. Der ownergebundene PostgreSQL-Reader aus [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) ist inzwischen implementiert und mit echter PostgreSQL-Instanz getestet, aber absichtlich an keinen HTTP-Endpunkt angeschlossen. `/api/finance` verwendet weiterhin ausschließlich den Sheets-Service. Erst ACC-66 importiert den produktiven Stand und führt den eindeutigen Cutover aus; bis dahin gibt es weder Dual-Read noch PostgreSQL-zu-Sheets-Fallback. Im Zielbild aus [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md) bleibt Google nur Identitätsanbieter, und Picker, `drive.file`, Sheets-Laufzeitzugriff sowie persistierte Refresh-Tokens entfallen.
+
+## Implementierter PostgreSQL-Reader
+
+`FinanceRepository.readForGoogleSub(googleSub)` ist eine reine interne Servergrenze. `googleSub` darf nur aus der verifizierten Sitzung stammen; der Browser sendet keine Owner-UUID. Das Repository löst die Subjekt-ID einmalig zu `owners.id` auf und filtert jede weitere Abfrage mit dieser internen ID.
+
+Der vollständige Read läuft `READ ONLY` und `REPEATABLE READ`. Meta, Stammdaten, sämtliche historische und zukünftige Snapshots sowie Meilensteine stammen deshalb aus einem konsistenten Datenbankstand. `DATE` wird direkt in SQL zu ISO-Text formatiert; `BIGINT` wird nur aus gültiger Integerdarstellung in einen sicheren JavaScript-Integer überführt. Anschließend validiert das gemeinsame Zod-Schema den vollständigen `FinanceDataV1`-Vertrag. Aktive Accounts, Pockets und Debts brauchen zusätzlich einen Snapshot mit Datum am oder vor `asOf`.
+
+Fehlender Owner oder fehlendes `finance_meta` liefert `null`. Ein ungültiger gespeicherter Stand erzeugt einen eigenen internen Integritätsfehler ohne Zeilen, IDs oder Finanzwerte. Da ACC-71 keinen produktiven Endpunkt umstellt, existiert noch keine neue öffentliche HTTP-Fehlerabbildung.
+
+Implementierung und Test: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts), [PostgreSQL-Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts).
 
 ## OAuth-Sequenz
 
@@ -76,7 +86,9 @@ Widerrufene oder abgelaufene Google-Grants werden als `reconnect_required` abgeb
 Für den aktuellen Übergangsstand siehe die ersetzte [ADR 0003](../entscheidungen/0003-serverseitiger-google-zugriff-und-drive-file.md). Das Zielbild steht in [ADR 0013](../entscheidungen/0013-postgresql-als-finanzquelle.md) und [ADR 0014](../entscheidungen/0014-google-oauth-nur-als-identitaet.md); [ADR 0004](../entscheidungen/0004-single-user-sicherheitsmodell.md) bleibt gültig.
 
 - Konfiguration: [api/_lib/config.ts](../../api/_lib/config.ts)
+- Gemeinsamer Datenbankzugang: [api/_lib/database.ts](../../api/_lib/database.ts)
 - HTTP-Grenze: [api/_lib/http.ts](../../api/_lib/http.ts)
 - Google-Client: [api/_lib/google.ts](../../api/_lib/google.ts)
 - Finance-Service: [api/_lib/financeService.ts](../../api/_lib/financeService.ts)
+- Inaktiver PostgreSQL-Reader: [api/_lib/financeRepository.ts](../../api/_lib/financeRepository.ts)
 - Server-Tests: [src/server](../../src/server)

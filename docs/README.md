@@ -45,7 +45,7 @@ Diese Seite ist der zentrale Index und damit die Single Source of Truth (SSOT) f
 | HTTP-Endpunkte | [API-Referenz](referenz/api.md) |
 | Tabellenvertrag | [Finance Data Schema v1](referenz/finance-data-schema-v1.md) |
 | Umgebungsvariablen | [Konfiguration](referenz/konfiguration.md) |
-| Tabelle `google_connections` | [Datenbank](referenz/datenbank.md) |
+| PostgreSQL-Schema, Owner-Isolation und Tabelle `google_connections` | [Datenbank](referenz/datenbank.md) |
 | Verzeichnis- und Modulzuständigkeiten | [Quellcode-Karte](referenz/quellcode-karte.md) |
 | Begriffe | [Glossar](referenz/glossar.md) |
 | Begründete Architekturentscheidungen | [ADR-Index](entscheidungen/README.md) |
