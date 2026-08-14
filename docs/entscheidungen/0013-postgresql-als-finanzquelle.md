@@ -61,6 +61,8 @@ Die interne Owner-ID entkoppelt Finanzdaten von einem externen Identitätsanbiet
 
 Google Sheets als dauerhafte Quelle beizubehalten würde Editor und Laufzeit weiter an Picker, Token und externe Verfügbarkeit binden. Ein dauerhafter Dual-Source-Betrieb erzeugt Konflikt- und Prioritätsregeln ohne Produktnutzen. JSON-Dokumente in einer einzelnen Spalte würden relationale Integrität und gezielte sichere Bearbeitung erschweren. Finanzlogik oder vorberechnete UI-Kennzahlen in SQL würden eine zweite Berechnungsquelle neben den getesteten Selektoren schaffen. Google `sub` direkt auf jede Finanzzeile zu schreiben wäre kurzfristig kleiner, koppelte die Daten aber unnötig an Google und erschwerte ACC-64.
 
+Convex wurde ebenfalls geprüft. Sein dokumenten- und function-orientiertes Backend-Modell würde Auth-, Datenzugriffs- und Deploymentgrenzen stärker verändern als der benötigte Quellenwechsel. Vor allem kann der gewählte relationale Vertrag mit zusammengesetzten Owner-Fremdschlüsseln und von der Datenbank erzwungener referenzieller Integrität dort nicht unverändert abgebildet werden. Für ACC-71 überwiegen Portabilität des PostgreSQL-Schemas, bestehende Vercel-Integration und technisch erzwungene Owner-Beziehungen; deshalb wurde Convex verworfen.
+
 ## Konsequenzen
 
 ### Positiv
@@ -73,5 +75,6 @@ Schema, Migration, Repository und Schreibgrenzen müssen sorgfältig umgesetzt u
 
 ## Implementierung und Tests
 
-- Aktueller, noch zu ersetzender Vertrag: [FinanceDataV1](../../src/finance/types.ts), [Sheets-Parser](../../src/finance/parser.ts), [PostgreSQL-Verbindungsrepository](../../api/_lib/repository.ts)
-- Geplanter Nachweis: ACC-71, ACC-29, ACC-66 und ACC-72 in Linear
+- Domänenvertrag und bestehender Produktionspfad: [FinanceDataV1](../../src/finance/types.ts), [Sheets-Parser](../../src/finance/parser.ts), [Finance-Service](../../api/_lib/financeService.ts)
+- Umgesetzter ACC-71-Stand: [Migration 002](../../migrations/002_finance_data_v1.sql), [PostgreSQL-Reader](../../api/_lib/financeRepository.ts), [Integrationstest](../../tests/postgres/financeRepository.postgres.test.ts)
+- Weitere Nachweise und Cutover: ACC-29, ACC-66 und ACC-72 in Linear

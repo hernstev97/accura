@@ -21,15 +21,60 @@ Repository-Code kann externe Konten, APIs, Redirects, Datenbank und Secrets nich
 
 `GOOGLE_CLOUD_PROJECT_NUMBER` ist die numerische Nummer, nicht die textuelle Projekt-ID. OAuth Client ID und Picker-Key sind browserlesbare Identifikatoren, aber ihre Einschränkungen bleiben sicherheitsrelevant. Das Client-Secret bleibt serverseitig.
 
-## 2. PostgreSQL
+## 2. PostgreSQL und Neon-Betrieb
 
-Eine gepoolte PostgreSQL-Verbindung bereitstellen; für Vercel eignet sich ein kompatibler Marketplace-Anbieter wie Neon. Die gepoolte URL als `DATABASE_URL` verwenden. Migration zuerst bewusst in Development und erst nach Prüfung in Production anwenden:
+Neon ist der aktuelle Betreiber; das Schema und der Anwendungscode setzen nur PostgreSQL voraus. Development und Production verwenden getrennte Neon-Datenbanken oder Branches. Preview-Deployments erhalten keine Produktionskopie und arbeiten ausschließlich mit synthetischen Daten.
+
+### Verbindungsarten und Migration
+
+Zwei getrennte Verbindungen verwenden:
+
+- Vercel Functions erhalten die gepoolte Neon-URL als `DATABASE_URL`.
+- Migrationen, Rollenverwaltung und Restore-Prüfungen verwenden einen direkten Neon-Endpoint mit administrativen Credentials. Diese URL ist kein Runtime-Secret der App.
+
+Vor jedem Lauf Zielhost, Datenbank, Benutzer und Environment sichtbar prüfen. Migrationen zuerst in Development anwenden, dort die Integrationstests und einen vollständigen Reader-Durchlauf ausführen und erst danach Production getrennt beauftragen:
 
 ```bash
-psql "$DATABASE_URL" -f migrations/001_google_connections.sql
+psql "$DATABASE_DIRECT_URL" -f migrations/001_google_connections.sql
+psql "$DATABASE_DIRECT_URL" -f migrations/002_finance_data_v1.sql
 ```
 
-Vor Ausführung Zielhost und Datenbanknamen prüfen. Die Migration ist idempotent angelegt, aber Datenbankänderungen bleiben Betreiberverantwortung. Schema und Rotation stehen unter [Datenbank](../referenz/datenbank.md).
+`DATABASE_DIRECT_URL` ist hier nur ein Name für die administrative Shell-Variable und keine von der Anwendung gelesene Konfiguration. Das tatsächliche Anwenden auf eine externe Development- oder Production-Datenbank ist ein eigener ausdrücklicher Betriebsauftrag.
+
+Für eine lokale dedizierte Testdatenbank oder den CI-Service gilt:
+
+```bash
+POSTGRES_TEST_URL=postgresql://... npm run test:postgres
+```
+
+Die Suite bricht ohne URL ab, legt unter der Ziel-Datenbank ein isoliertes synthetisches Testschema an, führt 001 und 002 aus und entfernt dieses Schema anschließend wieder. Niemals eine Produktions-URL als `POSTGRES_TEST_URL` verwenden.
+
+### Runtime-Rolle
+
+Direkte Owner-/Migrations-Credentials dürfen nicht als `DATABASE_URL` verwendet werden. Die Runtime-Rolle benötigt im ACC-71-Stand:
+
+- die bestehenden notwendigen `SELECT`-, `INSERT`-, `UPDATE`- und `DELETE`-Rechte auf `google_connections`;
+- `SELECT` auf `owners` und allen Finance-Tabellen;
+- keine DDL-, Rollenverwaltungs- oder Schema-Owner-Rechte;
+- keine pauschalen Finance-Schreibrechte. Der spätere Editor erweitert Rechte nur auf die ausdrücklich benötigten Tabellen und Operationen.
+
+Die konkrete `GRANT`-Konfiguration wird pro Datenbank mit dem administrativen direkten Endpoint angewandt und anschließend durch Anmeldung, Connection-Update und einen Finance-Read mit synthetischem Owner geprüft.
+
+### Region
+
+Vor Production-Migration und Cutover werden die reale Neon-Region und die tatsächlich ausgeführte Vercel-Functions-Region im jeweiligen Dashboard geprüft. Ziel ist eine sinnvolle gemeinsame EU-Region. Ohne diesen Befund wird keine Region blind in `vercel.json` eingetragen. Gemessene Latenz und der gewählte Stand gehören ins private Betriebsprotokoll, nicht als vermutete Werte ins Repository.
+
+### Backup und Restore vor ACC-66
+
+Vor dem späteren Import/Cutover sind folgende Punkte verpflichtend:
+
+1. Ein für die privaten Daten ausreichendes Neon-Restore-Fenster und ein geeigneter Tarif sind aktiv.
+2. Ein Restore wird mit ausschließlich synthetischen Development-Daten praktisch durchgeführt.
+3. Auf dem wiederhergestellten Stand werden Migrationstabellen beziehungsweise Schema-Constraints geprüft.
+4. `npm run test:postgres` läuft gegen eine dafür vorgesehene Testdatenbank; anschließend wird ein vollständiger `FinanceDataV1` über das Repository gelesen.
+5. Dauer, Verantwortlicher, Ziel, Ergebnis und Rückkehrschritte werden im privaten Betriebsprotokoll festgehalten.
+
+Das Repository automatisiert weder Neon-Restore noch externe Migrationen. Schema und Constraint-Vertrag stehen vollständig unter [Datenbank](../referenz/datenbank.md).
 
 ## 3. Secrets erzeugen
 
@@ -95,11 +140,11 @@ Google-OAuth-Apps im External-Testmodus können Grants mit nicht ausschließlich
 - `SESSION_SECRET`: bestehende Sitzungen und OAuth-Transaktionen werden ungültig; kontrolliert wechseln und neu anmelden.
 - `TOKEN_ENCRYPTION_KEY`: vorhandene Refresh-Token sind ohne alten Schlüssel nicht entschlüsselbar. Aktuell gibt es keinen Keyring; Verbindung vor/nach koordiniertem Wechsel löschen und neu autorisieren oder eine explizite Migration bauen.
 - Google Client Secret/API-Key: Google- und Vercel-Konfiguration gemeinsam aktualisieren; Referrer/Redirects erneut testen.
-- `DATABASE_URL`: Migration und Erreichbarkeit im Ziel prüfen, bevor der Appwert umgestellt wird.
+- `DATABASE_URL`: gepoolte Runtime-URL; Erreichbarkeit, eingeschränkte Rolle und Ziel-Environment prüfen, bevor der Appwert umgestellt wird.
 
 ## Nachweis und Fehlerdiagnose
 
 - Setupfehler: [Fehlerdiagnose](fehlerdiagnose.md)
 - Sicherheitsfluss: [Backend und Sicherheit](../architektur/backend-und-sicherheit.md)
 - Releaseprüfungen: [Testen und Release](testen-und-release.md)
-- Implementierung: [api/_lib/config.ts](../../api/_lib/config.ts), [api/auth/google](../../api/auth/google), [migrations/001_google_connections.sql](../../migrations/001_google_connections.sql)
+- Implementierung: [api/_lib/config.ts](../../api/_lib/config.ts), [api/_lib/database.ts](../../api/_lib/database.ts), [api/auth/google](../../api/auth/google), [Migrationen](../../migrations)

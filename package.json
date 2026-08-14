@@ -17,6 +17,7 @@
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "smoke:offline": "node scripts/offline-smoke.mjs",
     "test": "npm run test:server-esm && vitest run",
+    "test:postgres": "vitest run --config vitest.postgres.config.ts",
     "test:server-esm": "node --test scripts/*.test.mjs",
     "test:visual": "playwright test tests/visual",
     "test:visual:update": "playwright test tests/visual --update-snapshots",

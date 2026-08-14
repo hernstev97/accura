@@ -1,4 +1,5 @@
-import postgres from 'postgres';
+import type postgres from 'postgres';
+import { getDatabase } from './database.js';
 
 export type GoogleConnection = {
   googleSub: string;
@@ -95,12 +96,13 @@ export class PostgresConnectionRepository implements ConnectionRepository {
   }
 }
 
-let repository: ConnectionRepository | undefined;
+const repositories = new Map<string, ConnectionRepository>();
 
 export function getConnectionRepository(databaseUrl: string): ConnectionRepository {
-  if (!repository) {
-    const sql = postgres(databaseUrl, { max: 1, idle_timeout: 20, connect_timeout: 10, prepare: false });
-    repository = new PostgresConnectionRepository(sql);
-  }
+  const existing = repositories.get(databaseUrl);
+  if (existing) return existing;
+
+  const repository = new PostgresConnectionRepository(getDatabase(databaseUrl));
+  repositories.set(databaseUrl, repository);
   return repository;
 }

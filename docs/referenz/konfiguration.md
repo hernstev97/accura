@@ -35,6 +35,8 @@ Alle Variablen sind serverseitig erforderlich. `VERCEL_ENV=production` oder `NOD
 | `VITE_VERCEL_GIT_REPO_SLUG` | öffentlicher, von Vercel bereitgestellter Repository-Name für den versionsgebundenen Source-Link |
 | `VITE_VERCEL_GIT_COMMIT_SHA` | öffentlicher, vollständiger Vercel-Deployment-Commit für den versionsgebundenen Source-Link |
 
+`POSTGRES_TEST_URL` ist eine ausschließlich für `npm run test:postgres` gelesene Testprozess-Variable. Sie muss auf eine dedizierte temporäre oder lokale PostgreSQL-Datenbank mit Schema-Erzeugungsrecht zeigen, ist kein Vercel-Runtime-Wert und darf niemals eine Production-URL enthalten. Ohne sie bricht die dedizierte Suite absichtlich ab; `npm test` benötigt sie nicht.
+
 Jede `VITE_`-Variable wird grundsätzlich als browseröffentlich behandelt. Niemals Secret, Token, Datenbank-URL oder persönliche Finanzdaten mit diesem Präfix setzen. Vercels automatische Systemvariablen müssen für das Projekt aktiviert bleiben, damit Preview-Builds eindeutig erkannt werden.
 
 Explizite `ACCURA_SOURCE_*`-Overrides haben Vorrang vor den Vercel-Git-Werten. Ohne beide Quellen verwendet ein lokaler Build `git rev-parse HEAD`. Ein Produktionsbuild ohne gültigen vollständigen SHA bricht ab; ausschließlich der Dev-Server darf auf `master` zurückfallen. Repository-URL, vollständiger SHA, Kurz-SHA und daraus abgeleitete Rechtslinks werden als öffentliche Konstanten in das Browser-Bundle eingebettet und enthalten keine Geheimnisse.

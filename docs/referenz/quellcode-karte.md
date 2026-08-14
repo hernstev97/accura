@@ -23,9 +23,10 @@
 | `src/mocks/` | ausschließlich anonyme Entwicklungsdaten und Mock-API |
 | `build/` | geprüfte Buildzeit-Auflösung für Source-Link und Preview-Modus |
 | `api/` | Vercel Function Entry Points |
-| `api/_lib/` | Konfiguration, HTTP, Security, Google, Repository, Finance-Service |
-| `migrations/` | PostgreSQL-Migrationen |
+| `api/_lib/` | Konfiguration, HTTP, Security, Google, gemeinsamer PostgreSQL-Pool, Connection-/Finance-Repositories und Sheets-Finance-Service |
+| `migrations/` | transaktionale PostgreSQL-Migrationen für Google-Verbindung und ownergebundenes Finance-v1-Schema |
 | `scripts/` | Node-ESM-, Browser-, Offline- und Service-Worker-Smokes sowie Docs-Check |
+| `tests/postgres/` | echte, synthetische PostgreSQL-Migrations-, Constraint- und Finance-Reader-Tests |
 | `tests/visual/` | Playwright Golden-/Axe-Spezifikation und Referenzbilder |
 | `public/` | Icons und statische PWA-Assets |
 | `vercel.json` | SPA-Deep-Link-Rewrite unter explizitem Ausschluss von `/api` |
@@ -35,6 +36,8 @@
 ## Wert von der Zelle zur Komponente
 
 Für einen Geldwert beginnt die Spur in einem Header aus [src/finance/schema.ts](../../src/finance/schema.ts), läuft über [src/finance/parser.ts](../../src/finance/parser.ts) in einen Cent-Typ aus [src/finance/types.ts](../../src/finance/types.ts), wird in [src/finance/selectors.ts](../../src/finance/selectors.ts) gewählt/aggregiert, in [src/finance/viewModel.ts](../../src/finance/viewModel.ts) präsentationsfertig und über [src/data/FinanceDataProvider.tsx](../../src/data/FinanceDataProvider.tsx) an einen Screen gereicht. [src/components/MoneyValue.tsx](../../src/components/MoneyValue.tsx) formatiert und maskiert den Wert.
+
+Der noch nicht produktiv angeschlossene PostgreSQL-Pfad beginnt bei der verifizierten Google-Subjekt-ID, löst den internen Owner in [financeRepository.ts](../../api/_lib/financeRepository.ts) auf, liest die Tabellen aus [Migration 002](../../migrations/002_finance_data_v1.sql) und endet ebenfalls am unveränderten `FinanceDataV1`. Beide Repositories teilen [database.ts](../../api/_lib/database.ts); `/api/finance` verwendet bis ACC-66 weiterhin ausschließlich den Sheets-Service.
 
 ## Änderungshinweise
 
