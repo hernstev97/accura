@@ -47,7 +47,9 @@ npx vercel dev --listen 3000
 - Node-Version zu alt: Vite kann schon beim Installieren/Starten fehlschlagen.
 - `/api/session` liefert im reinen Vite-Modus HTML/404: Realmodus benötigt `vercel dev` oder Mock-Modus.
 - `.env.local` darf nicht committed werden; Browserwerte mit `VITE_` sind öffentlich.
+- `vercel dev` injiziert in die Functions zuerst die Variablen aus dem Vercel-Environment **Development**. Fehlen dort `APP_ORIGIN` und die Google-Werte, liefert `/api/session` 500 `server_configuration_error` und die App zeigt „Noch kein lokaler Datenstand“. Die Werte müssen in `.env.local` stehen; der Server liest fehlende Keys von dort nach. Zusätzlich dieselben Keys in Vercel unter Development hinterlegen, damit `vercel env pull` sie beim nächsten Mal mitbringt.
 - Ein Service Worker aus einem früheren Preview kann alte Assets halten; DevTools/Application kontrollieren und Site-Daten nur bewusst löschen.
+- `vercel dev` mit Vite-Fehler zu `index.html` und `import-analysis`: die SPA-Rewrite hat einen Modulpfad (`/src/…`, `/@vite/…`) auf die App-Shell gelegt. [vercel.json](../../vercel.json) muss diese Pfade und Dateien mit Endung ausnehmen.
 
 ## Implementierung und Tests
 

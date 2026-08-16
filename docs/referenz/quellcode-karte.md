@@ -29,7 +29,7 @@
 | `tests/postgres/` | echte, synthetische PostgreSQL-Migrations-, Constraint-, Reader- und Import-Tests |
 | `tests/visual/` | Playwright Golden-/Axe-Spezifikation und Referenzbilder |
 | `public/` | Icons und statische PWA-Assets |
-| `vercel.json` | SPA-Deep-Link-Rewrite unter explizitem Ausschluss von `/api` |
+| `vercel.json` | SPA-Deep-Link-Rewrite unter Ausschluss von `/api`, Vite-Modulpfaden und Dateien mit Endung |
 | `.github/workflows/ci.yml` | bestehende GitHub-CI |
 | `docs/` | deutschsprachige SSOT-Dokumentation |
 

@@ -38,7 +38,7 @@ Tabs können in den Hintergrund wechseln, Netzwerkstatus kann ungenau oder verz�
 - [src/main.tsx](../../src/main.tsx) mountet React; die globale PWA-Komponente registriert den Service Worker.
 - [src/components/PwaUpdateNotice.tsx](../../src/components/PwaUpdateNotice.tsx) bindet den Service-Worker-Lebenszyklus an den verständlichen Update-Hinweis.
 - [vite.config.ts](../../vite.config.ts) erzeugt Manifest und Workbox-Konfiguration.
-- [vercel.json](../../vercel.json) stellt Nicht-API-Deep-Links an die SPA-Shell zu.
+- [vercel.json](../../vercel.json) stellt erweiterungslose Deep-Links an die SPA-Shell zu; `/api`, Vite-Modulpfade und Dateien mit Endung bleiben ausgenommen, damit `vercel dev` die Module nicht als HTML ausliefert.
 - [src/navigation/appNavigation.ts](../../src/navigation/appNavigation.ts) löst Pfade und den PWA-Startmarker auf.
 - [api](../../api) enthält same-origin Vercel Functions.
 - [src/data/financeCache.ts](../../src/data/financeCache.ts) verwaltet den fachlichen IndexedDB-Snapshot.

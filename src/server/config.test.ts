@@ -17,9 +17,36 @@ describe('server environment contract', () => {
     expect(getServerConfig(env())).toMatchObject({ appOrigin: 'http://localhost:3000', production: false });
   });
 
+  it('strips surrounding quotes from pulled environment values', () => {
+    expect(getServerConfig({
+      ...env(),
+      APP_ORIGIN: '"http://localhost:3000"',
+      GOOGLE_OAUTH_REDIRECT_URI: '"http://localhost:3000/api/auth/google/callback"',
+      ALLOWED_GOOGLE_EMAIL: '"owner@example.test"',
+    })).toMatchObject({ appOrigin: 'http://localhost:3000', allowedGoogleEmail: 'owner@example.test' });
+  });
+
+  it('treats localhost vercel-dev as non-production even when Node or Vercel claim production', () => {
+    expect(getServerConfig({ ...env(), NODE_ENV: 'production' })).toMatchObject({
+      appOrigin: 'http://localhost:3000',
+      production: false,
+    });
+    expect(getServerConfig({ ...env(), NODE_ENV: 'production', VERCEL_ENV: 'development' })).toMatchObject({
+      production: false,
+    });
+    expect(getServerConfig({ ...env(), VERCEL_ENV: 'production' })).toMatchObject({
+      production: false,
+    });
+  });
+
   it('rejects mismatched callbacks, short session secrets, and non-HTTPS production origins', () => {
     expect(() => getServerConfig({ ...env(), GOOGLE_OAUTH_REDIRECT_URI: 'http://localhost:4000/api/auth/google/callback' })).toThrow(/inconsistent/);
     expect(() => getServerConfig({ ...env(), SESSION_SECRET: 'short' })).toThrow(/32 bytes/);
-    expect(() => getServerConfig({ ...env(), NODE_ENV: 'production' })).toThrow(/HTTPS/);
+    expect(() => getServerConfig({
+      ...env(),
+      APP_ORIGIN: 'http://accura.example',
+      GOOGLE_OAUTH_REDIRECT_URI: 'http://accura.example/api/auth/google/callback',
+      VERCEL_ENV: 'production',
+    })).toThrow(/HTTPS/);
   });
 });

@@ -18,7 +18,7 @@
 | `DATABASE_URL` | ja | gepoolte PostgreSQL-Verbindungs-URL |
 | `SESSION_SECRET` | ja | mindestens 32 UTF-8-Byte für HMAC-signierte OAuth-/Sessiontokens |
 
-Alle Variablen sind serverseitig erforderlich. `VERCEL_ENV=production` oder `NODE_ENV=production` aktiviert Produktion und damit HTTPS-Prüfung sowie `Secure`-Cookies.
+Alle Variablen sind serverseitig erforderlich. Produktion im Sinne von HTTPS und `Secure`-Cookies gilt nur bei `VERCEL_ENV=production` und nicht für `localhost`. `vercel dev` setzt oft `NODE_ENV=production`; das allein darf eine lokale HTTP-Origin nicht verwerfen.
 
 Der Operator-Import akzeptiert keine Google-Subjekt-ID als Umgebungsvariable. Die verifizierte Anmeldung legt den Owner serverseitig an; der Single-Owner-Import verweigert eine fehlende oder mehrdeutige Zuordnung.
 

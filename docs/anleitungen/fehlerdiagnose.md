@@ -24,6 +24,7 @@ Zuerst sichtbaren Zustand, Browser-Online-Status, betroffene Aktion und Zeitpunk
 | alter Stand trotz Netz | Refresh fehlgeschlagen oder Vordergrundschwelle nicht erreicht | manuell aktualisieren und `/api/finance` prüfen |
 | Bildvorschau fehlt | IndexedDB blockiert/gelöscht | Palette bleibt nutzbar; Bild neu wählen, Speicherrechte prüfen |
 | Privacy nicht tabübergreifend | `localStorage` blockiert oder anderer Origin | beide Tabs auf exakt derselben Origin und Speicherzugriff prüfen |
+| `vercel dev` / Vite `import-analysis` an `index.html` | SPA-Rewrite liefert HTML für `/src/…` oder `/@vite/…` | Rewrite in [vercel.json](../../vercel.json) muss API-, Vite- und Dateipfade ausnehmen; der Titel in `index.html` ist nicht die Ursache |
 
 ## Schemafehler lesen
 
